@@ -914,14 +914,11 @@ export default function MiniChefPage() {
           {selectedMenu ? (
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-stone-500">
-                  {selectedMenu.name} • {guestCount} guests
+                <p className="text-sm font-medium text-stone-900">
+                  {selectedMenu.name} • {guestCount} {isBirthday ? "kids" : "guests"}
                 </p>
-                <p className="text-lg font-bold text-stone-900">
-                  AED {totalAmount.toLocaleString()}
-                  {requiresDeposit && (
-                    <span className="text-xs font-normal text-stone-500 ml-1">(50% deposit: AED {depositAmount})</span>
-                  )}
+                <p className="text-xs text-stone-500">
+                  Step {step} of {maxStep}
                 </p>
               </div>
               

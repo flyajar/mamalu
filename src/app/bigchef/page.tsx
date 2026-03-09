@@ -403,14 +403,11 @@ export default function BigChefPage() {
           {(selectedMenu || (isNanny && selectedNannyMenus.length > 0)) ? (
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-stone-500">
+                <p className="text-sm font-medium text-stone-900">
                   {isNanny ? `Nanny Class • ${selectedNannyMenus.length} menus` : `${selectedMenu?.name} • ${guestCount} guests`}
                 </p>
-                <p className="text-lg font-bold text-stone-900">
-                  AED {totalAmount.toLocaleString()}
-                  {requiresDeposit && (
-                    <span className="text-xs font-normal text-stone-500 ml-1">(50% deposit: AED {depositAmount})</span>
-                  )}
+                <p className="text-xs text-stone-500">
+                  Step {step} of {maxStep}
                 </p>
               </div>
               
