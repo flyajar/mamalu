@@ -11,9 +11,9 @@ export default function AboutPage() {
   return (
     <div className="bg-white">
       {/* About Mamalu Section */}
-      <section className="py-16 lg:py-24">
+      <section className="py-8 lg:py-12">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
-          {/* About Mamalu Header with whisk doodle */}
+          {/* About Mamalu Header with curly arrow doodle */}
           <div className="flex items-start justify-center mb-12">
             <h1 
               className="text-4xl sm:text-5xl text-stone-600"
@@ -22,11 +22,11 @@ export default function AboutPage() {
               About Mamalu
             </h1>
             <Image 
-              src="/images/whisk-01.png" 
+              src="/images/arrow-01.png" 
               alt="" 
-              width={40} 
-              height={40} 
-              className="ml-2 -mt-2 opacity-70"
+              width={50} 
+              height={50} 
+              className="ml-3 -mt-1 opacity-80"
             />
           </div>
 
@@ -79,7 +79,7 @@ export default function AboutPage() {
               className="h-24 w-auto"
             />
             <h2 
-              className="text-4xl sm:text-5xl text-[#ff7f5c]"
+              className="text-4xl sm:text-5xl text-[#FF8C6B]"
               style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 400 }}
             >
               &quot;Feeding Families&quot;
@@ -93,7 +93,7 @@ export default function AboutPage() {
             />
           </div>
           <p 
-            className="text-center text-2xl sm:text-3xl text-stone-600 mb-16"
+            className="text-center text-2xl sm:text-3xl text-[#FF8C6B] mb-16"
             style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 400 }}
           >
             &quot;We are creating a cooking movement!&quot;
