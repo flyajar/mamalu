@@ -91,7 +91,7 @@ export function generateTrackedURL(
     utm_content?: string;
   }
 ): string {
-  const trackingUrl = new URL("/api/track/click", process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000");
+  const trackingUrl = new URL("/api/track/click", process.env.NEXT_PUBLIC_SITE_URL || "https://mamalu.vercel.app");
   trackingUrl.searchParams.set("c", campaignCode);
   trackingUrl.searchParams.set("url", baseUrl);
   if (options?.utm_source) trackingUrl.searchParams.set("utm_source", options.utm_source);

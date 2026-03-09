@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     configured,
     whatsappNumber: configured ? TWILIO_WHATSAPP_NUMBER : null,
-    webhookUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://yourdomain.com"}/api/webhooks/twilio-whatsapp`,
+    webhookUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://mamalu.vercel.app"}/api/webhooks/twilio-whatsapp`,
   });
 }
 
