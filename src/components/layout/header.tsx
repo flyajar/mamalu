@@ -20,7 +20,7 @@ const TikTokIcon = () => (
 
 const socialLinks = [
   { name: "Instagram", href: "https://www.instagram.com/mamalukitchen/", icon: Instagram },
-  { name: "TikTok", href: "#", icon: TikTokIcon },
+  { name: "TikTok", href: "https://www.tiktok.com/@mamalukitchen?_r=1&_t=ZS-94Lv8kCwZqz", icon: TikTokIcon },
 ];
 
 export function Header() {
@@ -78,22 +78,13 @@ export function Header() {
 
   return (
     <>
-      {/* Header - White default, transparent on scroll like mybird.com */}
-      <header className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-500",
-        scrolled ? "bg-transparent" : "bg-white"
-      )}>
+      {/* Header - Static at top */}
+      <header className="relative z-50 bg-white">
         <nav className="container mx-auto px-6 lg:px-8">
-          <div className={cn(
-            "flex items-center justify-between relative transition-all duration-500",
-            scrolled ? "py-2" : "py-20"
-          )}>
+          <div className="flex items-center justify-between relative py-8">
             
             {/* Left: Nav Links - Horizontal layout, 2x bigger text, line separators */}
-            <div className={cn(
-              "hidden lg:flex flex-row items-center gap-6 transition-all duration-500 z-10",
-              scrolled ? "opacity-0 pointer-events-none -translate-x-4" : "opacity-100 translate-x-0"
-            )}>
+            <div className="hidden lg:flex flex-row items-center gap-6 z-10">
               {navLinks.map((link, index) => (
                 <div key={link.name} className="flex items-center gap-6">
                   <Link
@@ -126,13 +117,10 @@ export function Header() {
               </div>
             </div>
 
-            {/* Mobile: Menu button on left (hidden on desktop, hidden on scroll) */}
+            {/* Mobile: Menu button on left */}
             <button
               type="button"
-              className={cn(
-                "lg:hidden p-2 transition-all duration-500",
-                scrolled ? "opacity-0 pointer-events-none" : "opacity-100"
-              )}
+              className="lg:hidden p-2"
               onClick={() => setMenuOpen(true)}
             >
               <svg className="h-6 w-6 text-[var(--c-black)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -140,55 +128,22 @@ export function Header() {
               </svg>
             </button>
 
-            {/* Center: Logo + Open Menu (on scroll) */}
-            <div className={cn(
-              "absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-500 z-0"
-            )}>
-              {/* White background on scroll - full width on mobile, rounded on desktop */}
-              <div className={cn(
-                "flex flex-col items-center transition-all duration-500 cursor-pointer",
-                scrolled ? "bg-white px-6 py-3 w-screen lg:w-auto lg:rounded-2xl" : ""
-              )}
-              onClick={() => scrolled && setMenuOpen(true)}
-              >
-                {/* Logo - links home when not scrolled, opens menu when scrolled */}
-                {scrolled ? (
-                  <Image 
-                    src="/graphics/mamalu-logo-transparent.png" 
-                    alt="Mamalu Kitchen" 
-                    width={160} 
-                    height={160}
-                    className="w-12 h-12 transition-all duration-500"
-                    priority
-                  />
-                ) : (
-                  <Link href="/">
-                    <Image 
-                      src="/graphics/mamalu-logo-transparent.png" 
-                      alt="Mamalu Kitchen" 
-                      width={200} 
-                      height={200}
-                      className="w-36 h-36 lg:w-44 lg:h-44 transition-all duration-500"
-                      priority
-                    />
-                  </Link>
-                )}
-                
-                {/* Open Menu Text - appears on scroll */}
-                <span className={cn(
-                  "text-[9px] font-bold uppercase tracking-widest text-[var(--c-black)] transition-all duration-500 mt-1 whitespace-nowrap",
-                  scrolled ? "opacity-100" : "opacity-0 pointer-events-none"
-                )}>
-                  Open Menu
-                </span>
-              </div>
+            {/* Center: Logo */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex flex-col items-center z-0">
+              <Link href="/">
+                <Image 
+                  src="/graphics/mamalu-logo-transparent.png" 
+                  alt="Mamalu Kitchen" 
+                  width={200} 
+                  height={200}
+                  className="w-28 h-28 lg:w-36 lg:h-36"
+                  priority
+                />
+              </Link>
             </div>
 
-            {/* Right: Cart Button (hidden on scroll) */}
-            <div className={cn(
-              "flex items-center gap-4 transition-all duration-500",
-              scrolled ? "opacity-0 pointer-events-none translate-x-4" : "opacity-100 translate-x-0"
-            )}>
+            {/* Right: Cart Button */}
+            <div className="flex items-center gap-4">
               <Link
                 href="/cart"
                 className="relative flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--c-black)]/20 bg-white text-xs font-bold uppercase tracking-wide transition-all duration-300 hover:border-[var(--c-black)]"

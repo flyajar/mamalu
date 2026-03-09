@@ -22,9 +22,9 @@
   --c-accent-light: #fff5f2;
   --c-accent-dark: #ffddcc;
   
-  /* Typography */
+  /* Typography - All Mossy font */
   --font-display: var(--font-mossy), 'Mossy', cursive;
-  --font-body: var(--font-poppins), 'Poppins', sans-serif;
+  --font-body: var(--font-mossy), 'Mossy', cursive;
   
   /* Animation Easings - Matching mybird.com */
   --ease-smooth: cubic-bezier(0.19, 1, 0.22, 1);
@@ -54,7 +54,7 @@ html {
 body {
   background: var(--c-cream);
   color: var(--c-black);
-  font-family: var(--font-poppins), 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--font-mossy), 'Mossy', cursive;
   font-size: 16px;
   line-height: 1.6;
   overflow-x: hidden;
@@ -213,7 +213,7 @@ h3 {
   padding: 1rem 2rem;
   background: var(--c-black);
   color: var(--c-white);
-  font-family: var(--font-body);
+  font-family: var(--font-mossy), 'Mossy', cursive;
   font-weight: 500;
   font-size: 1rem;
   text-transform: uppercase;
@@ -259,7 +259,7 @@ h3 {
   padding: 1rem 2rem;
   background: transparent;
   color: var(--c-black);
-  font-family: var(--font-body);
+  font-family: var(--font-mossy), 'Mossy', cursive;
   font-weight: 500;
   font-size: 1rem;
   text-transform: uppercase;
