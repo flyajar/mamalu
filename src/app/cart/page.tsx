@@ -107,14 +107,26 @@ export default function CartPage() {
                 <Card key={item.id}>
                   <CardContent className="p-4">
                     <div className="flex items-center gap-4">
-                      <div className="h-20 w-20 bg-gradient-to-br from-amber-100 to-[#FF8C6B]/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <ShoppingBag className="h-8 w-8 text-amber-600/30" />
+                      <div className="h-20 w-20 rounded-lg flex-shrink-0 overflow-hidden bg-gradient-to-br from-amber-100 to-[#FF8C6B]/20">
+                        {item.imageUrl ? (
+                          <Image
+                            src={item.imageUrl}
+                            alt={item.title}
+                            width={80}
+                            height={80}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <ShoppingBag className="h-8 w-8 text-amber-600/30" />
+                          </div>
+                        )}
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-semibold text-stone-900">
+                        <h3 className="font-bold text-stone-900">
                           {item.title}
                         </h3>
-                        <p className="text-amber-600 font-medium">
+                        <p className="text-[#FF8C6B] font-bold">
                           {formatPrice(item.price)}
                         </p>
                       </div>
@@ -125,7 +137,7 @@ export default function CartPage() {
                         >
                           <Minus className="h-4 w-4" />
                         </button>
-                        <span className="w-8 text-center font-medium">
+                        <span className="w-8 text-center font-bold">
                           {item.quantity}
                         </span>
                         <button
@@ -136,7 +148,7 @@ export default function CartPage() {
                         </button>
                       </div>
                       <div className="text-right w-24">
-                        <p className="font-semibold text-stone-900">
+                        <p className="font-bold text-stone-900">
                           {formatPrice(item.price * item.quantity)}
                         </p>
                       </div>
@@ -156,15 +168,15 @@ export default function CartPage() {
             <div className="lg:col-span-1">
               <Card>
                 <CardContent className="p-6">
-                  <h2 className="text-lg font-semibold text-stone-900 mb-4">
+                  <h2 className="text-lg font-bold text-stone-900 mb-4">
                     Order Summary
                   </h2>
                   <div className="space-y-3 mb-6">
-                    <div className="flex justify-between text-stone-600">
+                    <div className="flex justify-between text-stone-600 font-bold">
                       <span>Subtotal</span>
                       <span>{formatPrice(subtotal)}</span>
                     </div>
-                    <div className="flex justify-between text-stone-600">
+                    <div className="flex justify-between text-stone-600 font-bold">
                       <span>Shipping</span>
                       <span>
                         {shipping === 0 ? "Free" : formatPrice(shipping)}
@@ -175,7 +187,7 @@ export default function CartPage() {
                         Free shipping on orders over {formatPrice(200)}
                       </p>
                     )}
-                    <div className="border-t pt-3 flex justify-between font-semibold text-stone-900">
+                    <div className="border-t pt-3 flex justify-between font-bold text-stone-900">
                       <span>Total</span>
                       <span>{formatPrice(total)}</span>
                     </div>
@@ -200,7 +212,7 @@ export default function CartPage() {
                   </Button>
                   <Link
                     href="/products"
-                    className="block text-center text-sm text-amber-600 hover:text-amber-700 mt-4"
+                    className="block text-center text-sm text-[#FF8C6B] hover:text-[#ff7a54] font-bold mt-4"
                   >
                     Continue Shopping
                   </Link>

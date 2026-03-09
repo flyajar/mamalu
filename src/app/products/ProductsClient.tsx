@@ -124,7 +124,7 @@ export default function ProductsClient({
     <div className="space-y-8">
       {/* Categories */}
       <div>
-        <h3 className="text-lg font-semibold text-stone-900 mb-4">Categories</h3>
+        <h3 className="text-lg font-bold text-stone-900 mb-4">Categories</h3>
         <div className="space-y-2">
           {allCategories.map((category) => (
             <button
@@ -132,8 +132,8 @@ export default function ProductsClient({
               onClick={() => setActiveCategory(category.slug.current)}
               className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                 activeCategory === category.slug.current
-                  ? "bg-[#ff7f5c] text-white font-medium"
-                  : "text-stone-600 hover:bg-[#ff7f5c]/10 hover:text-[#ff7f5c]"
+                  ? "bg-[#ff7f5c] text-white font-bold"
+                  : "text-stone-600 font-bold hover:bg-[#ff7f5c]/10 hover:text-[#ff7f5c]"
               }`}
             >
               {category.title}
@@ -144,7 +144,7 @@ export default function ProductsClient({
 
       {/* Sort By */}
       <div>
-        <h3 className="text-lg font-semibold text-stone-900 mb-4">Sort by</h3>
+        <h3 className="text-lg font-bold text-stone-900 mb-4">Sort by</h3>
         <div className="space-y-2">
           {sortOptions.map((option) => (
             <label
@@ -159,7 +159,7 @@ export default function ProductsClient({
                 onChange={() => setSortBy(option.value)}
                 className="w-4 h-4 text-[#ff7f5c] border-stone-300 focus:ring-[#ff7f5c]"
               />
-              <span className={`text-sm ${sortBy === option.value ? "text-[#ff7f5c] font-medium" : "text-stone-600 group-hover:text-[#ff7f5c]"}`}>
+              <span className={`text-sm font-bold ${sortBy === option.value ? "text-[#ff7f5c]" : "text-stone-600 group-hover:text-[#ff7f5c]"}`}>
                 {option.label}
               </span>
             </label>
@@ -321,7 +321,7 @@ export default function ProductsClient({
                           e.preventDefault();
                           addToCart(product);
                         }}
-                        className="w-full gradient-peach-glow text-white text-sm rounded-full h-11"
+                        className="w-full gradient-peach-glow text-white text-sm font-bold rounded-full h-11"
                         disabled={!product.inStock}
                       >
                         <ShoppingCart className="h-4 w-4 mr-2" />
