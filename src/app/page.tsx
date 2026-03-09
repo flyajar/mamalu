@@ -107,7 +107,7 @@ export default function HomePage() {
       {/* Hero Section - Modern Image Slider */}
       <section
         ref={heroRef}
-        className="relative pt-4 pb-8 bg-white overflow-hidden"
+        className="relative pt-0 pb-8 bg-white overflow-hidden"
       >
         <div className="container mx-auto px-4 md:px-6 lg:px-8">
           <HeroSlider images={heroImages} autoPlayInterval={5000} />
