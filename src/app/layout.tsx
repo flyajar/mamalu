@@ -69,7 +69,7 @@ export default async function RootLayout({
       >
         {!isAdminOrStudio && <LoadingScreen />}
         {!isAdminOrStudio && <Header />}
-        <main className={`flex-1 ${!isAdminOrStudio ? "pt-36 lg:pt-40" : ""}`}>{children}</main>
+        <main className={`flex-1 ${!isAdminOrStudio ? "pt-4" : ""}`}>{children}</main>
         {!isAdminOrStudio && <Footer />}
         {!isAdminOrStudio && <WalkInButton />}
       </body>

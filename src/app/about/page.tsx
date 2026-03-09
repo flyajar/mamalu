@@ -26,7 +26,7 @@ export default function AboutPage() {
               alt="" 
               width={125} 
               height={125} 
-              className="ml-3 -mt-2 opacity-80 -rotate-45"
+              className="ml-3 -mt-2 opacity-80 -rotate-90"
             />
           </div>
 
