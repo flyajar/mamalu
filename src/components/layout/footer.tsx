@@ -19,6 +19,7 @@ const primaryLinks = [
 const secondaryLinks = {
   explore: [
     { name: "Blog", href: "/blogs" },
+    { name: "Press", href: "/press" },
     { name: "Our Story", href: "/about" },
   ],
   services: [

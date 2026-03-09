@@ -75,7 +75,7 @@ export default async function BlogsPage() {
       {featuredBlog && (
         <section className="py-12 bg-white">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <h2 className="text-sm font-semibold text-[#ff7f5c] uppercase tracking-wide mb-6">Featured Article</h2>
+            <h2 className="text-sm font-bold text-[#ff7f5c] uppercase tracking-wide mb-6" style={{ fontFamily: 'var(--font-mossy), cursive' }}>Featured Article</h2>
             <Link href={`/blogs/${featuredBlog.slug.current}`} className="group block">
               <div className="grid lg:grid-cols-2 gap-8 items-center">
                 <div className="aspect-[16/10] lg:aspect-[4/3] bg-gradient-to-br from-[#ff7f5c]/20 to-[#ff7f5c]/30 rounded-2xl overflow-hidden relative">
@@ -106,10 +106,10 @@ export default async function BlogsPage() {
                       </span>
                     )}
                   </div>
-                  <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-stone-900 group-hover:text-[#ff7f5c] transition-colors">
+                  <h3 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-stone-900 group-hover:text-[#ff7f5c] transition-colors" style={{ fontFamily: 'var(--font-mossy), cursive' }}>
                     {featuredBlog.title}
                   </h3>
-                  <p className="text-stone-600 text-lg line-clamp-3">
+                  <p className="text-stone-600 text-lg line-clamp-3 font-bold" style={{ fontFamily: 'var(--font-mossy), cursive' }}>
                     {featuredBlog.excerpt}
                   </p>
                   {featuredBlog.author && (
@@ -117,11 +117,11 @@ export default async function BlogsPage() {
                       <div className="w-10 h-10 rounded-full bg-[#ff7f5c]/10 flex items-center justify-center">
                         <User className="h-5 w-5 text-[#ff7f5c]" />
                       </div>
-                      <span className="font-medium text-stone-700">{featuredBlog.author.name}</span>
+                      <span className="font-bold text-stone-700" style={{ fontFamily: 'var(--font-mossy), cursive' }}>{featuredBlog.author.name}</span>
                     </div>
                   )}
                   <div className="pt-2">
-                    <span className="inline-flex items-center text-[#ff7f5c] font-semibold group-hover:gap-3 gap-2 transition-all">
+                    <span className="inline-flex items-center text-[#ff7f5c] font-bold group-hover:gap-3 gap-2 transition-all" style={{ fontFamily: 'var(--font-mossy), cursive' }}>
                       Read Full Article
                       <ArrowRight className="h-5 w-5" />
                     </span>
@@ -137,7 +137,7 @@ export default async function BlogsPage() {
       <section className="py-16 bg-stone-50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-10">
-            <h2 className="text-2xl sm:text-3xl font-bold text-stone-900">Latest Articles</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold text-stone-900" style={{ fontFamily: 'var(--font-mossy), cursive' }}>Latest Articles</h2>
             <div className="flex gap-2">
               <Badge variant="outline" className="cursor-pointer hover:bg-[#ff7f5c] hover:text-white hover:border-[#ff7f5c]">All</Badge>
               <Badge variant="outline" className="cursor-pointer hover:bg-[#ff7f5c] hover:text-white hover:border-[#ff7f5c]">Recipes</Badge>
@@ -179,13 +179,13 @@ export default async function BlogsPage() {
                           </span>
                         )}
                       </div>
-                      <h3 className="text-lg font-semibold text-stone-900 mb-2 group-hover:text-[#ff7f5c] transition-colors line-clamp-2">
+                      <h3 className="text-lg font-bold text-stone-900 mb-2 group-hover:text-[#ff7f5c] transition-colors line-clamp-2" style={{ fontFamily: 'var(--font-mossy), cursive' }}>
                         {blog.title}
                       </h3>
-                      <p className="text-stone-600 text-sm line-clamp-2 mb-4">
+                      <p className="text-stone-600 text-sm line-clamp-2 mb-4 font-bold" style={{ fontFamily: 'var(--font-mossy), cursive' }}>
                         {blog.excerpt}
                       </p>
-                      <span className="inline-flex items-center text-sm font-medium text-[#ff7f5c]">
+                      <span className="inline-flex items-center text-sm font-bold text-[#ff7f5c]" style={{ fontFamily: 'var(--font-mossy), cursive' }}>
                         Read more
                         <ArrowRight className="h-4 w-4 ml-1 group-hover:translate-x-1 transition-transform" />
                       </span>
