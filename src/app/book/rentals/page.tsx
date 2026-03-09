@@ -116,7 +116,7 @@ export default function RentalsPage() {
 
   if (isSubmitted) {
     return (
-      <main className="min-h-screen bg-white pt-32 pb-20">
+      <main className="min-h-screen bg-white pt-8 pb-20">
         <div className="container max-w-2xl mx-auto px-6 text-center">
           <div className="w-24 h-24 mx-auto mb-8 rounded-full bg-green-100 flex items-center justify-center">
             <CheckCircle2 className="w-12 h-12 text-green-600" />
@@ -139,10 +139,22 @@ export default function RentalsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white pt-32 pb-20">
+    <main className="min-h-screen bg-white pt-4 pb-20">
+      {/* Hero Image */}
+      <div className="w-full h-64 md:h-80 relative mb-8">
+        <Image
+          src="/images/_C3A0998.JPG"
+          alt="Kitchen Studio"
+          fill
+          className="object-cover"
+          priority
+        />
+        <div className="absolute inset-0 bg-black/20" />
+      </div>
+      
       <div className="container max-w-6xl mx-auto px-6">
         {/* Header */}
-        <div className="mb-12">
+        <div className="mb-8">
           <button
             onClick={() => window.dispatchEvent(new CustomEvent("openMamaluMenu"))}
             className="inline-flex items-center gap-2 text-gray-600 hover:text-black transition-colors mb-6"

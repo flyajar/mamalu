@@ -33,7 +33,7 @@ const stats = [
 const galleryImages = [
   "/images/image0.png",
   "/images/File_017.jpeg.jpg",
-  "/images/File_000-2.jpeg",
+  "/images/deep dish pizza.jpg",
 ];
 
 export default function HomePage() {

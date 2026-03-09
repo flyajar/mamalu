@@ -24,9 +24,9 @@ export default function AboutPage() {
             <Image 
               src="/images/arrow-01.png" 
               alt="" 
-              width={50} 
-              height={50} 
-              className="ml-3 -mt-1 opacity-80"
+              width={125} 
+              height={125} 
+              className="ml-3 -mt-2 opacity-80 -rotate-45"
             />
           </div>
 
