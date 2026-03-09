@@ -476,13 +476,13 @@ export default function MiniChefPage() {
                   </div>
                 )}
 
-                {/* Guest Count Selector */}
+                {/* Guest Count Selector with Desktop Navigation */}
                 <Card>
                   <CardContent className="p-5">
-                    <label className="block text-base font-bold text-stone-900 mb-3">
+                    <label className="block text-lg font-bold text-stone-900 mb-3">
                       Number of {isBirthday ? "Kids" : "Guests"}
                     </label>
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4 mb-4 lg:mb-6">
                       <Button 
                         variant="outline" 
                         size="icon" 
@@ -500,9 +500,20 @@ export default function MiniChefPage() {
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
-                      <span className="text-sm text-stone-500">
+                      <span className="text-sm font-bold text-stone-600">
                         (Min: {currentConfig.minGuests}, Max: {currentConfig.maxGuests})
                       </span>
+                    </div>
+                    {/* Desktop Continue Button - Inside Card */}
+                    <div className="hidden lg:flex justify-end items-center pt-4 border-t">
+                      <Button
+                        className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold"
+                        onClick={() => setStep(step + 1)}
+                        disabled={!canProceed()}
+                      >
+                        Continue
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -548,24 +559,6 @@ export default function MiniChefPage() {
                   ))}
                 </div>
 
-                {/* Navigation Buttons - Desktop */}
-                <div className="hidden lg:flex justify-between items-center pt-6 border-t">
-                  <div className="text-stone-600">
-                    {selectedMenu && (
-                      <span className="font-medium">
-                        Selected: {selectedMenu.name} • {guestCount} guests • <span className="text-stone-900 font-bold">AED {totalAmount.toLocaleString()}</span>
-                      </span>
-                    )}
-                  </div>
-                  <Button
-                    className="bg-stone-900 hover:bg-stone-800 text-white px-8"
-                    onClick={() => setStep(step + 1)}
-                    disabled={!canProceed()}
-                  >
-                    Continue
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
               </div>
             )}
 
@@ -914,10 +907,10 @@ export default function MiniChefPage() {
           {selectedMenu ? (
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-stone-900">
+                <p className="text-base font-bold text-stone-900">
                   {selectedMenu.name} • {guestCount} {isBirthday ? "kids" : "guests"}
                 </p>
-                <p className="text-xs text-stone-500">
+                <p className="text-sm font-bold text-stone-600">
                   Step {step} of {maxStep}
                 </p>
               </div>
@@ -928,7 +921,7 @@ export default function MiniChefPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setStep(step - 1)}
-                    className="px-3"
+                    className="px-3 font-bold"
                   >
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
@@ -936,7 +929,7 @@ export default function MiniChefPage() {
                 
                 {step < maxStep ? (
                   <Button
-                    className="bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300"
+                    className="bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300 font-bold"
                     onClick={() => setStep(step + 1)}
                     disabled={!canProceed()}
                   >
@@ -945,7 +938,7 @@ export default function MiniChefPage() {
                   </Button>
                 ) : (
                   <Button
-                    className="bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300"
+                    className="bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300 font-bold"
                     onClick={handleSubmit}
                     disabled={submitting || !canProceed()}
                   >
@@ -962,7 +955,7 @@ export default function MiniChefPage() {
               </div>
             </div>
           ) : (
-            <p className="text-center text-stone-500 text-sm py-2">Select a menu to continue</p>
+            <p className="text-center text-stone-600 text-base font-bold py-2">Select a menu to continue</p>
           )}
         </div>
       </div>
