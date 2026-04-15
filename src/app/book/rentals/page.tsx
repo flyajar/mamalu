@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowLeft, Clock, Users, Calendar, CheckCircle2, Plus, Minus } from "lucide-react";
 import ImageSlider from "@/components/ImageSlider";
-import LocalVideoGallery from "@/components/LocalVideoGallery";
+import VideoGallery from "@/components/VideoGallery";
 
 interface RentalOption {
   id: string;
@@ -180,7 +180,7 @@ export default function RentalsPage() {
         <h2 className="text-2xl font-bold mb-6" style={{ fontFamily: 'var(--font-mossy), cursive' }}>
           Video Gallery
         </h2>
-        <LocalVideoGallery />
+        <VideoGallery bucketName="videos" maxVideos={4} />
       </div>
       
       <div className="container max-w-6xl mx-auto px-6">

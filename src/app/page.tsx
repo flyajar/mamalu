@@ -9,7 +9,6 @@ import { ArrowRight, Heart } from "lucide-react";
 import HeroSlider from "@/components/ui/HeroSlider";
 import WhatsHappeningSection from "@/components/ui/WhatsHappeningSection";
 import NewsletterSection from "@/components/ui/NewsletterSection";
-import VideoGallery from "@/components/VideoGallery";
 
 // Register GSAP plugins
 if (typeof window !== "undefined") {
@@ -278,16 +277,6 @@ export default function HomePage() {
               </Link>
             </div>
           </div>
-        </div>
-      </section>
-
-      {/* Video Gallery Section */}
-      <section className="video-section section py-12 md:py-24 lg:py-32 bg-[#faf8f6]">
-        <div className="container px-4 md:px-6">
-          <h2 className="text-center mb-8 md:mb-16" style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 900 }}>
-            <span className="text-3xl md:text-4xl lg:text-5xl tracking-wide text-black">WATCH US IN ACTION</span>
-          </h2>
-          <VideoGallery bucketName="videos" maxVideos={4} />
         </div>
       </section>
 
