@@ -62,26 +62,26 @@ const categoryConfig: Record<CategoryType, { label: string; icon: string; minGue
 
 // Birthday Menus (min 6 kids)
 const birthdayMenus: MenuItem[] = [
-  { id: "texas_roadhouse", name: "Texas Roadhouse", price: 275, image: "/new-updates/texas road house.jpg", dishes: ["Baked BBQ wings", "Skillet Mac & Cheese", "Mississippi mud pie"], category: "birthdays" },
-  { id: "little_italy", name: "Little Italy", price: 250, image: "/new-updates/little italy.jpg", dishes: ["Pasta from scratch in pomodoro sauce", "Margherita pizza"], category: "birthdays" },
+  { id: "texas_roadhouse", name: "Texas Roadhouse", price: 275, image: "/mini-chef/texas roadhouse.jpg", dishes: ["Baked BBQ wings", "Skillet Mac & Cheese", "Mississippi mud pie"], category: "birthdays" },
+  { id: "little_italy", name: "Little Italy", price: 250, image: "/mini-chef/LITTLE ITALY.jpg", dishes: ["Pasta from scratch in pomodoro sauce", "Margherita pizza"], category: "birthdays" },
   { id: "funtastic", name: "Funtastic", price: 180, image: "/new-updates/funtastic.jpg", dishes: ["Mixed Berry babka", "Cheesy pizza bomb", "Chocolate chip marble cookies"], category: "birthdays" },
-  { id: "kung_fu_panda", name: "Kung Fu Panda", price: 275, image: "/new-updates/kungfu panda.jpg", dishes: ["California sushi rolls", "Chicken yakitori skewer", "Veggie stir-fried noodles", "Chocolate custard tart"], category: "birthdays" },
-  { id: "cupcake_masterclass", name: "Cupcake Master Class", price: 275, image: "/images/Each-Beach-Birthday-Cupcakes.jpg", dishes: ["Choose between: Vanilla, chocolate or red velvet cupcakes", "Learn piping skills and decorate to match the season"], category: "birthdays" },
-  { id: "dream_diner", name: "Dream Diner", price: 200, image: "/new-updates/dream diner.jpg", dishes: ["Mini cheesy garlic monkey bread", "Alfredo chicken lasagna rolls", "Oreo sprinkle skillet cookie"], category: "birthdays" },
-  { id: "hola_amigos", name: "Hola Amigos", price: 250, image: "/new-updates/hola amigos.jpg", dishes: ["Cheese and mushroom quesadillas", "Pulled chicken tacos", "Churros with chocolate sauce"], category: "birthdays" },
+  { id: "kung_fu_panda", name: "Kung Fu Panda", price: 275, image: "/mini-chef/kung fu panda.jpg", dishes: ["California sushi rolls", "Chicken yakitori skewer", "Veggie stir-fried noodles", "Chocolate custard tart"], category: "birthdays" },
+  { id: "cupcake_masterclass", name: "Cupcake Master Class", price: 275, image: "/mini-chef/cupcake-masterclass.jpg", dishes: ["Choose between: Vanilla, chocolate or red velvet cupcakes", "Learn piping skills and decorate to match the season"], category: "birthdays" },
+  { id: "dream_diner", name: "Dream Diner", price: 200, image: "/mini-chef/dream diner.jpeg", dishes: ["Mini cheesy garlic monkey bread", "Alfredo chicken lasagna rolls", "Oreo sprinkle skillet cookie"], category: "birthdays" },
+  { id: "hola_amigos", name: "Hola Amigos", price: 250, image: "/mini-chef/HOLA AMIGOS.jpg", dishes: ["Cheese and mushroom quesadillas", "Pulled chicken tacos", "Churros with chocolate sauce"], category: "birthdays" },
   { id: "healthylicious", name: "Healthylicious", price: 225, image: "/new-updates/healthylicious.jpg", dishes: ["Parmesan baked chicken tenders", "Sweet potato fries", "Double chocolate zucchini muffins"], category: "birthdays" },
   { id: "dumpling_masterclass", name: "Dumpling Masterclass", price: 225, image: "/new-updates/dumpling masterclass.jpg", dishes: ["Pan fried mushroom dumplings", "Steamed chicken dumplings", "Chocolate dumplings"], category: "birthdays" },
-  { id: "pretzel_masterclass", name: "Pretzel Masterclass", price: 180, image: "/new-updates/pretzel master class.jpg", dishes: ["Pepperoni pizza pretzel", "Garlic and herb pretzel", "Cinnamon sugar pretzel"], category: "birthdays" },
+  { id: "pretzel_masterclass", name: "Pretzel Masterclass", price: 180, image: "/mini-chef/PRETZEL MASTER CLASS.jpeg", dishes: ["Pepperoni pizza pretzel", "Garlic and herb pretzel", "Cinnamon sugar pretzel"], category: "birthdays" },
   { id: "mama_mia", name: "Mama Mia", price: 250, image: "/images/Farfalle-Pasta11-scaled.jpg", dishes: ["Bow tie pasta from scratch", "Creamy pink sauce", "Baked chicken milanese", "Chocolate biscotti"], category: "birthdays" },
   { id: "cookie_masterclass", name: "Cookie Masterclass", price: 275, image: "/images/best-chocolate-chip-cookies-recipe-ever-no-chilling-1.jpg", dishes: ["Herb and cheddar cookies", "Funfetti cookies", "Brownie crinkle cookies"], category: "birthdays" },
 ];
 
 // Our Classics (same as birthday menus but min 1)
 const classicsMenus: MenuItem[] = [
-  { id: "cupcake_masterclass_classic", name: "Cupcake Master Class", price: 275, image: "/images/Each-Beach-Birthday-Cupcakes.jpg", dishes: ["Choose between: Vanilla, chocolate or red velvet cupcakes", "Learn piping skills and decorate to match the season"], category: "classics" },
-  { id: "dream_diner_classic", name: "Dream Diner", price: 200, image: "/new-updates/dream diner.jpg", dishes: ["Mini cheesy garlic monkey bread", "Alfredo chicken lasagna rolls", "Oreo sprinkle skillet cookie"], category: "classics" },
-  { id: "kung_fu_panda_classic", name: "Kung Fu Panda", price: 275, image: "/new-updates/kungfu panda.jpg", dishes: ["California sushi rolls", "Chicken yakitori skewer", "Veggie stir-fried noodles", "Chocolate custard tart"], category: "classics" },
-  { id: "little_italy_classic", name: "Little Italy", price: 250, image: "/new-updates/little italy.jpg", dishes: ["Pasta from scratch in pomodoro sauce", "Margherita pizza"], category: "classics" },
+  { id: "cupcake_masterclass_classic", name: "Cupcake Master Class", price: 275, image: "/mini-chef/cupcake-masterclass.jpg", dishes: ["Choose between: Vanilla, chocolate or red velvet cupcakes", "Learn piping skills and decorate to match the season"], category: "classics" },
+  { id: "dream_diner_classic", name: "Dream Diner", price: 200, image: "/mini-chef/dream diner.jpeg", dishes: ["Mini cheesy garlic monkey bread", "Alfredo chicken lasagna rolls", "Oreo sprinkle skillet cookie"], category: "classics" },
+  { id: "kung_fu_panda_classic", name: "Kung Fu Panda", price: 275, image: "/mini-chef/kung fu panda.jpg", dishes: ["California sushi rolls", "Chicken yakitori skewer", "Veggie stir-fried noodles", "Chocolate custard tart"], category: "classics" },
+  { id: "little_italy_classic", name: "Little Italy", price: 250, image: "/mini-chef/LITTLE ITALY.jpg", dishes: ["Pasta from scratch in pomodoro sauce", "Margherita pizza"], category: "classics" },
   { id: "funtastic_classic", name: "Funtastic", price: 180, image: "/new-updates/funtastic.jpg", dishes: ["Mixed Berry babka", "Cheesy pizza bomb", "Chocolate chip marble cookies"], category: "classics" },
   { id: "cookie_masterclass_classic", name: "Cookie Master Class", price: 275, image: "/images/best-chocolate-chip-cookies-recipe-ever-no-chilling-1.jpg", dishes: ["Herb and cheddar cookies", "Funfetti cookies", "Brownie crinkle cookies"], category: "classics" },
 ];
