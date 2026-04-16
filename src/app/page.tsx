@@ -8,6 +8,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ArrowRight, Heart } from "lucide-react";
 import HeroSlider from "@/components/ui/HeroSlider";
 import NewsletterSection from "@/components/ui/NewsletterSection";
+import VideoGallery from "@/components/VideoGallery";
 
 // Register GSAP plugins
 if (typeof window !== "undefined") {
@@ -232,6 +233,18 @@ export default function HomePage() {
                 />
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Video Gallery Section */}
+      <section className="section py-12 md:py-24 bg-white">
+        <div className="container px-4 md:px-6">
+          <h2 className="section-title text-3xl md:text-4xl lg:text-6xl text-center mb-8 md:mb-16 text-black" style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 900 }}>
+            See what’s happening
+          </h2>
+          <div className="max-w-5xl mx-auto">
+            <VideoGallery bucketName="videos" maxVideos={4} />
           </div>
         </div>
       </section>

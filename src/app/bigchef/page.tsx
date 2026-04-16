@@ -14,14 +14,13 @@ import {
 
 interface MenuItem { id: string; name: string; price: number; image: string; dishes: string[]; category: string; }
 interface ExtraItem { id: string; name: string; description: string; price: number; icon: any; category: string; image?: string; }
-type CategoryType = "corporate" | "classics" | "monthly" | "teenagers" | "packages" | "nanny";
+type CategoryType = "corporate" | "classics" | "monthly" | "teenagers" | "nanny";
 
 const categoryConfig: Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> = {
   corporate: { label: "Corporate / Private", icon: "/image-updates/corporate.png", minGuests: 6, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
   classics: { label: "Our Classics", icon: "/image-updates/our-classics.png", minGuests: 1, maxGuests: 35, description: "Classic cooking experiences for groups" },
   monthly: { label: "Monthly Specials", icon: "/image-updates/monthly-specials.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
   teenagers: { label: "Teenager Course", icon: "/image-updates/corporate.png", minGuests: 1, maxGuests: 20, description: "Fun cooking classes for teens aged 12-17" },
-  packages: { label: "Packages", icon: "/image-updates/our-classics.png", minGuests: 6, maxGuests: 35, description: "Bundled menu packages for groups" },
   nanny: { label: "Nanny Class", icon: "/image-updates/nanny-class.png", minGuests: 1, maxGuests: 10, description: "Mummy's Fabulous Helpers - Turn your housekeeper into a chef" },
 };
 
@@ -83,11 +82,6 @@ const teenagerMenus: MenuItem[] = [
   { id: "teen_mexican", name: "Teen Taco Tuesday", price: 250, image: "/images/birria-tacos-5-1200x1800.jpg", dishes: ["Build your own tacos", "Fresh guacamole", "Churros"], category: "teenagers" },
 ];
 
-// Packages - bundled menu sets (placeholder until client provides details)
-const packagesMenus: MenuItem[] = [
-  { id: "pkg_corporate_3", name: "Corporate Bundle (3 Sessions)", price: 1200, image: "/images/Grilled-Steak-with-Chimichurri-1.jpg", dishes: ["3 corporate cooking sessions", "Team building activities", "Custom menus"], category: "packages" },
-  { id: "pkg_monthly_4", name: "Monthly Special Bundle", price: 1400, image: "/images/peking-duck-recipe-11.jpg", dishes: ["4 monthly special sessions", "Seasonal ingredients", "Recipe booklet"], category: "packages" },
-];
 
 const corporateExtras: ExtraItem[] = [
   { id: "custom_apron", name: "Customized Apron", description: "Personalized apron with name", price: 80, icon: Gift, category: "custom", image: "/personalized-items/apron.jpg" },
@@ -177,7 +171,6 @@ export default function BigChefPage() {
       case "classics": return classicsMenus;
       case "monthly": return monthlySpecials;
       case "teenagers": return teenagerMenus;
-      case "packages": return packagesMenus;
       case "nanny": return nannyMenus;
       default: return [];
     }

@@ -80,7 +80,7 @@ export function Footer() {
                   <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center">
                     <MapPin className="h-4 w-4" />
                   </div>
-                  Depachika Food Hall, Nakheel Mall, Palm Jumeirah, Dubai
+                  Depachika Food Hall, Palm Jumeirah Mall, Palm Jumeirah, Dubai
                 </div>
               </div>
 

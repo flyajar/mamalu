@@ -51,7 +51,7 @@ interface ExtraItem {
 }
 
 // Category type
-type CategoryType = "classics" | "monthly" | "mommy_me" | "birthdays";
+type CategoryType = "classics" | "monthly" | "mommy_me" | "birthdays" | "packages";
 
 // Category configuration with min guests - Birthdays last
 const categoryConfig: Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> = {
@@ -59,6 +59,7 @@ const categoryConfig: Record<CategoryType, { label: string; icon: string; minGue
   monthly: { label: "Monthly Specials", icon: "/image-updates/mini-monthly-specials.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
   mommy_me: { label: "Mommy & Me", icon: "/image-updates/mommy-and-me.png", minGuests: 1, maxGuests: 20, description: "Mom and kid share their own station" },
   birthdays: { label: "Birthdays", icon: "/image-updates/birthdays.png", minGuests: 6, maxGuests: 35, description: "2-hour private birthday cooking experience" },
+  packages: { label: "Packages", icon: "/image-updates/our-classics.png", minGuests: 6, maxGuests: 35, description: "Bundled menu packages for groups" },
 };
 
 // Birthday Menus (min 6 kids)
@@ -94,6 +95,12 @@ const monthlySpecials: MenuItem[] = [
   { id: "comfort_food_club", name: "Comfort Food Club", price: 250, image: "/images/Mini-Chicken-Pot-Pies-tasteandtellblog.com-1.jpg", dishes: ["Creamy chicken pot pie cups", "Baked mac & cheese (macaroni from scratch)", "Soft & Chewy Cinnamon Sugar Blondie Bites"], category: "monthly" },
   { id: "bloom_bakery", name: "Bloom Bakery", price: 250, image: "/images/jam-donut-babka.jpg", dishes: ["Baked Twisted Vanilla Donut", "Strawberry Kiss Cookies", "Colourful Spring time crinkle cookie"], category: "monthly" },
   { id: "asian_kitchen_day", name: "Asian Kitchen Day", price: 250, image: "/images/korean-cream-cheese-garlic-buns-featured.jpg", dishes: ["Steamed chicken bao buns", "Vegetable lo mein noodles from scratch", "Coconut Palm Sugar pancake rolls"], category: "monthly" },
+];
+
+// Packages - bundled menu sets
+const packagesMenus: MenuItem[] = [
+  { id: "pkg_corporate_3", name: "Corporate Bundle (3 Sessions)", price: 1200, image: "/images/Grilled-Steak-with-Chimichurri-1.jpg", dishes: ["3 corporate cooking sessions", "Team building activities", "Custom menus"], category: "packages" },
+  { id: "pkg_monthly_4", name: "Monthly Special Bundle", price: 1400, image: "/images/peking-duck-recipe-11.jpg", dishes: ["4 monthly special sessions", "Seasonal ingredients", "Recipe booklet"], category: "packages" },
 ];
 
 // Mommy & Me Classes (min 1)
@@ -244,6 +251,7 @@ export default function MiniChefPage() {
       case "classics": return classicsMenus;
       case "monthly": return monthlySpecials;
       case "mommy_me": return mommyAndMeMenus;
+      case "packages": return packagesMenus;
       default: return [];
     }
   };
