@@ -149,7 +149,7 @@ export default function HomePage() {
             {/* Big Chef */}
             <Link href="/bigchef" className="group relative aspect-[3/4] sm:aspect-square md:aspect-[3/2] block overflow-hidden">
               <Image
-                src="/images/File_000-2_edited.jpg"
+                src="/images/_C3A5493.jpg"
                 alt="Big Chef"
                 fill
                 quality={100}
