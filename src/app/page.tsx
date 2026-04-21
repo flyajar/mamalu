@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { gsap } from "gsap";
@@ -8,7 +8,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { ArrowRight, Heart } from "lucide-react";
 import HeroSlider from "@/components/ui/HeroSlider";
 import NewsletterSection from "@/components/ui/NewsletterSection";
-import VideoGallery from "@/components/VideoGallery";
+import { createClient } from "@/lib/supabase/client";
 
 // Register GSAP plugins
 if (typeof window !== "undefined") {
@@ -39,10 +39,110 @@ const stats = [
 ];
 
 const galleryImages = [
-  "/images/image0.png",
-  "/images/File_017.jpeg.jpg",
+  // "/images/image0.png",
+  "/images/PHOTO-2025-12-02-18-26-42.jpg",
   "/images/deep dish pizza.jpg",
+  "/images/File_017.jpeg.jpg",
 ];
+
+function AutoplayVideo() {
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [playing, setPlaying] = useState(true);
+  const [muted, setMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    if (!supabase) { setLoading(false); return; }
+    supabase.storage
+      .from("videos")
+      .list("", { limit: 10, sortBy: { column: "name", order: "asc" } })
+      .then(({ data }) => {
+        const first = data?.find((f) => {
+          const lower = f.name.toLowerCase();
+          return (
+            (lower.endsWith(".mp4") || lower.endsWith(".mov")) &&
+            f.name !== ".emptyFolderPlaceholder"
+          );
+        });
+        if (first) {
+          const { data: urlData } = supabase.storage
+            .from("videos")
+            .getPublicUrl(first.name);
+          setVideoUrl(urlData.publicUrl);
+        }
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const togglePlay = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) { v.play(); setPlaying(true); }
+    else { v.pause(); setPlaying(false); }
+  };
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setMuted(v.muted);
+  };
+
+  if (loading)
+    return <div className="w-full h-full bg-stone-100 animate-pulse" />;
+  if (!videoUrl)
+    return <div className="w-full h-full bg-stone-100" />;
+
+  return (
+    <div className="relative w-full h-full group cursor-pointer" onClick={togglePlay}>
+      <video
+        ref={videoRef}
+        src={videoUrl}
+        className="w-full h-full object-cover"
+        autoPlay
+        muted
+        loop
+        playsInline
+        onCanPlay={(e) => (e.currentTarget as HTMLVideoElement).play().catch(() => {})}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+      />
+      {/* Play/Pause overlay — always visible when paused, fades in on hover when playing */}
+      <div className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${playing ? "opacity-0 group-hover:opacity-100" : "opacity-100"}`}>
+        <div className="w-14 h-14 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-lg">
+          {playing ? (
+            <svg className="w-6 h-6 text-stone-800" fill="currentColor" viewBox="0 0 24 24">
+              <rect x="6" y="4" width="4" height="16" rx="1" /><rect x="14" y="4" width="4" height="16" rx="1" />
+            </svg>
+          ) : (
+            <svg className="w-6 h-6 text-stone-800 ml-1" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          )}
+        </div>
+      </div>
+      {/* Mute toggle — bottom right */}
+      <button
+        onClick={toggleMute}
+        className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors"
+        aria-label={muted ? "Unmute" : "Mute"}
+      >
+        {muted ? (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M16.5 12A4.5 4.5 0 0014 7.97v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0021 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06A8.99 8.99 0 0017.73 18L19 19.27 20.27 18 5.27 3 4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+          </svg>
+        ) : (
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0014 7.97v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
 
 export default function HomePage() {
   const heroRef = useRef<HTMLElement>(null);
@@ -62,7 +162,7 @@ export default function HomePage() {
           y: i % 2 === 0 ? -50 : 50,
           ease: "none",
           scrollTrigger: {
-            trigger: ".gallery-section",
+            trigger: ".mamalu-life-section",
             start: "top bottom",
             end: "bottom top",
             scrub: 1,
@@ -209,19 +309,32 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Gallery Section - Life at Mamalu - Hidden on mobile */}
-      <section className="gallery-section section py-12 md:py-24 lg:py-32 bg-white hidden md:block">
+      {/* Combined Life at Mamalu + Video Section */}
+      <section className="mamalu-life-section section py-12 md:py-20 bg-white">
         <div className="container px-4 md:px-6">
-          <h2 className="section-title text-3xl md:text-4xl lg:text-6xl text-center mb-8 md:mb-16 text-black" style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 900 }}>
-            Life at Mamalu
-          </h2>
-          
-          {/* Mobile: 3 images in a row, smaller with equal gap */}
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6 max-w-5xl mx-auto">
+          {/* Top row: video left, title right */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-3 md:mb-4">
+            {/* Autoplay video */}
+            <div className="relative rounded-2xl overflow-hidden" style={{ height: "420px" }}>
+              <AutoplayVideo />
+            </div>
+            {/* Title block */}
+            <div className="flex flex-col items-center justify-center bg-[#fef8f5] rounded-2xl p-8 md:p-10" style={{ height: "420px" }}>
+              <h2
+                className="section-title text-4xl md:text-5xl lg:text-6xl text-black text-center leading-tight"
+                style={{ fontFamily: "var(--font-mossy), cursive", fontWeight: 900 }}
+              >
+                Life at Mamalu
+              </h2>
+            </div>
+          </div>
+
+          {/* Bottom row: 3 gallery images */}
+          <div className="grid grid-cols-3 gap-3 md:gap-4">
             {galleryImages.map((src, i) => (
               <div
                 key={i}
-                className="gallery-item aspect-square md:aspect-[4/5] rounded-lg md:rounded-2xl overflow-hidden"
+                className="gallery-item aspect-4/3 rounded-2xl overflow-hidden bg-stone-50 flex items-center justify-center"
               >
                 <Image
                   src={src}
@@ -233,18 +346,6 @@ export default function HomePage() {
                 />
               </div>
             ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Video Gallery Section */}
-      <section className="section py-12 md:py-24 bg-white">
-        <div className="container px-4 md:px-6">
-          <h2 className="section-title text-3xl md:text-4xl lg:text-6xl text-center mb-8 md:mb-16 text-black" style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 900 }}>
-            See what’s happening
-          </h2>
-          <div className="max-w-5xl mx-auto">
-            <VideoGallery bucketName="videos" maxVideos={4} />
           </div>
         </div>
       </section>
