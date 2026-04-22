@@ -36,7 +36,7 @@ const secondaryLinks = {
 
 const socialLinks = [
   { name: "Instagram", href: "https://www.instagram.com/mamalukitchen/", icon: Instagram },
-  { name: "TikTok", href: "#", icon: TikTokIcon },
+  { name: "TikTok", href: "https://www.tiktok.com/@mamalukitchen", icon: TikTokIcon },
 ];
 
 export function Footer() {
