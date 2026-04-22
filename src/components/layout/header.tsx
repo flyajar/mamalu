@@ -106,7 +106,7 @@ export function Header() {
                 <div key={link.name} className="flex items-center gap-6">
                   <Link
                     href={link.href}
-                    className="text-xl font-bold text-[var(--c-black)] hover:opacity-60 transition-opacity uppercase whitespace-nowrap"
+                    className="header-nav-link text-xl font-bold text-[var(--c-black)] transition-colors uppercase whitespace-nowrap"
                     style={{ fontFamily: 'var(--font-mossy), cursive' }}
                   >
                     {link.name}
@@ -163,7 +163,7 @@ export function Header() {
             <div className="flex items-center gap-4">
               <Link
                 href="/products"
-                className="text-xl font-bold text-[#ff7f5c] hover:opacity-70 transition-opacity uppercase whitespace-nowrap hidden sm:block"
+                className="header-nav-link text-xl font-bold text-[#ff7f5c] transition-colors uppercase whitespace-nowrap hidden sm:block"
                 style={{ fontFamily: 'var(--font-mossy), cursive' }}
               >
                 Eazy Freezy

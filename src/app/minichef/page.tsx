@@ -55,11 +55,11 @@ type CategoryType = "classics" | "monthly" | "mommy_me" | "birthdays" | "package
 
 // Category configuration with min guests - Birthdays last
 const categoryConfig: Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> = {
-  classics: { label: "Our Classics", icon: "/image-updates/mini-our-classics.png", minGuests: 1, maxGuests: 35, description: "Fun cooking classes for kids" },
-  monthly: { label: "Monthly Specials", icon: "/image-updates/mini-monthly-specials.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
-  mommy_me: { label: "Mommy & Me", icon: "/image-updates/mommy-and-me.png", minGuests: 1, maxGuests: 20, description: "Mom and kid share their own station" },
-  birthdays: { label: "Birthdays", icon: "/image-updates/birthdays.png", minGuests: 6, maxGuests: 35, description: "2-hour private birthday cooking experience" },
-  packages: { label: "Packages", icon: "/image-updates/our-classics.png", minGuests: 6, maxGuests: 35, description: "Bundled menu packages for groups" },
+  classics: { label: "Our Classics", icon: "/icons/boy.png", minGuests: 1, maxGuests: 35, description: "Fun cooking classes for kids" },
+  monthly: { label: "Monthly Specials", icon: "/icons/girl.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
+  mommy_me: { label: "Mommy & Me", icon: "/icons/boy.png", minGuests: 1, maxGuests: 20, description: "Mom and kid share their own station" },
+  birthdays: { label: "Birthdays", icon: "/icons/girl.png", minGuests: 6, maxGuests: 35, description: "2-hour private birthday cooking experience" },
+  packages: { label: "Packages", icon: "/icons/boy.png", minGuests: 6, maxGuests: 35, description: "Bundled menu packages for groups" },
 };
 
 // Birthday Menus (min 6 kids)

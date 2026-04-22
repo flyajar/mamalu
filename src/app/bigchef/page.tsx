@@ -17,11 +17,11 @@ interface ExtraItem { id: string; name: string; description: string; price: numb
 type CategoryType = "corporate" | "classics" | "monthly" | "teenagers" | "nanny";
 
 const categoryConfig: Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> = {
-  corporate: { label: "Corporate / Private", icon: "/image-updates/corporate.png", minGuests: 6, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
-  classics: { label: "Our Classics", icon: "/image-updates/our-classics.png", minGuests: 1, maxGuests: 35, description: "Classic cooking experiences for groups" },
-  monthly: { label: "Monthly Specials", icon: "/image-updates/monthly-specials.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
-  teenagers: { label: "Teenager Course", icon: "/image-updates/corporate.png", minGuests: 1, maxGuests: 20, description: "Fun cooking classes for teens aged 12-17" },
-  nanny: { label: "Nanny Class", icon: "/image-updates/nanny-class.png", minGuests: 1, maxGuests: 10, description: "Mummy's Fabulous Helpers - Turn your housekeeper into a chef" },
+  corporate: { label: "Corporate / Private", icon: "/icons/knives.png", minGuests: 6, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
+  classics: { label: "Our Classics", icon: "/icons/whisk.png", minGuests: 1, maxGuests: 35, description: "Classic cooking experiences for groups" },
+  monthly: { label: "Monthly Specials", icon: "/icons/knives.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
+  teenagers: { label: "Teenager Course", icon: "/icons/whisk.png", minGuests: 1, maxGuests: 20, description: "Fun cooking classes for teens aged 12-17" },
+  nanny: { label: "Nanny Class", icon: "/icons/knives.png", minGuests: 1, maxGuests: 10, description: "Mummy's Fabulous Helpers - Turn your housekeeper into a chef" },
 };
 
 const corporateMenus: MenuItem[] = [
