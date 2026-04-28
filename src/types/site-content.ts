@@ -66,12 +66,42 @@ export interface BigChefPageContent {
   headerIcon: string;
 }
 
+// Rentals Page Content
+export interface RentalOption {
+  id: string;
+  name: string;
+  duration: string;
+  price: number;
+  description: string;
+  icon: string;
+}
+
+export interface RentalAddOn {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  icon: string;
+}
+
+export interface RentalsPageContent {
+  pageTitle: string;
+  pageSubtitle: string;
+  heroImage: string;
+  headerIcon: string;
+  rentalOptions: RentalOption[];
+  addOns: RentalAddOn[];
+  galleryImages: string[];
+  features: string[];
+}
+
 // All Pages Content
 export interface AllPagesContent {
   homepage: SiteContent;
   about: AboutPageContent;
   minichef: MiniChefPageContent;
   bigchef: BigChefPageContent;
+  rentals: RentalsPageContent;
 }
 
 export const defaultSiteContent: SiteContent = {
@@ -175,4 +205,57 @@ export const defaultBigChefContent: BigChefPageContent = {
   pageSubtitle: "Professional cooking experiences for adults",
   headerImage: "/images/whisk-01.png",
   headerIcon: "/images/knives-01.png",
+};
+
+export const defaultRentalsContent: RentalsPageContent = {
+  pageTitle: "KITCHEN STUDIO RENTAL",
+  pageSubtitle: "Rent our fully-equipped professional kitchen for your cooking sessions, content creation, private events, or corporate team building.",
+  heroImage: "/images/_C3A0998.JPG",
+  headerIcon: "/image-updates/kitchen-03.png",
+  rentalOptions: [
+    {
+      id: "full-day",
+      name: "Full Day Rental",
+      duration: "8 hours",
+      price: 5000,
+      description: "Complete access to our professional kitchen studio for a full day of cooking, filming, or events.",
+      icon: "/image-updates/kitchen-01.png",
+    },
+    {
+      id: "half-day",
+      name: "Half Day Rental",
+      duration: "4 hours",
+      price: 2500,
+      description: "Perfect for shorter sessions, workshops, or intimate cooking events.",
+      icon: "/image-updates/kitchen-02.png",
+    },
+  ],
+  addOns: [
+    {
+      id: "cleaning",
+      name: "Cleaning Service",
+      price: 300,
+      description: "Professional deep cleaning after your session",
+      icon: "🧹",
+    },
+  ],
+  galleryImages: [
+    "/kitchen-photos/WhatsApp Image 2022-08-01 at 11.23.42 AM.jpeg",
+    "/kitchen-photos/WhatsApp Image 2022-08-01 at 11.23.44 AM-2.jpeg",
+    "/kitchen-photos/WhatsApp Image 2022-08-01 at 11.23.44 AM.jpeg",
+    "/kitchen-photos/WhatsApp Image 2022-08-01 at 11.23.45 AM.jpeg",
+    "/kitchen-photos/_C3A0991.JPG",
+    "/kitchen-photos/_C3A0993.JPG",
+    "/kitchen-photos/_C3A0995.JPG",
+    "/kitchen-photos/_C3A0997.JPG",
+    "/kitchen-photos/_C3A0998.JPG",
+    "/kitchen-photos/_C3A1001.JPG",
+  ],
+  features: [
+    "Professional kitchen equipment",
+    "Multiple cooking stations",
+    "Air-conditioned space",
+    "WiFi access",
+    "Parking available",
+  ],
 };

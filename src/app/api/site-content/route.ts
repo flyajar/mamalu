@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { 
   SiteContent, 
   defaultSiteContent,
@@ -9,6 +9,8 @@ import {
   defaultMiniChefContent,
   BigChefPageContent,
   defaultBigChefContent,
+  RentalsPageContent,
+  defaultRentalsContent,
 } from "@/types/site-content";
 
 const defaultContentMap: Record<string, any> = {
@@ -16,6 +18,7 @@ const defaultContentMap: Record<string, any> = {
   about: defaultAboutContent,
   minichef: defaultMiniChefContent,
   bigchef: defaultBigChefContent,
+  rentals: defaultRentalsContent,
 };
 
 export async function GET(request: NextRequest) {
@@ -78,7 +81,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { page = "homepage", content } = body;
 
-    const { error } = await supabase
+    const serviceClient = createServiceClient();
+    if (!serviceClient) {
+      return NextResponse.json({ error: "Database not configured" }, { status: 500 });
+    }
+
+    const { error } = await serviceClient
       .from("site_content")
       .upsert({
         id: page,
@@ -90,7 +98,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error("Error saving site content:", error);
       return NextResponse.json(
-        { error: "Failed to save content" },
+        { error: "Failed to save content", detail: error.message, code: error.code },
         { status: 500 }
       );
     }

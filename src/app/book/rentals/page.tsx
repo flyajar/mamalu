@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Clock, Users, Calendar, CheckCircle2, Plus, Minus } from "lucide-react";
+import { ArrowLeft, Clock, Users, Calendar, CheckCircle2, Plus, Minus, Loader2 } from "lucide-react";
 import ImageSlider from "@/components/ImageSlider";
+import { RentalsPageContent, defaultRentalsContent } from "@/types/site-content";
 
 interface RentalOption {
   id: string;
@@ -15,49 +16,9 @@ interface RentalOption {
   icon: string;
 }
 
-const rentalOptions: RentalOption[] = [
-  {
-    id: "full-day",
-    name: "Full Day Rental",
-    duration: "8 hours",
-    price: 5000,
-    description: "Complete access to our professional kitchen studio for a full day of cooking, filming, or events.",
-    icon: "/image-updates/kitchen-01.png",
-  },
-  {
-    id: "half-day",
-    name: "Half Day Rental",
-    duration: "4 hours",
-    price: 2500,
-    description: "Perfect for shorter sessions, workshops, or intimate cooking events.",
-    icon: "/image-updates/kitchen-02.png",
-  },
-];
-
-const addOns = [
-  {
-    id: "cleaning",
-    name: "Cleaning Service",
-    price: 300,
-    description: "Professional deep cleaning after your session",
-    icon: "??",
-  },
-];
-
-const kitchenPhotos = [
-  "/kitchen-photos/WhatsApp Image 2022-08-01 at 11.23.42 AM.jpeg",
-  "/kitchen-photos/WhatsApp Image 2022-08-01 at 11.23.44 AM-2.jpeg",
-  "/kitchen-photos/WhatsApp Image 2022-08-01 at 11.23.44 AM.jpeg",
-  "/kitchen-photos/WhatsApp Image 2022-08-01 at 11.23.45 AM.jpeg",
-  "/kitchen-photos/_C3A0991.JPG",
-  "/kitchen-photos/_C3A0993.JPG",
-  "/kitchen-photos/_C3A0995.JPG",
-  "/kitchen-photos/_C3A0997.JPG",
-  "/kitchen-photos/_C3A0998.JPG",
-  "/kitchen-photos/_C3A1001.JPG",
-];
-
 export default function RentalsPage() {
+  const [content, setContent] = useState<RentalsPageContent>(defaultRentalsContent);
+  const [loading, setLoading] = useState(true);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [selectedAddOns, setSelectedAddOns] = useState<string[]>([]);
   const [formData, setFormData] = useState({
@@ -72,6 +33,22 @@ export default function RentalsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
 
+  useEffect(() => {
+    fetchContent();
+  }, []);
+
+  const fetchContent = async () => {
+    try {
+      const res = await fetch("/api/site-content?page=rentals");
+      const data = await res.json();
+      setContent(data);
+    } catch (error) {
+      console.error("Error fetching rentals content:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const toggleAddOn = (id: string) => {
     setSelectedAddOns((prev) =>
       prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
@@ -79,9 +56,9 @@ export default function RentalsPage() {
   };
 
   const calculateTotal = () => {
-    const optionPrice = rentalOptions.find((o) => o.id === selectedOption)?.price || 0;
+    const optionPrice = content.rentalOptions.find((o) => o.id === selectedOption)?.price || 0;
     const addOnsPrice = selectedAddOns.reduce((sum, id) => {
-      const addOn = addOns.find((a) => a.id === id);
+      const addOn = content.addOns.find((a) => a.id === id);
       return sum + (addOn?.price || 0);
     }, 0);
     return optionPrice + addOnsPrice;
@@ -92,10 +69,10 @@ export default function RentalsPage() {
     if (!selectedOption) return;
 
     setIsSubmitting(true);
-    
+
     try {
-      const selectedRental = rentalOptions.find((o) => o.id === selectedOption);
-      const selectedAddOnNames = selectedAddOns.map(id => addOns.find(a => a.id === id)?.name).filter(Boolean);
+      const selectedRental = content.rentalOptions.find((o) => o.id === selectedOption);
+      const selectedAddOnNames = selectedAddOns.map(id => content.addOns.find(a => a.id === id)?.name).filter(Boolean);
       
       const response = await fetch("/api/rentals/inquiry", {
         method: "POST",
@@ -157,7 +134,7 @@ export default function RentalsPage() {
       {/* Hero Image */}
       <div className="w-full h-64 md:h-80 relative mb-8">
         <Image
-          src="/images/_C3A0998.JPG"
+          src={content.heroImage}
           alt="Kitchen Studio"
           fill
           className="object-cover"
@@ -171,7 +148,7 @@ export default function RentalsPage() {
         <h2 className="text-2xl font-bold mb-6" style={{ fontFamily: 'var(--font-mossy), cursive' }}>
           Photo Gallery
         </h2>
-        <ImageSlider images={kitchenPhotos} alt="Kitchen Studio Photos" />
+        <ImageSlider images={content.galleryImages} alt="Kitchen Studio Photos" />
       </div>
 
       <div className="container max-w-6xl mx-auto px-6">
@@ -185,10 +162,10 @@ export default function RentalsPage() {
             Back to Booking
           </button>
           <h1 className="text-4xl md:text-5xl font-bold mb-4" style={{ fontFamily: 'var(--font-mossy), cursive' }}>
-            KITCHEN STUDIO RENTAL <Image src="/image-updates/kitchen-03.png" alt="" width={40} height={40} className="inline-block ml-2" />
+            {content.pageTitle} <Image src={content.headerIcon} alt="" width={40} height={40} className="inline-block ml-2" />
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl">
-            Rent our fully-equipped professional kitchen for your cooking sessions, content creation, private events, or corporate team building.
+            {content.pageSubtitle}
           </p>
         </div>
 
@@ -201,7 +178,7 @@ export default function RentalsPage() {
                 Choose Your Rental Duration
               </h2>
               <div className="grid sm:grid-cols-2 gap-4">
-                {rentalOptions.map((option) => (
+                {content.rentalOptions.map((option) => (
                   <button
                     key={option.id}
                     onClick={() => setSelectedOption(option.id)}
@@ -232,7 +209,7 @@ export default function RentalsPage() {
                 Add-ons
               </h2>
               <div className="space-y-3">
-                {addOns.map((addOn) => (
+                {content.addOns.map((addOn) => (
                   <button
                     key={addOn.id}
                     onClick={() => toggleAddOn(addOn.id)}
@@ -376,19 +353,19 @@ export default function RentalsPage() {
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-medium">
-                        {rentalOptions.find((o) => o.id === selectedOption)?.name}
+                        {content.rentalOptions.find((o) => o.id === selectedOption)?.name}
                       </p>
                       <p className="text-sm text-gray-500">
-                        {rentalOptions.find((o) => o.id === selectedOption)?.duration}
+                        {content.rentalOptions.find((o) => o.id === selectedOption)?.duration}
                       </p>
                     </div>
                     <p className="font-bold">
-                      AED {rentalOptions.find((o) => o.id === selectedOption)?.price.toLocaleString()}
+                      AED {content.rentalOptions.find((o) => o.id === selectedOption)?.price.toLocaleString()}
                     </p>
                   </div>
-                  
+
                   {selectedAddOns.map((id) => {
-                    const addOn = addOns.find((a) => a.id === id);
+                    const addOn = content.addOns.find((a) => a.id === id);
                     return addOn ? (
                       <div key={id} className="flex justify-between items-center text-sm">
                         <p>{addOn.name}</p>
@@ -416,26 +393,12 @@ export default function RentalsPage() {
               <div className="mt-8 pt-6 border-t">
                 <h4 className="font-bold mb-4">What&apos;s Included</h4>
                 <ul className="space-y-3 text-sm text-gray-600">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    Professional kitchen equipment
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    Multiple cooking stations
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    Air-conditioned space
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    WiFi access
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    Parking available
-                  </li>
+                  {content.features.map((feature, index) => (
+                    <li key={index} className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                      {feature}
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>

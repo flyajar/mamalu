@@ -11,6 +11,8 @@ import {
   defaultMiniChefContent,
   BigChefPageContent,
   defaultBigChefContent,
+  RentalsPageContent,
+  defaultRentalsContent,
 } from "@/types/site-content";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -34,15 +36,17 @@ import {
   Users,
   ChefHat,
   Info,
+  Building2,
 } from "lucide-react";
 
-type PageType = "homepage" | "about" | "minichef" | "bigchef";
+type PageType = "homepage" | "about" | "minichef" | "bigchef" | "rentals";
 
 const pageConfig = {
   homepage: { label: "Homepage", icon: Home, default: defaultSiteContent },
   about: { label: "About Page", icon: Info, default: defaultAboutContent },
   minichef: { label: "Mini Chef", icon: Users, default: defaultMiniChefContent },
   bigchef: { label: "Big Chef", icon: ChefHat, default: defaultBigChefContent },
+  rentals: { label: "Rentals", icon: Building2, default: defaultRentalsContent },
 };
 
 export default function SiteContentPage() {
@@ -51,6 +55,7 @@ export default function SiteContentPage() {
   const [aboutContent, setAboutContent] = useState<AboutPageContent>(defaultAboutContent);
   const [miniChefContent, setMiniChefContent] = useState<MiniChefPageContent>(defaultMiniChefContent);
   const [bigChefContent, setBigChefContent] = useState<BigChefPageContent>(defaultBigChefContent);
+  const [rentalsContent, setRentalsContent] = useState<RentalsPageContent>(defaultRentalsContent);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -74,24 +79,27 @@ export default function SiteContentPage() {
   const fetchAllContent = async () => {
     setLoading(true);
     try {
-      const [homepageRes, aboutRes, minichefRes, bigchefRes] = await Promise.all([
+      const [homepageRes, aboutRes, minichefRes, bigchefRes, rentalsRes] = await Promise.all([
         fetch("/api/site-content?page=homepage"),
         fetch("/api/site-content?page=about"),
         fetch("/api/site-content?page=minichef"),
         fetch("/api/site-content?page=bigchef"),
+        fetch("/api/site-content?page=rentals"),
       ]);
       
-      const [homepageData, aboutData, minichefData, bigchefData] = await Promise.all([
+      const [homepageData, aboutData, minichefData, bigchefData, rentalsData] = await Promise.all([
         homepageRes.json(),
         aboutRes.json(),
         minichefRes.json(),
         bigchefRes.json(),
+        rentalsRes.json(),
       ]);
       
       setContent(homepageData);
       setAboutContent(aboutData);
       setMiniChefContent(minichefData);
       setBigChefContent(bigchefData);
+      setRentalsContent(rentalsData);
     } catch (error) {
       console.error("Error fetching content:", error);
     } finally {
@@ -115,6 +123,9 @@ export default function SiteContentPage() {
           break;
         case "bigchef":
           pageContent = bigChefContent;
+          break;
+        case "rentals":
+          pageContent = rentalsContent;
           break;
       }
 
@@ -153,6 +164,9 @@ export default function SiteContentPage() {
           break;
         case "bigchef":
           setBigChefContent(defaultBigChefContent);
+          break;
+        case "rentals":
+          setRentalsContent(defaultRentalsContent);
           break;
       }
     }
@@ -1466,6 +1480,390 @@ export default function SiteContentPage() {
                   </div>
                 </label>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rentals Page Content */}
+      {activePage === "rentals" && (
+        <div className="bg-white rounded-2xl border border-stone-200 p-6 space-y-6">
+          <h2 className="text-lg font-semibold text-stone-900">Rentals Page Content</h2>
+          <p className="text-sm text-stone-500">Configure the Kitchen Studio Rental page content.</p>
+          
+          {/* Basic Info */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="text-sm text-stone-600 mb-1 block">Page Title</label>
+              <input
+                type="text"
+                value={rentalsContent.pageTitle}
+                onChange={(e) => setRentalsContent((prev) => ({ ...prev, pageTitle: e.target.value }))}
+                className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-stone-600 mb-1 block">Header Icon</label>
+              <div className="flex items-center gap-3">
+                {rentalsContent.headerIcon && (
+                  <div className="w-12 h-12 rounded-lg overflow-hidden bg-stone-100 flex-shrink-0">
+                    <img src={rentalsContent.headerIcon} alt="" className="w-full h-full object-contain" />
+                  </div>
+                )}
+                <input
+                  type="text"
+                  value={rentalsContent.headerIcon}
+                  onChange={(e) => setRentalsContent((prev) => ({ ...prev, headerIcon: e.target.value }))}
+                  placeholder="/image-updates/kitchen-03.png"
+                  className="flex-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm text-stone-600 mb-1 block">Page Subtitle</label>
+            <textarea
+              value={rentalsContent.pageSubtitle}
+              onChange={(e) => setRentalsContent((prev) => ({ ...prev, pageSubtitle: e.target.value }))}
+              rows={2}
+              className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm text-stone-600 mb-1 block">Hero Image</label>
+            <div className="flex items-center gap-3">
+              {rentalsContent.heroImage && (
+                <div className="w-24 h-16 rounded-lg overflow-hidden bg-stone-100 flex-shrink-0">
+                  <img src={rentalsContent.heroImage} alt="" className="w-full h-full object-cover" />
+                </div>
+              )}
+              <input
+                type="text"
+                value={rentalsContent.heroImage}
+                onChange={(e) => setRentalsContent((prev) => ({ ...prev, heroImage: e.target.value }))}
+                placeholder="/images/_C3A0998.JPG"
+                className="flex-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+              />
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleImageUpload(file, (url) => setRentalsContent((prev) => ({ ...prev, heroImage: url })), "rentals-hero");
+                    }
+                    e.target.value = "";
+                  }}
+                />
+                <div className="p-2 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors">
+                  <Upload className="w-4 h-4 text-amber-700" />
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Rental Options */}
+          <div className="border-t pt-6">
+            <h3 className="font-semibold text-stone-900 mb-4">Rental Options</h3>
+            <div className="space-y-4">
+              {rentalsContent.rentalOptions.map((option, index) => (
+                <div key={option.id} className="border border-stone-200 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-stone-800">{option.name}</h4>
+                    <button
+                      onClick={() => {
+                        const newOptions = rentalsContent.rentalOptions.filter((_, i) => i !== index);
+                        setRentalsContent((prev) => ({ ...prev, rentalOptions: newOptions }));
+                      }}
+                      className="p-1 text-stone-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs text-stone-500 block mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={option.name}
+                        onChange={(e) => {
+                          const newOptions = [...rentalsContent.rentalOptions];
+                          newOptions[index] = { ...option, name: e.target.value };
+                          setRentalsContent((prev) => ({ ...prev, rentalOptions: newOptions }));
+                        }}
+                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-stone-500 block mb-1">Duration</label>
+                      <input
+                        type="text"
+                        value={option.duration}
+                        onChange={(e) => {
+                          const newOptions = [...rentalsContent.rentalOptions];
+                          newOptions[index] = { ...option, duration: e.target.value };
+                          setRentalsContent((prev) => ({ ...prev, rentalOptions: newOptions }));
+                        }}
+                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-stone-500 block mb-1">Price (AED)</label>
+                      <input
+                        type="number"
+                        value={option.price}
+                        onChange={(e) => {
+                          const newOptions = [...rentalsContent.rentalOptions];
+                          newOptions[index] = { ...option, price: Number(e.target.value) };
+                          setRentalsContent((prev) => ({ ...prev, rentalOptions: newOptions }));
+                        }}
+                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-stone-500 block mb-1">Icon URL</label>
+                      <input
+                        type="text"
+                        value={option.icon}
+                        onChange={(e) => {
+                          const newOptions = [...rentalsContent.rentalOptions];
+                          newOptions[index] = { ...option, icon: e.target.value };
+                          setRentalsContent((prev) => ({ ...prev, rentalOptions: newOptions }));
+                        }}
+                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs text-stone-500 block mb-1">Description</label>
+                    <input
+                      type="text"
+                      value={option.description}
+                      onChange={(e) => {
+                        const newOptions = [...rentalsContent.rentalOptions];
+                        newOptions[index] = { ...option, description: e.target.value };
+                        setRentalsContent((prev) => ({ ...prev, rentalOptions: newOptions }));
+                      }}
+                      className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  const newOption = {
+                    id: `option-${Date.now()}`,
+                    name: "New Option",
+                    duration: "4 hours",
+                    price: 0,
+                    description: "",
+                    icon: "",
+                  };
+                  setRentalsContent((prev) => ({
+                    ...prev,
+                    rentalOptions: [...prev.rentalOptions, newOption],
+                  }));
+                }}
+                className="w-full py-2 border-2 border-dashed border-stone-300 rounded-xl text-stone-500 hover:border-amber-400 hover:text-amber-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Rental Option
+              </button>
+            </div>
+          </div>
+
+          {/* Add-ons */}
+          <div className="border-t pt-6">
+            <h3 className="font-semibold text-stone-900 mb-4">Add-ons</h3>
+            <div className="space-y-3">
+              {rentalsContent.addOns.map((addOn, index) => (
+                <div key={addOn.id} className="border border-stone-200 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-medium text-stone-800">{addOn.name}</h4>
+                    <button
+                      onClick={() => {
+                        const newAddOns = rentalsContent.addOns.filter((_, i) => i !== index);
+                        setRentalsContent((prev) => ({ ...prev, addOns: newAddOns }));
+                      }}
+                      className="p-1 text-stone-400 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs text-stone-500 block mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={addOn.name}
+                        onChange={(e) => {
+                          const newAddOns = [...rentalsContent.addOns];
+                          newAddOns[index] = { ...addOn, name: e.target.value };
+                          setRentalsContent((prev) => ({ ...prev, addOns: newAddOns }));
+                        }}
+                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-stone-500 block mb-1">Price (AED)</label>
+                      <input
+                        type="number"
+                        value={addOn.price}
+                        onChange={(e) => {
+                          const newAddOns = [...rentalsContent.addOns];
+                          newAddOns[index] = { ...addOn, price: Number(e.target.value) };
+                          setRentalsContent((prev) => ({ ...prev, addOns: newAddOns }));
+                        }}
+                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-stone-500 block mb-1">Icon/Emoji</label>
+                      <input
+                        type="text"
+                        value={addOn.icon}
+                        onChange={(e) => {
+                          const newAddOns = [...rentalsContent.addOns];
+                          newAddOns[index] = { ...addOn, icon: e.target.value };
+                          setRentalsContent((prev) => ({ ...prev, addOns: newAddOns }));
+                        }}
+                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-stone-500 block mb-1">Description</label>
+                      <input
+                        type="text"
+                        value={addOn.description}
+                        onChange={(e) => {
+                          const newAddOns = [...rentalsContent.addOns];
+                          newAddOns[index] = { ...addOn, description: e.target.value };
+                          setRentalsContent((prev) => ({ ...prev, addOns: newAddOns }));
+                        }}
+                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  const newAddOn = {
+                    id: `addon-${Date.now()}`,
+                    name: "New Add-on",
+                    price: 0,
+                    description: "",
+                    icon: "",
+                  };
+                  setRentalsContent((prev) => ({
+                    ...prev,
+                    addOns: [...prev.addOns, newAddOn],
+                  }));
+                }}
+                className="w-full py-2 border-2 border-dashed border-stone-300 rounded-xl text-stone-500 hover:border-amber-400 hover:text-amber-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Add-on
+              </button>
+            </div>
+          </div>
+
+          {/* Features */}
+          <div className="border-t pt-6">
+            <h3 className="font-semibold text-stone-900 mb-4">What&apos;s Included (Features)</h3>
+            <div className="space-y-2">
+              {rentalsContent.features.map((feature, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={feature}
+                    onChange={(e) => {
+                      const newFeatures = [...rentalsContent.features];
+                      newFeatures[index] = e.target.value;
+                      setRentalsContent((prev) => ({ ...prev, features: newFeatures }));
+                    }}
+                    className="flex-1 px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                  />
+                  <button
+                    onClick={() => {
+                      const newFeatures = rentalsContent.features.filter((_, i) => i !== index);
+                      setRentalsContent((prev) => ({ ...prev, features: newFeatures }));
+                    }}
+                    className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => {
+                  setRentalsContent((prev) => ({
+                    ...prev,
+                    features: [...prev.features, ""],
+                  }));
+                }}
+                className="w-full py-2 border-2 border-dashed border-stone-300 rounded-xl text-stone-500 hover:border-amber-400 hover:text-amber-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <Plus className="w-4 h-4" />
+                Add Feature
+              </button>
+            </div>
+          </div>
+
+          {/* Gallery Images */}
+          <div className="border-t pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-stone-900">Photo Gallery</h3>
+              <label className="px-3 py-1.5 text-sm bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 transition-colors flex items-center gap-2 cursor-pointer">
+                <Upload className="w-4 h-4" />
+                Upload Image
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleImageUpload(
+                        file,
+                        (url) => {
+                          setRentalsContent((prev) => ({
+                            ...prev,
+                            galleryImages: [...prev.galleryImages, url],
+                          }));
+                        },
+                        "rentals-gallery-new"
+                      );
+                    }
+                    e.target.value = "";
+                  }}
+                  className="hidden"
+                />
+              </label>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {rentalsContent.galleryImages.map((image, index) => (
+                <div key={index} className="relative group aspect-video">
+                  <img
+                    src={image}
+                    alt={`Gallery ${index + 1}`}
+                    className="w-full h-full object-cover rounded-lg"
+                    onError={(e) => (e.currentTarget.src = "/images/placeholder.jpg")}
+                  />
+                  <button
+                    onClick={() => {
+                      const newImages = rentalsContent.galleryImages.filter((_, i) => i !== index);
+                      setRentalsContent((prev) => ({ ...prev, galleryImages: newImages }));
+                    }}
+                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
