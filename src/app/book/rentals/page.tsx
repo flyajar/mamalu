@@ -220,7 +220,11 @@ export default function RentalsPage() {
                     }`}
                   >
                     <div className="flex items-center gap-4">
-                      <span className="text-2xl">{addOn.icon}</span>
+                      {addOn.icon ? (
+                        <img src={addOn.icon} alt="" className="w-10 h-10 object-contain flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 flex-shrink-0" />
+                      )}
                       <div className="text-left">
                         <h3 className="font-bold">{addOn.name}</h3>
                         <p className="text-sm text-gray-500">{addOn.description}</p>

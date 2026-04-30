@@ -1625,17 +1625,50 @@ export default function SiteContentPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-stone-500 block mb-1">Icon URL</label>
-                      <input
-                        type="text"
-                        value={option.icon}
-                        onChange={(e) => {
-                          const newOptions = [...rentalsContent.rentalOptions];
-                          newOptions[index] = { ...option, icon: e.target.value };
-                          setRentalsContent((prev) => ({ ...prev, rentalOptions: newOptions }));
-                        }}
-                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                      />
+                      <label className="text-xs text-stone-500 block mb-1">Icon Image</label>
+                      <div className="flex items-center gap-2">
+                        {option.icon && (
+                          <div className="w-8 h-8 rounded overflow-hidden bg-stone-100 flex-shrink-0">
+                            <img src={option.icon} alt="" className="w-full h-full object-contain" onError={(e) => (e.currentTarget.src = "/images/placeholder.jpg")} />
+                          </div>
+                        )}
+                        <input
+                          type="text"
+                          value={option.icon}
+                          onChange={(e) => {
+                            const newOptions = [...rentalsContent.rentalOptions];
+                            newOptions[index] = { ...option, icon: e.target.value };
+                            setRentalsContent((prev) => ({ ...prev, rentalOptions: newOptions }));
+                          }}
+                          placeholder="/images/icon.png"
+                          className="flex-1 px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                        />
+                        <label className="cursor-pointer flex-shrink-0">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageUpload(file, (url) => {
+                                  const newOptions = [...rentalsContent.rentalOptions];
+                                  newOptions[index] = { ...option, icon: url };
+                                  setRentalsContent((prev) => ({ ...prev, rentalOptions: newOptions }));
+                                }, `rentals-option-icon-${index}`);
+                              }
+                              e.target.value = "";
+                            }}
+                          />
+                          <div className="p-1.5 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors">
+                            {imageUploading === `rentals-option-icon-${index}` ? (
+                              <RefreshCw className="w-3 h-3 text-amber-700 animate-spin" />
+                            ) : (
+                              <Upload className="w-3 h-3 text-amber-700" />
+                            )}
+                          </div>
+                        </label>
+                      </div>
                     </div>
                   </div>
                   <div>
@@ -1722,17 +1755,50 @@ export default function SiteContentPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-stone-500 block mb-1">Icon/Emoji</label>
-                      <input
-                        type="text"
-                        value={addOn.icon}
-                        onChange={(e) => {
-                          const newAddOns = [...rentalsContent.addOns];
-                          newAddOns[index] = { ...addOn, icon: e.target.value };
-                          setRentalsContent((prev) => ({ ...prev, addOns: newAddOns }));
-                        }}
-                        className="w-full px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                      />
+                      <label className="text-xs text-stone-500 block mb-1">Icon Image</label>
+                      <div className="flex items-center gap-2">
+                        {addOn.icon && (
+                          <div className="w-8 h-8 rounded overflow-hidden bg-stone-100 flex-shrink-0">
+                            <img src={addOn.icon} alt="" className="w-full h-full object-contain" onError={(e) => (e.currentTarget.src = "/images/placeholder.jpg")} />
+                          </div>
+                        )}
+                        <input
+                          type="text"
+                          value={addOn.icon}
+                          onChange={(e) => {
+                            const newAddOns = [...rentalsContent.addOns];
+                            newAddOns[index] = { ...addOn, icon: e.target.value };
+                            setRentalsContent((prev) => ({ ...prev, addOns: newAddOns }));
+                          }}
+                          placeholder="/images/icon.png"
+                          className="flex-1 px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                        />
+                        <label className="cursor-pointer flex-shrink-0">
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/gif"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleImageUpload(file, (url) => {
+                                  const newAddOns = [...rentalsContent.addOns];
+                                  newAddOns[index] = { ...addOn, icon: url };
+                                  setRentalsContent((prev) => ({ ...prev, addOns: newAddOns }));
+                                }, `rentals-addon-icon-${index}`);
+                              }
+                              e.target.value = "";
+                            }}
+                          />
+                          <div className="p-1.5 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors">
+                            {imageUploading === `rentals-addon-icon-${index}` ? (
+                              <RefreshCw className="w-3 h-3 text-amber-700 animate-spin" />
+                            ) : (
+                              <Upload className="w-3 h-3 text-amber-700" />
+                            )}
+                          </div>
+                        </label>
+                      </div>
                     </div>
                     <div>
                       <label className="text-xs text-stone-500 block mb-1">Description</label>
