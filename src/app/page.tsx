@@ -136,19 +136,19 @@ export default function HomePage() {
         { y: 0, opacity: 1, duration: 0.8, ease: "power3.out", delay: 0.3 }
       );
 
-      // Gallery parallax
-      gsap.utils.toArray<HTMLElement>(".gallery-item").forEach((el, i) => {
-        gsap.to(el, {
-          y: i % 2 === 0 ? -50 : 50,
-          ease: "none",
-          scrollTrigger: {
-            trigger: ".mamalu-life-section",
-            start: "top bottom",
-            end: "bottom top",
-            scrub: 1,
-          },
-        });
-      });
+      // Gallery parallax - disabled to maintain alignment
+      // gsap.utils.toArray<HTMLElement>(".gallery-item").forEach((el, i) => {
+      //   gsap.to(el, {
+      //     y: i % 2 === 0 ? -15 : 15,
+      //     ease: "none",
+      //     scrollTrigger: {
+      //       trigger: ".mamalu-life-section",
+      //       start: "top bottom",
+      //       end: "bottom top",
+      //       scrub: 1,
+      //     },
+      //   });
+      // });
 
       // Section titles animation
       gsap.utils.toArray<HTMLElement>(".section-title").forEach((el) => {
@@ -237,7 +237,7 @@ export default function HomePage() {
       <section className="mamalu-life-section pt-3 pb-0 md:pt-6 md:pb-0 bg-white">
         <div className="container px-4 md:px-6">
           {/* Top row: video left, title right */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-3 md:mb-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-6 md:mb-8">
             {/* Autoplay video */}
             <div className="relative rounded-2xl overflow-hidden" style={{ height: "420px" }}>
               <AutoplayVideo />

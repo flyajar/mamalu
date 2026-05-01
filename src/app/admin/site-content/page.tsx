@@ -1400,6 +1400,69 @@ export default function SiteContentPage() {
               </div>
             </div>
           </div>
+
+          <div className="border-t pt-6">
+            <h3 className="font-semibold text-stone-900 mb-4">Category Icons</h3>
+            <p className="text-sm text-stone-500 mb-4">Configure the icons displayed on category tabs in the Mini Chef booking page.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries({
+                classics: "Our Classics",
+                monthly: "Monthly Specials",
+                mommy_me: "Mommy & Me",
+                birthdays: "Birthdays",
+                packages: "Packages"
+              }).map(([key, label]) => (
+                <div key={key} className="border border-stone-200 rounded-lg p-3 space-y-2">
+                  <label className="text-sm font-medium text-stone-700 block">{label}</label>
+                  <div className="flex items-center gap-2">
+                    {miniChefContent.categoryIcons[key as keyof typeof miniChefContent.categoryIcons] && (
+                      <div className="w-10 h-10 rounded overflow-hidden bg-stone-100 flex-shrink-0">
+                        <img 
+                          src={miniChefContent.categoryIcons[key as keyof typeof miniChefContent.categoryIcons]} 
+                          alt={label} 
+                          className="w-full h-full object-contain" 
+                        />
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      value={miniChefContent.categoryIcons[key as keyof typeof miniChefContent.categoryIcons]}
+                      onChange={(e) => setMiniChefContent((prev) => ({
+                        ...prev,
+                        categoryIcons: { ...prev.categoryIcons, [key]: e.target.value }
+                      }))}
+                      placeholder="/icons/icon.png"
+                      className="flex-1 px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                    <label className="cursor-pointer flex-shrink-0">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleImageUpload(file, (url) => setMiniChefContent((prev) => ({
+                              ...prev,
+                              categoryIcons: { ...prev.categoryIcons, [key]: url }
+                            })), `minichef-cat-${key}`);
+                          }
+                          e.target.value = "";
+                        }}
+                      />
+                      <div className="p-1.5 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors">
+                        {imageUploading === `minichef-cat-${key}` ? (
+                          <RefreshCw className="w-3 h-3 text-amber-700 animate-spin" />
+                        ) : (
+                          <Upload className="w-3 h-3 text-amber-700" />
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1498,6 +1561,69 @@ export default function SiteContentPage() {
                   </div>
                 </label>
               </div>
+            </div>
+          </div>
+
+          <div className="border-t pt-6">
+            <h3 className="font-semibold text-stone-900 mb-4">Category Icons</h3>
+            <p className="text-sm text-stone-500 mb-4">Configure the icons displayed on category tabs in the Big Chef booking page.</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries({
+                corporate: "Corporate / Private",
+                classics: "Our Classics",
+                monthly: "Monthly Specials",
+                teenagers: "Teenager Course",
+                nanny: "Nanny Class"
+              }).map(([key, label]) => (
+                <div key={key} className="border border-stone-200 rounded-lg p-3 space-y-2">
+                  <label className="text-sm font-medium text-stone-700 block">{label}</label>
+                  <div className="flex items-center gap-2">
+                    {bigChefContent.categoryIcons[key as keyof typeof bigChefContent.categoryIcons] && (
+                      <div className="w-10 h-10 rounded overflow-hidden bg-stone-100 flex-shrink-0">
+                        <img 
+                          src={bigChefContent.categoryIcons[key as keyof typeof bigChefContent.categoryIcons]} 
+                          alt={label} 
+                          className="w-full h-full object-contain" 
+                        />
+                      </div>
+                    )}
+                    <input
+                      type="text"
+                      value={bigChefContent.categoryIcons[key as keyof typeof bigChefContent.categoryIcons]}
+                      onChange={(e) => setBigChefContent((prev) => ({
+                        ...prev,
+                        categoryIcons: { ...prev.categoryIcons, [key]: e.target.value }
+                      }))}
+                      placeholder="/icons/icon.png"
+                      className="flex-1 px-2 py-1.5 text-sm border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                    />
+                    <label className="cursor-pointer flex-shrink-0">
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,image/gif"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleImageUpload(file, (url) => setBigChefContent((prev) => ({
+                              ...prev,
+                              categoryIcons: { ...prev.categoryIcons, [key]: url }
+                            })), `bigchef-cat-${key}`);
+                          }
+                          e.target.value = "";
+                        }}
+                      />
+                      <div className="p-1.5 bg-amber-100 hover:bg-amber-200 rounded-lg transition-colors">
+                        {imageUploading === `bigchef-cat-${key}` ? (
+                          <RefreshCw className="w-3 h-3 text-amber-700 animate-spin" />
+                        ) : (
+                          <Upload className="w-3 h-3 text-amber-700" />
+                        )}
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

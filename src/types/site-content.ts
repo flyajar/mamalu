@@ -56,6 +56,13 @@ export interface MiniChefPageContent {
   pageSubtitle: string;
   headerImage: string;
   headerIcon: string;
+  categoryIcons: {
+    classics: string;
+    monthly: string;
+    mommy_me: string;
+    birthdays: string;
+    packages: string;
+  };
 }
 
 // Big Chef Page Content
@@ -64,6 +71,13 @@ export interface BigChefPageContent {
   pageSubtitle: string;
   headerImage: string;
   headerIcon: string;
+  categoryIcons: {
+    corporate: string;
+    classics: string;
+    monthly: string;
+    teenagers: string;
+    nanny: string;
+  };
 }
 
 // Rentals Page Content
@@ -228,6 +242,13 @@ export const defaultMiniChefContent: MiniChefPageContent = {
   pageSubtitle: "Fun cooking experiences for little chefs",
   headerImage: "/images/apron.png",
   headerIcon: "/images/girl-01.png",
+  categoryIcons: {
+    classics: "/icons/boy.png",
+    monthly: "/icons/girl.png",
+    mommy_me: "/icons/boy.png",
+    birthdays: "/icons/girl.png",
+    packages: "/icons/boy.png",
+  },
 };
 
 export const defaultBigChefContent: BigChefPageContent = {
@@ -235,6 +256,13 @@ export const defaultBigChefContent: BigChefPageContent = {
   pageSubtitle: "Professional cooking experiences for adults",
   headerImage: "/images/whisk-01.png",
   headerIcon: "/images/knives-01.png",
+  categoryIcons: {
+    corporate: "/icons/knives.png",
+    classics: "/icons/whisk.png",
+    monthly: "/icons/knives.png",
+    teenagers: "/icons/whisk.png",
+    nanny: "/icons/knives.png",
+  },
 };
 
 export const defaultRentalsContent: RentalsPageContent = {

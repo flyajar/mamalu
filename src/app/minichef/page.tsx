@@ -53,13 +53,13 @@ interface ExtraItem {
 type CategoryType = "classics" | "monthly" | "mommy_me" | "birthdays" | "packages";
 
 // Category configuration with min guests - Birthdays last
-const categoryConfig: Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> = {
-  classics: { label: "Our Classics", icon: "/icons/boy.png", minGuests: 1, maxGuests: 35, description: "Fun cooking classes for kids" },
-  monthly: { label: "Monthly Specials", icon: "/icons/girl.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
-  mommy_me: { label: "Mommy & Me", icon: "/icons/boy.png", minGuests: 1, maxGuests: 20, description: "Mom and kid share their own station" },
-  birthdays: { label: "Birthdays", icon: "/icons/girl.png", minGuests: 6, maxGuests: 35, description: "2-hour private birthday cooking experience" },
-  packages: { label: "Packages", icon: "/icons/boy.png", minGuests: 6, maxGuests: 35, description: "Bundled menu packages for groups" },
-};
+const getCategoryConfig = (pageContent: MiniChefPageContent): Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> => ({
+  classics: { label: "Our Classics", icon: pageContent.categoryIcons?.classics || "/icons/boy.png", minGuests: 1, maxGuests: 35, description: "Fun cooking classes for kids" },
+  monthly: { label: "Monthly Specials", icon: pageContent.categoryIcons?.monthly || "/icons/girl.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
+  mommy_me: { label: "Mommy & Me", icon: pageContent.categoryIcons?.mommy_me || "/icons/boy.png", minGuests: 1, maxGuests: 20, description: "Mom and kid share their own station" },
+  birthdays: { label: "Birthdays", icon: pageContent.categoryIcons?.birthdays || "/icons/girl.png", minGuests: 6, maxGuests: 35, description: "2-hour private birthday cooking experience" },
+  packages: { label: "Packages", icon: pageContent.categoryIcons?.packages || "/icons/boy.png", minGuests: 6, maxGuests: 35, description: "Bundled menu packages for groups" },
+});
 
 
 // Birthday Add-ons/Extras
@@ -198,6 +198,7 @@ export default function MiniChefPage() {
   const [showWaiverModal, setShowWaiverModal] = useState(false);
 
   // Get current category config
+  const categoryConfig = getCategoryConfig(pageContent);
   const currentConfig = categoryConfig[activeCategory];
   const isBirthday = activeCategory === "birthdays";
   const hasExtras = isBirthday;
