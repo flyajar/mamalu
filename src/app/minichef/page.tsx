@@ -36,6 +36,7 @@ interface MenuItem {
   image: string;
   dishes: string[];
   category: string;
+  scheduled_date?: string | null;
 }
 
 // Extra item interface
@@ -243,6 +244,7 @@ export default function MiniChefPage() {
                 image: item.image_url || "/images/placeholder.jpg",
                 dishes: item.dishes || [],
                 category: cat,
+                scheduled_date: item.scheduled_date || null,
               });
             }
           }
@@ -295,10 +297,30 @@ export default function MiniChefPage() {
     setGuestCount(currentConfig.minGuests);
     setSelectedExtras({});
     setStep(1);
+    setEventDate("");
+    setEventTime("");
   }, [activeCategory]);
+
+  // Check if current selection is a monthly special with fixed date
+  const isMonthlySpecial = activeCategory === "monthly" && selectedMenu?.scheduled_date;
+
+  // Auto-populate date/time when a monthly special is selected
+  useEffect(() => {
+    if (activeCategory === "monthly" && selectedMenu?.scheduled_date) {
+      const scheduledDate = new Date(selectedMenu.scheduled_date);
+      const dateStr = scheduledDate.toISOString().split('T')[0];
+      const hours = scheduledDate.getHours();
+      const minutes = scheduledDate.getMinutes();
+      const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+      setEventDate(dateStr);
+      setEventTime(timeStr);
+    }
+  }, [selectedMenu, activeCategory]);
 
   // Fetch available time slots when date changes
   useEffect(() => {
+    // Skip fetching slots if this is a monthly special (date is fixed)
+    if (isMonthlySpecial) return;
     if (!eventDate) {
       setAllTimeSlots([]);
       setAvailableTimeSlots([]);
@@ -867,61 +889,84 @@ export default function MiniChefPage() {
                       </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-base font-bold text-stone-700 mb-1">
+                    {isMonthlySpecial ? (
+                      <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-sm font-medium text-amber-800 mb-3">
                           <Calendar className="inline h-4 w-4 mr-1" />
-                          Event Date *
-                        </label>
-                        <input
-                          type="date"
-                          value={eventDate}
-                          onChange={(e) => setEventDate(e.target.value)}
-                          min={today}
-                          className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-900 focus:border-transparent"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-base font-bold text-stone-700 mb-1">
-                          <Clock className="inline h-4 w-4 mr-1" />
-                          Time Slot *
-                        </label>
-                        {loadingSlots ? (
-                          <div className="flex items-center gap-2 py-2 text-stone-500">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Loading available slots...
+                          This monthly special has a fixed schedule:
+                        </p>
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-bold text-amber-700 mb-1">Event Date</label>
+                            <div className="px-4 py-2 bg-white border border-amber-300 rounded-lg text-stone-900 font-medium">
+                              {new Date(eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </div>
                           </div>
-                        ) : eventDate && allTimeSlots.length > 0 ? (
-                          <div className="grid grid-cols-2 gap-2">
-                            {allTimeSlots.map((slot) => {
-                              const isAvailable = availableTimeSlots.some(s => s.start === slot.start);
-                              return (
-                                <button
-                                  key={slot.start}
-                                  type="button"
-                                  disabled={!isAvailable}
-                                  onClick={() => setEventTime(slot.start)}
-                                  className={`px-3 py-2 text-sm rounded-lg border transition-all ${
-                                    eventTime === slot.start
-                                      ? "bg-[#f5e6dc] text-stone-800 border-stone-300"
-                                      : isAvailable
-                                      ? "border-stone-300 hover:border-stone-900"
-                                      : "border-stone-200 bg-stone-100 text-stone-400 cursor-not-allowed line-through"
-                                  }`}
-                                >
-                                  {slot.label}
-                                </button>
-                              );
-                            })}
+                          <div>
+                            <label className="block text-sm font-bold text-amber-700 mb-1">Time</label>
+                            <div className="px-4 py-2 bg-white border border-amber-300 rounded-lg text-stone-900 font-medium">
+                              {selectedMenu?.scheduled_date ? new Date(selectedMenu.scheduled_date).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) : eventTime}
+                            </div>
                           </div>
-                        ) : eventDate ? (
-                          <p className="text-sm text-stone-500 py-2">No slots available for this date</p>
-                        ) : (
-                          <p className="text-sm text-stone-500 py-2">Select a date first</p>
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    ) : (
+                      <div className="grid sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-base font-bold text-stone-700 mb-1">
+                            <Calendar className="inline h-4 w-4 mr-1" />
+                            Event Date *
+                          </label>
+                          <input
+                            type="date"
+                            value={eventDate}
+                            onChange={(e) => setEventDate(e.target.value)}
+                            min={today}
+                            className="w-full px-4 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-stone-900 focus:border-transparent"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-base font-bold text-stone-700 mb-1">
+                            <Clock className="inline h-4 w-4 mr-1" />
+                            Time Slot *
+                          </label>
+                          {loadingSlots ? (
+                            <div className="flex items-center gap-2 py-2 text-stone-500">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading available slots...
+                            </div>
+                          ) : eventDate && allTimeSlots.length > 0 ? (
+                            <div className="grid grid-cols-2 gap-2">
+                              {allTimeSlots.map((slot) => {
+                                const isAvailable = availableTimeSlots.some(s => s.start === slot.start);
+                                return (
+                                  <button
+                                    key={slot.start}
+                                    type="button"
+                                    disabled={!isAvailable}
+                                    onClick={() => setEventTime(slot.start)}
+                                    className={`px-3 py-2 text-sm rounded-lg border transition-all ${
+                                      eventTime === slot.start
+                                        ? "bg-[#f5e6dc] text-stone-800 border-stone-300"
+                                        : isAvailable
+                                        ? "border-stone-300 hover:border-stone-900"
+                                        : "border-stone-200 bg-stone-100 text-stone-400 cursor-not-allowed line-through"
+                                    }`}
+                                  >
+                                    {slot.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : eventDate ? (
+                            <p className="text-sm text-stone-500 py-2">No slots available for this date</p>
+                          ) : (
+                            <p className="text-sm text-stone-500 py-2">Select a date first</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                     <div>
                       <label className="block text-base font-bold text-stone-700 mb-1">Special Requests</label>

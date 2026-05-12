@@ -90,6 +90,7 @@ export async function POST(request: NextRequest) {
         is_active: body.is_active !== false,
         is_popular: body.is_popular || false,
         sort_order: body.sort_order || 0,
+        scheduled_date: body.scheduled_date || null,
         min_guests: body.min_guests || null,
         max_guests: body.max_guests || null,
         metadata: body.metadata || {},

@@ -28,7 +28,8 @@ interface MenuItem {
   price_unit: string;
   image_url: string | null;
   emoji: string | null;
-  categories: string;
+  categories: string[] | string;
+  scheduled_date?: string | null;
 }
 
 interface CustomerDetails {
@@ -156,8 +157,31 @@ export default function VouchersPage() {
     });
   };
 
+  // Check if selected item is a monthly special (has scheduled_date and is in monthly categories)
+  const isMonthlySpecial = selectedItem?.scheduled_date && (
+    Array.isArray(selectedItem.categories) 
+      ? selectedItem.categories.some(c => c === 'monthly_mini' || c === 'monthly_big')
+      : (selectedItem.categories === 'monthly_mini' || selectedItem.categories === 'monthly_big')
+  );
+
+  // Auto-populate date/time when a monthly special is selected
+  useEffect(() => {
+    if (selectedItem?.scheduled_date) {
+      const categories = Array.isArray(selectedItem.categories) ? selectedItem.categories : [selectedItem.categories];
+      const isMonthly = categories.some(c => c === 'monthly_mini' || c === 'monthly_big');
+      if (isMonthly) {
+        const scheduledDate = new Date(selectedItem.scheduled_date);
+        const dateStr = scheduledDate.toISOString().split('T')[0];
+        const timeStr = scheduledDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        setCustomerDetails(d => ({ ...d, eventDate: dateStr, timeSlot: timeStr }));
+      }
+    }
+  }, [selectedItem]);
+
   // Fetch available time slots when date changes
   useEffect(() => {
+    // Skip fetching slots if this is a monthly special (date is fixed)
+    if (isMonthlySpecial) return;
     if (!customerDetails.eventDate) {
       setAvailableTimeSlots([]);
       return;
@@ -175,7 +199,7 @@ export default function VouchersPage() {
       '5:00 PM',
       '6:00 PM',
     ]);
-  }, [customerDetails.eventDate]);
+  }, [customerDetails.eventDate, isMonthlySpecial]);
 
   const handleProceedToDetails = () => {
     if (!selectedItem) return;
@@ -703,39 +727,64 @@ export default function VouchersPage() {
                       />
                     </div>
                     
-                    <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">
-                        <Calendar className="h-4 w-4 inline mr-1" />
-                        Event Date <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        required
-                        value={customerDetails.eventDate}
-                        min={new Date().toISOString().split('T')[0]}
-                        onChange={(e) => setCustomerDetails(d => ({ ...d, eventDate: e.target.value, timeSlot: '' }))}
-                        className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c]"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-stone-700 mb-1">
-                        <Clock className="h-4 w-4 inline mr-1" />
-                        Time Slot <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        required
-                        value={customerDetails.timeSlot}
-                        onChange={(e) => setCustomerDetails(d => ({ ...d, timeSlot: e.target.value }))}
-                        disabled={!customerDetails.eventDate}
-                        className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c] disabled:bg-stone-100 disabled:cursor-not-allowed"
-                      >
-                        <option value="">{customerDetails.eventDate ? 'Select a time' : 'Select date first'}</option>
-                        {availableTimeSlots.map(slot => (
-                          <option key={slot} value={slot}>{slot}</option>
-                        ))}
-                      </select>
-                    </div>
+                    {isMonthlySpecial ? (
+                      <div className="col-span-2 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                        <p className="text-sm font-medium text-amber-800 mb-3">
+                          <Calendar className="inline h-4 w-4 mr-1" />
+                          This monthly special has a fixed schedule:
+                        </p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-bold text-amber-700 mb-1">Event Date</label>
+                            <div className="px-4 py-3 bg-white border border-amber-300 rounded-xl text-stone-900 font-medium">
+                              {new Date(customerDetails.eventDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-sm font-bold text-amber-700 mb-1">Time</label>
+                            <div className="px-4 py-3 bg-white border border-amber-300 rounded-xl text-stone-900 font-medium">
+                              {customerDetails.timeSlot}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-stone-700 mb-1">
+                            <Calendar className="h-4 w-4 inline mr-1" />
+                            Event Date <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="date"
+                            required
+                            value={customerDetails.eventDate}
+                            min={new Date().toISOString().split('T')[0]}
+                            onChange={(e) => setCustomerDetails(d => ({ ...d, eventDate: e.target.value, timeSlot: '' }))}
+                            className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c]"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-stone-700 mb-1">
+                            <Clock className="h-4 w-4 inline mr-1" />
+                            Time Slot <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            required
+                            value={customerDetails.timeSlot}
+                            onChange={(e) => setCustomerDetails(d => ({ ...d, timeSlot: e.target.value }))}
+                            disabled={!customerDetails.eventDate}
+                            className="w-full px-4 py-3 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c] disabled:bg-stone-100 disabled:cursor-not-allowed"
+                          >
+                            <option value="">{customerDetails.eventDate ? 'Select a time' : 'Select date first'}</option>
+                            {availableTimeSlots.map(slot => (
+                              <option key={slot} value={slot}>{slot}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
                   </div>
                   
                   <div className="mt-4">

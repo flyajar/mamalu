@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from("menu_items")
-      .select("id, categories, name, description, dishes, price, price_unit, image_url, emoji, is_popular, sort_order, min_guests, max_guests")
+      .select("id, categories, name, description, dishes, price, price_unit, image_url, emoji, is_popular, sort_order, min_guests, max_guests, scheduled_date")
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("name", { ascending: true });

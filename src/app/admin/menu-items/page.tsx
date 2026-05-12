@@ -21,6 +21,7 @@ import {
   ArrowUpDown,
   ChevronUp,
   ChevronDown,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +40,7 @@ interface MenuItem {
   is_active: boolean;
   is_popular: boolean;
   sort_order: number;
+  scheduled_date: string | null;
   created_at: string;
 }
 
@@ -84,6 +86,26 @@ const emptyItem: Partial<MenuItem> = {
   is_active: true,
   is_popular: false,
   sort_order: 0,
+  scheduled_date: null,
+};
+
+// Helper to check if a category requires a scheduled date
+const isMonthlySpecialCategory = (categoryId: string) => 
+  categoryId === "monthly_mini" || categoryId === "monthly_big";
+
+// Helper to check if item has any monthly special categories
+const hasMonthlySpecialCategories = (categories: string[]) =>
+  categories.some(isMonthlySpecialCategory);
+
+// Helper to format date for datetime-local input (preserves local time)
+const formatDateTimeLocal = (isoString: string) => {
+  const date = new Date(isoString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
 };
 
 interface UploadResult {
@@ -540,6 +562,7 @@ export default function AdminMenuItemsPage() {
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Item</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Description</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Price</th>
+                <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Dates/Times</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Categories</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Status</th>
                 <th className="px-6 py-4" />
@@ -580,6 +603,34 @@ export default function AdminMenuItemsPage() {
                   <td className="px-6 py-4">
                     <p className="text-sm font-semibold text-stone-900">{formatPrice(item.price)}</p>
                     <p className="text-xs text-stone-400">{item.price_unit}</p>
+                  </td>
+                  {/* Dates/Times - for monthly specials */}
+                  <td className="px-6 py-4">
+                    {hasMonthlySpecialCategories(item.categories || []) ? (
+                      item.scheduled_date ? (
+                        <div className="flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5 text-amber-500" />
+                          <span className="text-sm text-stone-700">
+                            {new Date(item.scheduled_date).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric',
+                              year: 'numeric'
+                            })}
+                          </span>
+                          <span className="text-xs text-stone-400">
+                            {new Date(item.scheduled_date).toLocaleTimeString('en-US', { 
+                              hour: 'numeric', 
+                              minute: '2-digit',
+                              hour12: true
+                            })}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">No date set</span>
+                      )
+                    ) : (
+                      <span className="text-xs text-stone-400">—</span>
+                    )}
                   </td>
                   {/* Categories - multi-badge */}
                   <td className="px-6 py-4">
@@ -798,6 +849,31 @@ export default function AdminMenuItemsPage() {
                   })}
                 </div>
               </div>
+
+              {/* Scheduled Date/Time - shown only for monthly specials */}
+              {hasMonthlySpecialCategories(editingItem.categories || []) && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                  <label className="flex items-center gap-2 text-sm font-medium text-amber-800 mb-2">
+                    <Calendar className="h-4 w-4" />
+                    Scheduled Date & Time <span className="text-red-500">*</span>
+                  </label>
+                  <p className="text-xs text-amber-600 mb-3">
+                    Monthly special items require a scheduled date and time for the class
+                  </p>
+                  <input
+                    type="datetime-local"
+                    value={editingItem.scheduled_date 
+                      ? formatDateTimeLocal(editingItem.scheduled_date) 
+                      : ""
+                    }
+                    onChange={(e) => setEditingItem((p) => ({ 
+                      ...p, 
+                      scheduled_date: e.target.value ? new Date(e.target.value).toISOString() : null 
+                    }))}
+                    className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                  />
+                </div>
+              )}
 
               {/* Toggles */}
               <div className="flex gap-6">
