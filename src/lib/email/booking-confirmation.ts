@@ -107,6 +107,7 @@ interface QRCodeInfo {
 function generateEmailHtml(booking: BookingDetails, qrCodes: QRCodeInfo[]): string {
   const numberOfGuests = booking.numberOfGuests || 1;
   const isMultipleGuests = qrCodes.length > 1;
+  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://mamalu.vercel.app").replace(/\/$/, "");
 
   const qrCodesHtml = qrCodes.map((qr, index) => `
     <div style="background-color: #ffffff; padding: 20px; display: inline-block; border: 2px solid #000000; margin: 10px; vertical-align: top;">
@@ -129,7 +130,7 @@ function generateEmailHtml(booking: BookingDetails, qrCodes: QRCodeInfo[]): stri
     <!-- Header -->
     <tr>
       <td style="padding: 40px 30px 30px; text-align: center; border-bottom: 1px solid #000000;">
-        <img src="https://mamalu.ae/logos/logo-transparent.png" alt="Mamalu Kitchen" style="width: 180px; height: auto; margin: 0 auto;" />
+        <img src="${baseUrl}/logos/logo-transparent.png" alt="Mamalu Kitchen" style="width: 180px; height: auto; margin: 0 auto;" />
       </td>
     </tr>
     

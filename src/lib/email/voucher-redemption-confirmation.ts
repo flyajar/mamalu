@@ -42,6 +42,8 @@ export async function sendVoucherRedemptionConfirmation(details: VoucherRedempti
 }
 
 function generateEmailHtml(details: VoucherRedemptionDetails): string {
+  const baseUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://mamalu.vercel.app").replace(/\/$/, "");
+
   return `
 <!DOCTYPE html>
 <html>
@@ -55,7 +57,7 @@ function generateEmailHtml(details: VoucherRedemptionDetails): string {
     <!-- Header -->
     <tr>
       <td style="padding: 40px 30px 30px; text-align: center; border-bottom: 1px solid #000000;">
-        <img src="https://mamalu.ae/logos/logo-transparent.png" alt="Mamalu Kitchen" style="width: 180px; height: auto; margin: 0 auto;" />
+        <img src="${baseUrl}/logos/logo-transparent.png" alt="Mamalu Kitchen" style="width: 180px; height: auto; margin: 0 auto;" />
       </td>
     </tr>
     
