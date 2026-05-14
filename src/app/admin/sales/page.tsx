@@ -93,6 +93,8 @@ const serviceIcons: Record<string, any> = {
   corporate_deck: Briefcase,
   nanny_class: ChefHat,
   walkin_menu: Coffee,
+  class_booking: Users,
+  payment_link: DollarSign,
 };
 
 const serviceColors: Record<string, string> = {
@@ -100,12 +102,14 @@ const serviceColors: Record<string, string> = {
   corporate_deck: "bg-indigo-100 text-indigo-700",
   nanny_class: "bg-emerald-100 text-emerald-700",
   walkin_menu: "bg-amber-100 text-amber-700",
+  class_booking: "bg-blue-100 text-blue-700",
+  payment_link: "bg-violet-100 text-violet-700",
 };
 
 export default function AdminSalesPage() {
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [period, setPeriod] = useState("month");
+  const [period, setPeriod] = useState("week");
   const [activeTab, setActiveTab] = useState<"overview" | "management" | "depachika">("overview");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -340,8 +344,8 @@ export default function AdminSalesPage() {
             }}
             className="px-4 py-2 border border-stone-200 rounded-lg bg-white"
           >
-            <option value="week">Last 7 Days</option>
-            <option value="month">Last 30 Days</option>
+            <option value="week">This Week</option>
+            <option value="month">This Month</option>
             <option value="quarter">Last 3 Months</option>
             <option value="year">Last Year</option>
           </select>
@@ -376,7 +380,7 @@ export default function AdminSalesPage() {
           Apply Date Range
         </Button>
         {(startDate || endDate) && (
-          <Button variant="ghost" onClick={() => { setStartDate(""); setEndDate(""); setPeriod("month"); }}>
+          <Button variant="ghost" onClick={() => { setStartDate(""); setEndDate(""); setPeriod("week"); }}>
             Clear
           </Button>
         )}

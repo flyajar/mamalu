@@ -102,7 +102,7 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Calculate best sellers
+    // Calculate best sellers from all sources
     const bestSellers: Array<{
       name: string;
       type: string;
@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
       revenue: number;
     }> = [];
 
+    // Add service bookings items
     Object.entries(serviceSales).forEach(([type, data]) => {
       Object.entries(data.items).forEach(([name, item]) => {
         bestSellers.push({
@@ -118,6 +119,46 @@ export async function GET(request: NextRequest) {
           count: item.count,
           revenue: item.revenue,
         });
+      });
+    });
+
+    // Add class bookings to best sellers
+    const classItems: Record<string, { count: number; revenue: number }> = {};
+    classBookings?.forEach((booking: any) => {
+      if (booking.status !== "confirmed" && booking.status !== "completed") return;
+      const itemName = booking.class_name || booking.menu_name || booking.service_name || "Class Booking";
+      if (!classItems[itemName]) {
+        classItems[itemName] = { count: 0, revenue: 0 };
+      }
+      classItems[itemName].count++;
+      classItems[itemName].revenue += booking.total_amount || 0;
+    });
+    Object.entries(classItems).forEach(([name, item]) => {
+      bestSellers.push({
+        name,
+        type: "class_booking",
+        count: item.count,
+        revenue: item.revenue,
+      });
+    });
+
+    // Add payment links to best sellers (use title or description)
+    const paymentItems: Record<string, { count: number; revenue: number }> = {};
+    paymentLinks?.forEach((payment: any) => {
+      if (payment.status !== "paid") return;
+      const itemName = payment.title || payment.description || payment.customer_name || "Payment Link";
+      if (!paymentItems[itemName]) {
+        paymentItems[itemName] = { count: 0, revenue: 0 };
+      }
+      paymentItems[itemName].count++;
+      paymentItems[itemName].revenue += payment.paid_amount || payment.amount || 0;
+    });
+    Object.entries(paymentItems).forEach(([name, item]) => {
+      bestSellers.push({
+        name,
+        type: "payment_link",
+        count: item.count,
+        revenue: item.revenue,
       });
     });
 
@@ -156,16 +197,39 @@ export async function GET(request: NextRequest) {
         .reduce((sum: number, p: any) => sum + (p.paid_amount || p.amount || 0), 0) || 0,
     };
 
-    // Daily breakdown
+    // Daily breakdown - include all sources
     const dailyRevenue: Record<string, { date: string; revenue: number; bookings: number }> = {};
     
+    // Add service bookings
     bookings?.forEach((booking: any) => {
       if (booking.status !== "confirmed" && booking.status !== "completed") return;
-      const date = new Date(booking.created_at).toISOString().split("T")[0];
+      const date = new Date(booking.paid_at || booking.created_at).toISOString().split("T")[0];
       if (!dailyRevenue[date]) {
         dailyRevenue[date] = { date, revenue: 0, bookings: 0 };
       }
       dailyRevenue[date].revenue += booking.total_amount || 0;
+      dailyRevenue[date].bookings++;
+    });
+
+    // Add class bookings
+    classBookings?.forEach((booking: any) => {
+      if (booking.status !== "confirmed" && booking.status !== "completed") return;
+      const date = new Date(booking.paid_at || booking.created_at).toISOString().split("T")[0];
+      if (!dailyRevenue[date]) {
+        dailyRevenue[date] = { date, revenue: 0, bookings: 0 };
+      }
+      dailyRevenue[date].revenue += booking.total_amount || 0;
+      dailyRevenue[date].bookings++;
+    });
+
+    // Add payment links
+    paymentLinks?.forEach((payment: any) => {
+      if (payment.status !== "paid") return;
+      const date = new Date(payment.paid_at || payment.created_at).toISOString().split("T")[0];
+      if (!dailyRevenue[date]) {
+        dailyRevenue[date] = { date, revenue: 0, bookings: 0 };
+      }
+      dailyRevenue[date].revenue += payment.paid_amount || payment.amount || 0;
       dailyRevenue[date].bookings++;
     });
 
@@ -180,6 +244,8 @@ export async function GET(request: NextRequest) {
         corporate_deck: "Corporate",
         nanny_class: "Nanny Class",
         walkin_menu: "Walk-in Menu",
+        class_booking: "Classes",
+        payment_link: "Payment Links",
       };
       return names[type] || type;
     };
