@@ -6,15 +6,10 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
-  CalendarDays,
   UtensilsCrossed,
-  Building2,
   ShoppingBag,
   Package,
-  CreditCard,
-  Bell,
   BarChart3,
-  Settings,
   ChefHat,
   Warehouse,
   MessageSquare,
@@ -27,8 +22,6 @@ import {
   Phone,
   ScanLine,
   ClipboardList,
-  PieChart,
-  DollarSign,
   TrendingUp,
   Clock,
   Palette,
@@ -42,7 +35,6 @@ const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Mamalu Users", href: "/admin/users", icon: Users },
   { name: "Leads CRM", href: "/admin/leads", icon: UserPlus },
-  { name: "Classes", href: "/admin/classes", icon: CalendarDays },
   { name: "Kitchen Rental", href: "/admin/rentals", icon: Warehouse, children: [
     { name: "Bookings", href: "/admin/rentals" },
     { name: "Assets", href: "/admin/rentals/assets" },
@@ -73,7 +65,6 @@ const navigation = [
   { name: "Sales Report", href: "/admin/sales", icon: TrendingUp },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
   { name: "Site Content", href: "/admin/site-content", icon: Palette },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 export function AdminSidebar({ userRole }: AdminSidebarProps) {

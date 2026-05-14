@@ -2,16 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
 import {
   Bell,
   Search,
   ChevronDown,
   LogOut,
   User,
-  Settings,
   ExternalLink,
   ShoppingBag,
   MessageSquare,
@@ -50,7 +47,6 @@ export function AdminHeader({ user }: AdminHeaderProps) {
   const [newInquiriesCount, setNewInquiriesCount] = useState(0);
   const [recentInquiries, setRecentInquiries] = useState<RecentInquiry[]>([]);
   const [totalNotifications, setTotalNotifications] = useState(0);
-  const router = useRouter();
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -69,10 +65,15 @@ export function AdminHeader({ user }: AdminHeaderProps) {
   }, []);
 
   useEffect(() => {
-    fetchNotifications();
+    const initialFetch = setTimeout(() => {
+      fetchNotifications();
+    }, 0);
     // Poll for new notifications every 30 seconds
     const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialFetch);
+      clearInterval(interval);
+    };
   }, [fetchNotifications]);
 
   const handleSignOut = async () => {
@@ -250,21 +251,6 @@ export function AdminHeader({ user }: AdminHeaderProps) {
                   <div className="text-sm font-medium text-stone-900">{user.name}</div>
                   <div className="text-xs text-stone-500">{user.email}</div>
                 </div>
-                <Link
-                  href="/admin/settings/profile"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
-                >
-                  <User className="h-4 w-4" />
-                  My Profile
-                </Link>
-                <Link
-                  href="/admin/settings"
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-stone-700 hover:bg-stone-50"
-                >
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Link>
-                <hr className="my-1" />
                 <button
                   onClick={handleSignOut}
                   className="flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50 w-full text-left"

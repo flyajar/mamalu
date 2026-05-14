@@ -8,7 +8,6 @@ import {
   Utensils,
   ArrowUpRight,
   ArrowDownRight,
-  Plus,
   Bell,
   CreditCard,
   Target,
@@ -40,7 +39,6 @@ export default async function AdminDashboard() {
   const stats = await getStats();
 
   const quickActions = [
-    { label: "Schedule New Class", icon: Calendar, color: "from-violet-500 to-purple-500", href: "/admin/classes/new" },
     { label: "Process Order", icon: ShoppingBag, color: "from-[#FF8C6B] to-[#ff7a54]", href: "/admin/orders" },
     { label: "Add Customer", icon: Users, color: "from-emerald-500 to-teal-500", href: "/admin/users/new" },
     { label: "Kitchen Booking", icon: Utensils, color: "from-rose-500 to-pink-500", href: "/admin/rentals" },
@@ -77,13 +75,6 @@ export default async function AdminDashboard() {
           <button className="p-2 rounded-xl bg-white border border-stone-200 hover:border-amber-300 hover:shadow-md transition-all">
             <Bell className="h-5 w-5 text-stone-600" />
           </button>
-          <Link 
-            href="/admin/classes/new"
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#FF8C6B] to-[#ff7a54] text-white rounded-xl font-medium hover:shadow-lg hover:shadow-amber-500/25 transition-all"
-          >
-            <Plus className="h-4 w-4" />
-            New Class
-          </Link>
         </div>
       </div>
 
