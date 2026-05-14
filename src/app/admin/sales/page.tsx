@@ -22,6 +22,8 @@ import {
   FileSpreadsheet,
   BarChart3,
   ClipboardList,
+  Gift,
+  UtensilsCrossed,
 } from "lucide-react";
 
 interface SalesData {
@@ -31,10 +33,12 @@ interface SalesData {
     serviceRevenue: number;
     classRevenue: number;
     paymentLinkRevenue: number;
+    voucherRevenue: number;
     totalBookings: number;
     serviceBookings: number;
     classBookings: number;
     paymentLinks: number;
+    voucherPurchases: number;
     totalGuests: number;
   };
   serviceSales: Array<{
@@ -95,6 +99,8 @@ const serviceIcons: Record<string, any> = {
   walkin_menu: Coffee,
   class_booking: Users,
   payment_link: DollarSign,
+  menu_item: UtensilsCrossed,
+  voucher: Gift,
 };
 
 const serviceColors: Record<string, string> = {
@@ -104,6 +110,8 @@ const serviceColors: Record<string, string> = {
   walkin_menu: "bg-amber-100 text-amber-700",
   class_booking: "bg-blue-100 text-blue-700",
   payment_link: "bg-violet-100 text-violet-700",
+  menu_item: "bg-orange-100 text-orange-700",
+  voucher: "bg-rose-100 text-rose-700",
 };
 
 export default function AdminSalesPage() {
@@ -872,38 +880,106 @@ export default function AdminSalesPage() {
       {/* Revenue Trend */}
       <Card>
         <CardHeader>
-          <CardTitle>Daily Revenue Trend</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Daily Revenue Trend</span>
+            {salesData?.dailyData && salesData.dailyData.length > 1 && (() => {
+              const totalRevenue = salesData.dailyData.reduce((sum, d) => sum + d.revenue, 0);
+              const firstHalf = salesData.dailyData.slice(0, Math.floor(salesData.dailyData.length / 2));
+              const secondHalf = salesData.dailyData.slice(Math.floor(salesData.dailyData.length / 2));
+              const firstHalfRevenue = firstHalf.reduce((sum, d) => sum + d.revenue, 0);
+              const secondHalfRevenue = secondHalf.reduce((sum, d) => sum + d.revenue, 0);
+              const percentChange = firstHalfRevenue > 0 ? ((secondHalfRevenue - firstHalfRevenue) / firstHalfRevenue * 100) : 0;
+              const isPositive = percentChange >= 0;
+              return (
+                <span className={`text-sm font-medium flex items-center gap-1 ${isPositive ? "text-green-600" : "text-red-600"}`}>
+                  {isPositive ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
+                  {Math.abs(percentChange).toFixed(1)}% {isPositive ? "growth" : "decline"}
+                </span>
+              );
+            })()}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {salesData?.dailyData && salesData.dailyData.length > 0 ? (
-            <div className="h-64 flex items-end gap-1">
-              {salesData.dailyData.map((day, idx) => {
-                const maxRevenue = Math.max(...salesData.dailyData.map((d) => d.revenue));
-                const height = maxRevenue > 0 ? (day.revenue / maxRevenue) * 100 : 0;
-                
-                return (
-                  <div
-                    key={day.date}
-                    className="flex-1 flex flex-col items-center gap-1"
-                  >
+            <div className="space-y-4">
+              {/* Chart */}
+              <div className="h-48 flex items-end gap-0.5 border-b border-l border-stone-200 relative">
+                {/* Y-axis labels */}
+                <div className="absolute -left-14 top-0 h-full flex flex-col justify-between text-xs text-stone-400">
+                  <span>{formatCurrency(Math.max(...salesData.dailyData.map(d => d.revenue)))}</span>
+                  <span>{formatCurrency(Math.max(...salesData.dailyData.map(d => d.revenue)) / 2)}</span>
+                  <span>0</span>
+                </div>
+                {salesData.dailyData.map((day, idx) => {
+                  const maxRevenue = Math.max(...salesData.dailyData.map((d) => d.revenue), 1);
+                  const height = (day.revenue / maxRevenue) * 100;
+                  const prevDay = idx > 0 ? salesData.dailyData[idx - 1] : null;
+                  const percentChange = prevDay && prevDay.revenue > 0 
+                    ? ((day.revenue - prevDay.revenue) / prevDay.revenue * 100) 
+                    : 0;
+                  const isPositive = percentChange >= 0;
+                  
+                  return (
                     <div
-                      className="w-full bg-gradient-to-t from-stone-800 to-stone-600 rounded-t hover:from-stone-700 hover:to-stone-500 transition-colors cursor-pointer group relative"
-                      style={{ height: `${Math.max(height, 4)}%` }}
-                      title={`${formatDate(day.date)}: ${formatCurrency(day.revenue)} (${day.bookings} bookings)`}
+                      key={day.date}
+                      className="flex-1 flex flex-col items-center justify-end group relative"
                     >
-                      <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                        {formatDate(day.date)}<br />
-                        {formatCurrency(day.revenue)}
+                      <div
+                        className={`w-full rounded-t transition-all cursor-pointer ${
+                          day.revenue > 0 
+                            ? "bg-gradient-to-t from-stone-700 to-stone-500 hover:from-stone-600 hover:to-stone-400" 
+                            : "bg-stone-200"
+                        }`}
+                        style={{ height: `${Math.max(height, 2)}%`, minHeight: "2px" }}
+                      >
+                        {/* Tooltip */}
+                        <div className="absolute -top-24 left-1/2 -translate-x-1/2 bg-stone-900 text-white text-xs px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-lg">
+                          <p className="font-semibold">{formatDate(day.date)}</p>
+                          <p className="text-stone-300">{formatCurrency(day.revenue)}</p>
+                          <p className="text-stone-300">{day.bookings} orders</p>
+                          {prevDay && (
+                            <p className={`flex items-center gap-1 ${isPositive ? "text-green-400" : "text-red-400"}`}>
+                              {isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
+                              {Math.abs(percentChange).toFixed(0)}% vs prev day
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    {idx % Math.ceil(salesData.dailyData.length / 7) === 0 && (
-                      <span className="text-xs text-stone-400">
-                        {formatDate(day.date)}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              {/* X-axis labels */}
+              <div className="flex justify-between text-xs text-stone-400 px-1">
+                {salesData.dailyData.filter((_, idx) => 
+                  idx === 0 || 
+                  idx === salesData.dailyData.length - 1 || 
+                  idx % Math.ceil(salesData.dailyData.length / 6) === 0
+                ).map((day) => (
+                  <span key={day.date}>{formatDate(day.date)}</span>
+                ))}
+              </div>
+              {/* Summary stats */}
+              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-stone-100">
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-stone-900">
+                    {formatCurrency(salesData.dailyData.reduce((sum, d) => sum + d.revenue, 0))}
+                  </p>
+                  <p className="text-xs text-stone-500">Total Revenue</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-stone-900">
+                    {formatCurrency(salesData.dailyData.reduce((sum, d) => sum + d.revenue, 0) / salesData.dailyData.length)}
+                  </p>
+                  <p className="text-xs text-stone-500">Daily Average</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold text-stone-900">
+                    {salesData.dailyData.reduce((sum, d) => sum + d.bookings, 0)}
+                  </p>
+                  <p className="text-xs text-stone-500">Total Orders</p>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="h-64 flex items-center justify-center text-stone-500">
@@ -919,7 +995,7 @@ export default function AdminSalesPage() {
           <CardTitle>Revenue Breakdown</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-4 gap-4">
             <div className="p-4 bg-stone-50 rounded-xl">
               <div className="flex items-center gap-2 mb-2">
                 <Calendar className="h-4 w-4 text-stone-500" />
@@ -956,6 +1032,19 @@ export default function AdminSalesPage() {
               </p>
               <p className="text-sm text-stone-500">
                 {salesData?.summary.paymentLinks || 0} payments
+              </p>
+            </div>
+
+            <div className="p-4 bg-stone-50 rounded-xl">
+              <div className="flex items-center gap-2 mb-2">
+                <Gift className="h-4 w-4 text-stone-500" />
+                <span className="text-sm text-stone-500">Vouchers/Gift Cards</span>
+              </div>
+              <p className="text-2xl font-bold text-stone-900">
+                {formatCurrency(salesData?.summary.voucherRevenue || 0)}
+              </p>
+              <p className="text-sm text-stone-500">
+                {salesData?.summary.voucherPurchases || 0} purchases
               </p>
             </div>
           </div>

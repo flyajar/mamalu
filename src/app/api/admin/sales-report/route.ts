@@ -66,12 +66,24 @@ export async function GET(request: NextRequest) {
       .gte("created_at", fromISO)
       .lte("created_at", toISO);
 
-    // Also get payment links
+    // Also get payment links (with menu item names)
     const { data: paymentLinks } = await supabase
       .from("payment_links")
-      .select("*")
+      .select("*, menu_items(id, name)")
       .gte("created_at", fromISO)
       .lte("created_at", toISO);
+
+    // Get voucher purchases
+    const { data: voucherPurchases } = await supabase
+      .from("voucher_purchases")
+      .select("*, vouchers(id, name, type)")
+      .gte("created_at", fromISO)
+      .lte("created_at", toISO);
+
+    // Get menu items for name lookups
+    const { data: menuItems } = await supabase
+      .from("menu_items")
+      .select("id, name, categories");
 
     // Calculate service sales by type
     const serviceSales: Record<string, { 
@@ -142,21 +154,47 @@ export async function GET(request: NextRequest) {
       });
     });
 
-    // Add payment links to best sellers (use title or description)
-    const paymentItems: Record<string, { count: number; revenue: number }> = {};
+    // Add payment links to best sellers (use menu item name if linked, else title/description)
+    const paymentItems: Record<string, { count: number; revenue: number; type: string }> = {};
     paymentLinks?.forEach((payment: any) => {
       if (payment.status !== "paid") return;
-      const itemName = payment.title || payment.description || payment.customer_name || "Payment Link";
-      if (!paymentItems[itemName]) {
-        paymentItems[itemName] = { count: 0, revenue: 0 };
+      // If linked to a menu item, use that name and categorize appropriately
+      const menuItem = payment.menu_items;
+      const itemName = menuItem?.name || payment.title || payment.description || payment.customer_name || "Payment Link";
+      const itemType = menuItem ? "menu_item" : "payment_link";
+      const key = `${itemType}:${itemName}`;
+      if (!paymentItems[key]) {
+        paymentItems[key] = { count: 0, revenue: 0, type: itemType };
       }
-      paymentItems[itemName].count++;
-      paymentItems[itemName].revenue += payment.paid_amount || payment.amount || 0;
+      paymentItems[key].count++;
+      paymentItems[key].revenue += payment.paid_amount || payment.amount || 0;
     });
-    Object.entries(paymentItems).forEach(([name, item]) => {
+    Object.entries(paymentItems).forEach(([key, item]) => {
+      const name = key.split(":").slice(1).join(":");
       bestSellers.push({
         name,
-        type: "payment_link",
+        type: item.type,
+        count: item.count,
+        revenue: item.revenue,
+      });
+    });
+
+    // Add voucher purchases to best sellers
+    const voucherItems: Record<string, { count: number; revenue: number }> = {};
+    voucherPurchases?.forEach((purchase: any) => {
+      if (purchase.status !== "paid") return;
+      const voucher = purchase.vouchers;
+      const itemName = voucher?.name || `Gift Card (AED ${purchase.amount})`;
+      if (!voucherItems[itemName]) {
+        voucherItems[itemName] = { count: 0, revenue: 0 };
+      }
+      voucherItems[itemName].count++;
+      voucherItems[itemName].revenue += purchase.amount || 0;
+    });
+    Object.entries(voucherItems).forEach(([name, item]) => {
+      bestSellers.push({
+        name,
+        type: "voucher",
         count: item.count,
         revenue: item.revenue,
       });
@@ -197,40 +235,63 @@ export async function GET(request: NextRequest) {
         .reduce((sum: number, p: any) => sum + (p.paid_amount || p.amount || 0), 0) || 0,
     };
 
-    // Daily breakdown - include all sources
+    // Voucher purchases summary
+    const voucherStats = {
+      count: voucherPurchases?.filter((p: any) => p.status === "paid").length || 0,
+      revenue: voucherPurchases
+        ?.filter((p: any) => p.status === "paid")
+        .reduce((sum: number, p: any) => sum + (p.amount || 0), 0) || 0,
+    };
+
+    // Daily breakdown - include all sources and fill all dates
     const dailyRevenue: Record<string, { date: string; revenue: number; bookings: number }> = {};
+    
+    // First, initialize all dates in range with zero values
+    const startD = new Date(from);
+    const endD = new Date(to);
+    for (let d = new Date(startD); d <= endD; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split("T")[0];
+      dailyRevenue[dateStr] = { date: dateStr, revenue: 0, bookings: 0 };
+    }
     
     // Add service bookings
     bookings?.forEach((booking: any) => {
       if (booking.status !== "confirmed" && booking.status !== "completed") return;
       const date = new Date(booking.paid_at || booking.created_at).toISOString().split("T")[0];
-      if (!dailyRevenue[date]) {
-        dailyRevenue[date] = { date, revenue: 0, bookings: 0 };
+      if (dailyRevenue[date]) {
+        dailyRevenue[date].revenue += booking.total_amount || 0;
+        dailyRevenue[date].bookings++;
       }
-      dailyRevenue[date].revenue += booking.total_amount || 0;
-      dailyRevenue[date].bookings++;
     });
 
     // Add class bookings
     classBookings?.forEach((booking: any) => {
       if (booking.status !== "confirmed" && booking.status !== "completed") return;
       const date = new Date(booking.paid_at || booking.created_at).toISOString().split("T")[0];
-      if (!dailyRevenue[date]) {
-        dailyRevenue[date] = { date, revenue: 0, bookings: 0 };
+      if (dailyRevenue[date]) {
+        dailyRevenue[date].revenue += booking.total_amount || 0;
+        dailyRevenue[date].bookings++;
       }
-      dailyRevenue[date].revenue += booking.total_amount || 0;
-      dailyRevenue[date].bookings++;
     });
 
     // Add payment links
     paymentLinks?.forEach((payment: any) => {
       if (payment.status !== "paid") return;
       const date = new Date(payment.paid_at || payment.created_at).toISOString().split("T")[0];
-      if (!dailyRevenue[date]) {
-        dailyRevenue[date] = { date, revenue: 0, bookings: 0 };
+      if (dailyRevenue[date]) {
+        dailyRevenue[date].revenue += payment.paid_amount || payment.amount || 0;
+        dailyRevenue[date].bookings++;
       }
-      dailyRevenue[date].revenue += payment.paid_amount || payment.amount || 0;
-      dailyRevenue[date].bookings++;
+    });
+
+    // Add voucher purchases
+    voucherPurchases?.forEach((purchase: any) => {
+      if (purchase.status !== "paid") return;
+      const date = new Date(purchase.paid_at || purchase.created_at).toISOString().split("T")[0];
+      if (dailyRevenue[date]) {
+        dailyRevenue[date].revenue += purchase.amount || 0;
+        dailyRevenue[date].bookings++;
+      }
     });
 
     const dailyData = Object.values(dailyRevenue).sort((a, b) => 
@@ -246,6 +307,8 @@ export async function GET(request: NextRequest) {
         walkin_menu: "Walk-in Menu",
         class_booking: "Classes",
         payment_link: "Payment Links",
+        menu_item: "Menu Items",
+        voucher: "Vouchers/Gift Cards",
       };
       return names[type] || type;
     };
@@ -310,14 +373,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       period: { from: fromISO, to: toISO },
       summary: {
-        totalRevenue: totalServiceRevenue + classStats.revenue + paymentLinkStats.revenue,
+        totalRevenue: totalServiceRevenue + classStats.revenue + paymentLinkStats.revenue + voucherStats.revenue,
         serviceRevenue: totalServiceRevenue,
         classRevenue: classStats.revenue,
         paymentLinkRevenue: paymentLinkStats.revenue,
-        totalBookings: totalServiceBookings + classStats.count + paymentLinkStats.count,
+        voucherRevenue: voucherStats.revenue,
+        totalBookings: totalServiceBookings + classStats.count + paymentLinkStats.count + voucherStats.count,
         serviceBookings: totalServiceBookings,
         classBookings: classStats.count,
         paymentLinks: paymentLinkStats.count,
+        voucherPurchases: voucherStats.count,
         totalGuests,
       },
       serviceSales: Object.entries(serviceSales).map(([type, data]) => ({
