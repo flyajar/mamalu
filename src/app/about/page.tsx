@@ -31,19 +31,20 @@ export default async function AboutPage() {
       <section className="py-8 lg:py-12">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
           {/* About Mamalu Header with curly arrow doodle */}
-          <div className="flex items-start justify-center mb-12">
-            <h1 
+          <div className="flex items-center justify-center mb-12">
+            <h1
               className="text-4xl sm:text-5xl text-stone-600"
               style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 400 }}
             >
               {content.pageTitle}
             </h1>
-            <Image 
-              src="/images/arrow-01.png" 
-              alt="" 
-              width={125} 
-              height={125} 
-              className="ml-3 -mt-2 opacity-80 -rotate-90"
+            <Image
+              src="/images/arrow-01.png"
+              alt=""
+              width={150}
+              height={150}
+              className="about-arrow opacity-80 w-[80px] h-[80px] sm:w-[120px] sm:h-[120px] md:w-[150px] md:h-[150px]"
+              style={{ transform: "translateX(0px) translateY(0px) scaleX(1) scaleY(1) rotate(90deg) skewX(0deg) skewY(0deg)" }}
             />
           </div>
 

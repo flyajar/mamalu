@@ -245,7 +245,16 @@ export default function HomePage() {
               <AutoplayVideo />
             </div>
             {/* Title block */}
-            <div className="flex flex-col items-center justify-center bg-[#fef8f5] rounded-2xl p-8 md:p-10" style={{ height: "420px" }}>
+            <div className="relative flex flex-col items-center justify-center bg-[#fef8f5] rounded-2xl p-8 md:p-10" style={{ height: "420px" }}>
+              {/* Oven mitt — top left */}
+              <Image
+                src="/images/0312b1_84f73777db034245a9038f875cc1d290~mv2_d_2000_2000_s_2.png.avif"
+                alt="Oven mitt"
+                width={140}
+                height={140}
+                className="absolute top-4 left-4 object-contain"
+                style={{ transform: "rotate(249.1356596547737deg)" }}
+              />
               <h2
                 className="section-title text-4xl md:text-5xl lg:text-6xl text-black text-center leading-tight"
                 style={{ fontFamily: "var(--font-mossy), cursive", fontWeight: 900 }}
@@ -260,6 +269,15 @@ export default function HomePage() {
                   siteContent.lifeAtMamaluTitle
                 )}
               </h2>
+              {/* Kale leaf — bottom right */}
+              <Image
+                src="/images/0312b1_694f0a5c1c6645388b761ce78b34533b~mv2_d_1772_1772_s_2.png.avif"
+                alt="Kale leaf"
+                width={150}
+                height={150}
+                className="absolute bottom-4 right-4 object-contain"
+                style={{ transform: "rotate(84.71971591842743deg)" }}
+              />
             </div>
           </div>
 
@@ -293,6 +311,18 @@ export default function HomePage() {
               <span className="text-3xl md:text-4xl lg:text-5xl tracking-wide text-black">{siteContent.ourStoryTitle}</span>
               <span className="inline-block ml-2 text-[#f5d5d0]">❤</span>
             </h2>
+            <Image
+              src="/images/0312b1_bc481cd0b42142b3afea8a2323da39a9~mv2.avif"
+              alt="Arrow doodle"
+              width={220}
+              height={220}
+              className="arrow-doodle absolute object-contain w-[100px] h-[100px] md:w-[150px] md:h-[150px] lg:w-[220px] lg:h-[220px]"
+              style={{
+                transform: "rotate(191.14492507569685deg)",
+                left: "calc(50% + 60px)",
+                top: "-40px"
+              }}
+            />
           </div>
           
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12 lg:gap-16 items-start">

@@ -357,17 +357,18 @@ export default function BigChefPage() {
     <div className="min-h-screen bg-stone-50">
       <WaiverModal isOpen={showWaiverModal} onClose={() => setShowWaiverModal(false)} onAccept={handleWaiverAccept} />
       <div className="bg-white border-b relative overflow-hidden">
-        {/* Animated knives/whisk icons for Big Chef */}
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden lg:block">
-          <Image src={pageContent.headerImage} alt="" width={50} height={50} className="float-medium opacity-70" />
-        </div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center gap-4">
-            <button onClick={() => window.dispatchEvent(new CustomEvent("openMamaluMenu"))} className="p-2 hover:bg-stone-100 rounded-full"><ArrowLeft className="h-5 w-5" /></button>
-            <div className="hidden lg:block">
-              <Image src={pageContent.headerIcon} alt="" width={60} height={60} className="float-gentle opacity-70" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button onClick={() => window.dispatchEvent(new CustomEvent("openMamaluMenu"))} className="p-2 hover:bg-stone-100 rounded-full"><ArrowLeft className="h-5 w-5" /></button>
+              <div className="hidden lg:block">
+                <Image src="/images/0312b1_27732e4abccb4925bca29ff7f349d958~mv2_d_1772_1772_s_2.avif" alt="" width={160} height={160} className="float-gentle opacity-70" />
+              </div>
+              <div><h1 className="text-2xl text-black" style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 900 }}>{pageContent.pageTitle}</h1><p className="text-black text-sm" style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 700 }}>{pageContent.pageSubtitle}</p></div>
             </div>
-            <div><h1 className="text-2xl text-black" style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 900 }}>{pageContent.pageTitle}</h1><p className="text-black text-sm" style={{ fontFamily: 'var(--font-mossy), cursive', fontWeight: 700 }}>{pageContent.pageSubtitle}</p></div>
+            <div className="hidden lg:block">
+              <Image src="/images/0312b1_fee52e9b65c54277bd129615e50d68ff~mv2_d_1772_1772_s_2.avif" alt="" width={150} height={150} className="float-medium opacity-70" />
+            </div>
           </div>
         </div>
       </div>

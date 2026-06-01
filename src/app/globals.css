@@ -521,3 +521,36 @@ a:focus-visible, button:focus-visible {
 .page-loader.is-loaded {
   transform: translateY(-100%);
 }
+
+/* ===== ARROW DOODLE RESPONSIVE POSITIONING ===== */
+.arrow-doodle {
+  left: calc(50% + 80px) !important;
+  top: -40px !important;
+}
+
+@media (min-width: 768px) {
+  .arrow-doodle {
+    left: calc(50% + 80px) !important;
+    top: -50px !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .arrow-doodle {
+    left: calc(50% + 135px) !important;
+    top: -90px !important;
+  }
+}
+
+/* ===== ABOUT PAGE ARROW RESPONSIVE POSITIONING ===== */
+.about-arrow {
+  margin-left: 0 !important;
+  margin-top: -1rem !important;
+}
+
+@media (min-width: 640px) {
+  .about-arrow {
+    margin-left: 0.5rem !important;
+    margin-top: -3rem !important;
+  }
+}
