@@ -46,6 +46,9 @@ interface PackageItem {
   is_active: boolean;
   is_popular: boolean;
   sort_order: number;
+  metadata: {
+    class_count?: number;
+  } | null;
   menu_items: MenuItem[];
   created_at: string;
 }
@@ -83,6 +86,11 @@ const CATEGORY_COLORS: Record<string, string> = {
   extras_merch: "bg-purple-100 text-purple-700",
 };
 
+const extractClassCountFromName = (name: string) => {
+  const match = name.match(/\b(\d+)\b/);
+  return match ? parseInt(match[1], 10) : 0;
+};
+
 const emptyPackage = {
   name: "",
   description: "",
@@ -94,6 +102,9 @@ const emptyPackage = {
   is_active: true,
   is_popular: false,
   sort_order: 0,
+  metadata: {
+    class_count: 1,
+  },
   menu_item_ids: [] as string[],
 };
 
@@ -146,7 +157,7 @@ export default function AdminPackagesPage() {
   };
 
   const openCreate = () => {
-    setEditingPkg({ ...emptyPackage, categories: ["packages"], menu_item_ids: [] });
+    setEditingPkg({ ...emptyPackage, metadata: { ...emptyPackage.metadata }, categories: ["packages"], menu_item_ids: [] });
     setIsCreating(true);
     setItemSearch("");
     setItemCategoryFilter("all");
@@ -165,6 +176,10 @@ export default function AdminPackagesPage() {
       is_active: pkg.is_active,
       is_popular: pkg.is_popular,
       sort_order: pkg.sort_order,
+      metadata: {
+        ...(pkg.metadata || {}),
+        class_count: pkg.metadata?.class_count || extractClassCountFromName(pkg.name) || 1,
+      },
       menu_item_ids: pkg.menu_items.map((m) => m.id),
     });
     setIsCreating(false);
@@ -178,11 +193,18 @@ export default function AdminPackagesPage() {
     try {
       const url = isCreating ? "/api/admin/packages" : `/api/admin/packages/${editingPkg.id}`;
       const method = isCreating ? "POST" : "PUT";
+      const payload = {
+        ...editingPkg,
+        metadata: {
+          ...(editingPkg.metadata || {}),
+          class_count: Math.max(1, Number(editingPkg.metadata?.class_count) || 1),
+        },
+      };
 
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingPkg),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -368,6 +390,7 @@ export default function AdminPackagesPage() {
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Package</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Description</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Price</th>
+                <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Classes</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Categories</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Items</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase tracking-wider px-6 py-4">Status</th>
@@ -403,6 +426,11 @@ export default function AdminPackagesPage() {
                       <td className="px-6 py-4">
                         <p className="text-sm font-semibold text-stone-900">{formatPrice(pkg.price)}</p>
                         <p className="text-xs text-stone-400">{pkg.price_unit}</p>
+                      </td>
+                      {/* Class count */}
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-semibold text-stone-900">{pkg.metadata?.class_count || extractClassCountFromName(pkg.name) || "—"}</p>
+                        <p className="text-xs text-stone-400">selectable</p>
                       </td>
                       {/* Categories */}
                       <td className="px-6 py-4">
@@ -476,7 +504,7 @@ export default function AdminPackagesPage() {
                     </tr>
                     {isExpanded && (
                       <tr key={`${pkg.id}-expanded`}>
-                        <td colSpan={7} className="px-6 pb-4 pt-0 bg-stone-50">
+                        <td colSpan={8} className="px-6 pb-4 pt-0 bg-stone-50">
                           <div className="ml-16 space-y-1.5">
                             {pkg.menu_items.length === 0 ? (
                               <p className="text-sm text-stone-400 italic">No menu items in this package</p>
@@ -519,7 +547,7 @@ export default function AdminPackagesPage() {
               })}
               {filteredPackages.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-stone-500">
+                  <td colSpan={8} className="px-6 py-16 text-center text-stone-500">
                     <Package className="h-10 w-10 mx-auto mb-3 text-stone-300" />
                     <p className="font-medium">No packages found</p>
                     <p className="text-sm mt-1">
@@ -612,8 +640,8 @@ export default function AdminPackagesPage() {
                 />
               </div>
 
-              {/* Price + Unit */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Price + Unit + Class Count */}
+              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-1">
                     Price (AED) <span className="text-red-500">*</span>
@@ -641,6 +669,25 @@ export default function AdminPackagesPage() {
                     <option value="per bag">Per Bag</option>
                     <option value="flat rate">Flat Rate</option>
                   </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-stone-700 mb-1">
+                    Class Count <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={editingPkg.metadata?.class_count ?? 1}
+                    onChange={(e) => setEditingPkg((p) => p ? {
+                      ...p,
+                      metadata: {
+                        ...(p.metadata || {}),
+                        class_count: Math.max(1, parseInt(e.target.value, 10) || 1),
+                      },
+                    } : p)}
+                    className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                  />
                 </div>
               </div>
 

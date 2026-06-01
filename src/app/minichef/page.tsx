@@ -38,6 +38,7 @@ interface MenuItem {
   dishes: string[];
   category: string;
   scheduled_date?: string | null;
+  class_count?: number;
 }
 
 // Extra item interface
@@ -87,6 +88,9 @@ interface DbPackage {
   price: number;
   image_url: string | null;
   categories: string[] | null;
+  metadata?: {
+    class_count?: number;
+  } | null;
   menu_items?: DbPackageMenuItem[] | null;
 }
 
@@ -222,7 +226,8 @@ export default function MiniChefPage() {
   // Package menu item selection modal
   const [showPackageModal, setShowPackageModal] = useState(false);
   const [pendingPackage, setPendingPackage] = useState<MenuItem | null>(null);
-  const [selectedPackageMenuItem, setSelectedPackageMenuItem] = useState<MenuItem | null>(null);
+  const [selectedPackageMenuItems, setSelectedPackageMenuItems] = useState<MenuItem[]>([]);
+  const [pendingPackageMenuItems, setPendingPackageMenuItems] = useState<MenuItem[]>([]);
 
   // Extras
   const [birthdayExtras, setBirthdayExtras] = useState<ExtraItem[]>([]);
@@ -251,6 +256,7 @@ export default function MiniChefPage() {
   const currentConfig = categoryConfig[activeCategory];
   const isBirthday = activeCategory === "birthdays";
   const isMommyAndMe = activeCategory === "mommy_me";
+  const isPackage = activeCategory === "packages";
   const hasExtras = isBirthday;
   // Fetch page content
   useEffect(() => {
@@ -341,6 +347,7 @@ export default function MiniChefPage() {
           image: pkg.image_url || "/images/placeholder.jpg",
           dishes: (pkg.menu_items || []).map((mi) => mi.name),
           category: "packages",
+          class_count: pkg.metadata?.class_count,
         }));
 
         // Store full menu item details per package for the selection modal
@@ -370,10 +377,32 @@ export default function MiniChefPage() {
   // Get menus for current category
   const getCurrentMenus = (): MenuItem[] => menuItemsByCategory[activeCategory] || [];
 
+  const getPackageClassLimit = (pkg: MenuItem | null) => {
+    if (!pkg) return 1;
+    if (pkg.class_count && pkg.class_count > 0) return pkg.class_count;
+    const match = pkg.name.match(/\b(\d+)\b/);
+    const parsedLimit = match ? parseInt(match[1], 10) : 0;
+    return parsedLimit > 0 ? parsedLimit : Math.max(1, packageMenuItems[pkg.id]?.length || 1);
+  };
+
+  const togglePendingPackageMenuItem = (item: MenuItem) => {
+    const limit = getPackageClassLimit(pendingPackage);
+
+    setPendingPackageMenuItems((prev) => {
+      if (prev.some((selected) => selected.id === item.id)) {
+        return prev.filter((selected) => selected.id !== item.id);
+      }
+
+      if (prev.length >= limit) return prev;
+      return [...prev, item];
+    });
+  };
+
   // Reset selection when category changes
   useEffect(() => {
     setSelectedMenu(null);
-    setSelectedPackageMenuItem(null);
+    setSelectedPackageMenuItems([]);
+    setPendingPackageMenuItems([]);
     setGuestCount(currentConfig.minGuests);
     setSelectedExtras({});
     setStep(1);
@@ -472,6 +501,7 @@ export default function MiniChefPage() {
 
       const isDepositPayment = isBirthday;
       const paymentAmount = isDepositPayment ? Math.ceil(totalAmount * 0.5) : totalAmount;
+      const packageClassNames = selectedPackageMenuItems.map((item) => item.name).join(", ");
 
       const res = await fetch("/api/services/book", {
         method: "POST",
@@ -480,12 +510,17 @@ export default function MiniChefPage() {
           serviceType: "birthday_deck",
           serviceName: `Mini Chef - ${currentConfig.label}`,
           packageName: selectedMenu.name,
-          menuId: selectedPackageMenuItem?.id || selectedMenu.id,
-          menuName: selectedPackageMenuItem
-            ? `${selectedMenu.name} — ${selectedPackageMenuItem.name}`
+          menuId: isPackage && selectedPackageMenuItems.length > 0
+            ? selectedPackageMenuItems.map((item) => item.id).join(",")
+            : selectedMenu.id,
+          menuName: isPackage && selectedPackageMenuItems.length > 0
+            ? `${selectedMenu.name} — ${packageClassNames}`
             : selectedMenu.name,
           menuPrice: getMenuPrice(),
-          chosenMenuItem: selectedPackageMenuItem ? { id: selectedPackageMenuItem.id, name: selectedPackageMenuItem.name } : null,
+          chosenMenuItem: selectedPackageMenuItems[0]
+            ? { id: selectedPackageMenuItems[0].id, name: selectedPackageMenuItems[0].name }
+            : null,
+          chosenMenuItems: selectedPackageMenuItems.map((item) => ({ id: item.id, name: item.name })),
           customerName,
           customerEmail,
           customerPhone,
@@ -502,6 +537,14 @@ export default function MiniChefPage() {
                 additionalChildPrice: MOMMY_ME_ADDITIONAL_CHILD_PRICE,
                 totalPrice: getMenuPrice(),
               }]
+            : isPackage
+            ? selectedPackageMenuItems.map((item, index) => ({
+                id: item.id,
+                name: item.name,
+                session: index + 1,
+                packageId: selectedMenu.id,
+                packageName: selectedMenu.name,
+              }))
             : [],
           extras: extrasData,
           baseAmount: calculateBaseAmount(),
@@ -512,6 +555,8 @@ export default function MiniChefPage() {
           balanceAmount: isDepositPayment ? balanceAmount : null,
           specialRequests: isMommyAndMe
             ? `${specialRequests ? `${specialRequests}\n\n` : ""}Mommy & Me children: ${guestCount}${guestCount > 1 ? ` (${guestCount - 1} additional child${guestCount - 1 === 1 ? "" : "ren"} at AED ${MOMMY_ME_ADDITIONAL_CHILD_PRICE} each)` : ""}`
+            : isPackage && selectedPackageMenuItems.length > 0
+            ? `${specialRequests ? `${specialRequests}\n\n` : ""}Selected package classes:\n${selectedPackageMenuItems.map((item, index) => `${index + 1}. ${item.name}`).join("\n")}`
             : specialRequests,
           ageRange,
           waiverAccepted: waiverAccepted || acceptedWaiver,
@@ -578,7 +623,12 @@ export default function MiniChefPage() {
             <div className="p-5 border-b flex items-start justify-between">
               <div>
                 <h2 className="text-xl font-bold text-stone-900">{pendingPackage.name}</h2>
-                <p className="text-sm text-stone-500 mt-0.5">Choose which menu you&apos;d like to cook</p>
+                <p className="text-sm text-stone-500 mt-0.5">
+                  Choose up to {getPackageClassLimit(pendingPackage)} classes you&apos;d like to cook
+                </p>
+                <p className="text-xs font-bold text-stone-700 mt-2">
+                  {pendingPackageMenuItems.length} of {getPackageClassLimit(pendingPackage)} selected
+                </p>
               </div>
               <button onClick={() => setShowPackageModal(false)} className="p-1 hover:bg-stone-100 rounded-lg ml-4 shrink-0">
                 <X className="h-5 w-5 text-stone-400" />
@@ -586,37 +636,45 @@ export default function MiniChefPage() {
             </div>
             <div className="overflow-y-auto flex-1 p-5">
               <div className="grid sm:grid-cols-2 gap-4">
-                {(packageMenuItems[pendingPackage.id] || []).map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setSelectedPackageMenuItem(item)}
-                    className={`cursor-pointer rounded-xl border-2 overflow-hidden transition-all ${
-                      selectedPackageMenuItem?.id === item.id
-                        ? "border-stone-900 shadow-md"
-                        : "border-stone-200 hover:border-stone-400"
-                    }`}
-                  >
-                    <div className="relative h-36 w-full bg-stone-200">
-                      <Image src={item.image} alt={item.name} fill className="object-cover" />
-                      {selectedPackageMenuItem?.id === item.id && (
-                        <div className="absolute top-2 right-2 bg-stone-900 text-white rounded-full p-1">
-                          <Check className="h-4 w-4" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-bold text-stone-900">{item.name}</h3>
-                      <div className="mt-1.5 space-y-0.5">
-                        {item.dishes.map((dish, i) => (
-                          <div key={i} className="flex items-center gap-1.5 text-xs text-stone-500">
-                            <Check className="h-2.5 w-2.5 text-[#ff7f5c] shrink-0" />
-                            <span>{dish}</span>
+                {(packageMenuItems[pendingPackage.id] || []).map((item) => {
+                  const selectedIndex = pendingPackageMenuItems.findIndex((selected) => selected.id === item.id);
+                  const isSelected = selectedIndex >= 0;
+                  const limitReached = pendingPackageMenuItems.length >= getPackageClassLimit(pendingPackage);
+
+                  return (
+                    <div
+                      key={item.id}
+                      onClick={() => togglePendingPackageMenuItem(item)}
+                      className={`cursor-pointer rounded-xl border-2 overflow-hidden transition-all ${
+                        isSelected
+                          ? "border-stone-900 shadow-md"
+                          : limitReached
+                          ? "border-stone-200 opacity-60 hover:opacity-80"
+                          : "border-stone-200 hover:border-stone-400"
+                      }`}
+                    >
+                      <div className="relative h-36 w-full bg-stone-200">
+                        <Image src={item.image} alt={item.name} fill className="object-cover" />
+                        {isSelected && (
+                          <div className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full bg-stone-900 text-xs font-bold text-white">
+                            {selectedIndex + 1}
                           </div>
-                        ))}
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <h3 className="font-bold text-stone-900">{item.name}</h3>
+                        <div className="mt-1.5 space-y-0.5">
+                          {item.dishes.map((dish, i) => (
+                            <div key={i} className="flex items-center gap-1.5 text-xs text-stone-500">
+                              <Check className="h-2.5 w-2.5 text-[#ff7f5c] shrink-0" />
+                              <span>{dish}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
             <div className="p-5 border-t flex gap-3">
@@ -624,14 +682,15 @@ export default function MiniChefPage() {
                 Cancel
               </Button>
               <Button
-                disabled={!selectedPackageMenuItem}
+                disabled={pendingPackageMenuItems.length === 0}
                 onClick={() => {
                   setSelectedMenu(pendingPackage);
+                  setSelectedPackageMenuItems(pendingPackageMenuItems);
                   setShowPackageModal(false);
                 }}
                 className="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold"
               >
-                Confirm Selection
+                Confirm {pendingPackageMenuItems.length} Class{pendingPackageMenuItems.length === 1 ? "" : "es"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
@@ -776,10 +835,11 @@ export default function MiniChefPage() {
                       onClick={() => {
                         if (activeCategory === "packages" && packageMenuItems[menu.id]?.length > 0) {
                           setPendingPackage(menu);
-                          setSelectedPackageMenuItem(null);
+                          setPendingPackageMenuItems(selectedMenu?.id === menu.id ? selectedPackageMenuItems : []);
                           setShowPackageModal(true);
                         } else {
                           setSelectedMenu(menu);
+                          setSelectedPackageMenuItems([]);
                         }
                       }}
                     >
@@ -802,9 +862,9 @@ export default function MiniChefPage() {
                         </div>
                         {/* Price in separate box at bottom */}
                         <div className="bg-stone-50 border-t px-4 py-3">
-                          {activeCategory === "packages" && selectedMenu?.id === menu.id && selectedPackageMenuItem && (
+                          {activeCategory === "packages" && selectedMenu?.id === menu.id && selectedPackageMenuItems.length > 0 && (
                             <p className="text-xs text-[#ff7f5c] font-bold mb-1.5">
-                              ✓ {selectedPackageMenuItem.name} selected
+                              ✓ {selectedPackageMenuItems.length} class{selectedPackageMenuItems.length === 1 ? "" : "es"} selected
                             </p>
                           )}
                           <div className="flex items-center justify-between">
@@ -819,7 +879,7 @@ export default function MiniChefPage() {
                             </p>
                           )}
                           {activeCategory === "packages" && selectedMenu?.id !== menu.id && (
-                            <p className="text-xs text-stone-400 mt-1">Click to choose your menu</p>
+                            <p className="text-xs text-stone-400 mt-1">Click to choose your classes</p>
                           )}
                         </div>
                       </CardContent>
@@ -1150,6 +1210,18 @@ export default function MiniChefPage() {
                         <span className="font-bold text-stone-700">Package:</span>
                         <span className="ml-2 font-bold text-stone-900">{selectedMenu?.name}</span>
                       </div>
+                      {isPackage && selectedPackageMenuItems.length > 0 && (
+                        <div className="sm:col-span-2">
+                          <span className="font-bold text-stone-700">Selected Classes:</span>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {selectedPackageMenuItems.map((item, index) => (
+                              <span key={item.id} className="rounded-full bg-stone-100 px-3 py-1 text-sm font-bold text-stone-700">
+                                {index + 1}. {item.name}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <span className="font-bold text-stone-700">{isMommyAndMe ? "Children:" : "Guests:"}</span>
                         <span className="ml-2 font-bold text-stone-900">{guestCount}</span>
