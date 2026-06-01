@@ -16,6 +16,8 @@ interface RentalOption {
   icon: string;
 }
 
+const PRIMARY_BUTTON_CLASS = "bg-[rgb(255_140_107)] hover:bg-[rgb(255_126_91)] text-white border border-[rgb(255_140_107)] disabled:!bg-[rgb(255_170_145)] disabled:!border-[rgb(255_170_145)] disabled:!text-white disabled:!opacity-100 disabled:cursor-not-allowed";
+
 export default function RentalsPage() {
   const [content, setContent] = useState<RentalsPageContent>(defaultRentalsContent);
   const [loading, setLoading] = useState(true);
@@ -337,7 +339,7 @@ export default function RentalsPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-4 bg-[var(--c-black)] text-white rounded-full font-bold text-lg hover:opacity-90 transition-opacity disabled:opacity-50"
+                  className={`w-full py-4 rounded-full font-bold text-lg transition-colors ${PRIMARY_BUTTON_CLASS}`}
                 >
                   {isSubmitting ? "Submitting..." : "Submit Inquiry"}
                 </button>

@@ -106,6 +106,7 @@ const AVAILABILITY_CATEGORY_BY_TAB: Record<CategoryType, string> = {
 };
 
 const MOMMY_ME_ADDITIONAL_CHILD_PRICE = 200;
+const PRIMARY_BUTTON_CLASS = "bg-[rgb(255_140_107)] hover:bg-[rgb(255_126_91)] text-white border border-[rgb(255_140_107)] font-bold disabled:!bg-[rgb(255_170_145)] disabled:!border-[rgb(255_170_145)] disabled:!text-white disabled:!opacity-100 disabled:cursor-not-allowed";
 
 // Category configuration with min guests - Birthdays last
 const getCategoryConfig = (pageContent: MiniChefPageContent): Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> => ({
@@ -198,7 +199,7 @@ function WaiverModal({ isOpen, onClose, onAccept }: { isOpen: boolean; onClose: 
             <Button 
               onClick={onAccept} 
               disabled={!hasRead}
-              className="flex-1 bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300 font-bold"
+              className={`flex-1 ${PRIMARY_BUTTON_CLASS}`}
             >
               I Accept & Continue
             </Button>
@@ -688,7 +689,7 @@ export default function MiniChefPage() {
                   setSelectedPackageMenuItems(pendingPackageMenuItems);
                   setShowPackageModal(false);
                 }}
-                className="flex-1 bg-stone-900 hover:bg-stone-800 text-white font-bold"
+                className={`flex-1 ${PRIMARY_BUTTON_CLASS}`}
               >
                 Confirm {pendingPackageMenuItems.length} Class{pendingPackageMenuItems.length === 1 ? "" : "es"}
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -805,7 +806,7 @@ export default function MiniChefPage() {
                     {/* Desktop Continue Button - Inside Card */}
                     <div className="hidden lg:flex justify-end items-center pt-4 border-t">
                       <Button
-                        className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold"
+                        className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
                         onClick={() => setStep(step + 1)}
                         disabled={!canProceed()}
                       >
@@ -1012,7 +1013,7 @@ export default function MiniChefPage() {
                     Back
                   </Button>
                   <Button
-                    className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold"
+                    className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
                     onClick={() => setStep(step + 1)}
                   >
                     Continue
@@ -1180,7 +1181,7 @@ export default function MiniChefPage() {
                     Back
                   </Button>
                   <Button
-                    className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold"
+                    className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
                     onClick={() => setStep(step + 1)}
                     disabled={!canProceed()}
                   >
@@ -1265,7 +1266,7 @@ export default function MiniChefPage() {
                     Back
                   </Button>
                   <Button
-                    className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold"
+                    className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
                     onClick={() => handleSubmit()}
                     disabled={submitting || !canProceed()}
                   >
@@ -1311,7 +1312,7 @@ export default function MiniChefPage() {
                 
                 {step < maxStep ? (
                   <Button
-                    className="bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300 font-bold"
+                    className={PRIMARY_BUTTON_CLASS}
                     onClick={() => setStep(step + 1)}
                     disabled={!canProceed()}
                   >
@@ -1320,7 +1321,7 @@ export default function MiniChefPage() {
                   </Button>
                 ) : (
                   <Button
-                    className="bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300 font-bold"
+                    className={PRIMARY_BUTTON_CLASS}
                     onClick={() => handleSubmit()}
                     disabled={submitting || !canProceed()}
                   >

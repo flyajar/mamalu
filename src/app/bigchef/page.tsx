@@ -28,6 +28,8 @@ const AVAILABILITY_CATEGORY_BY_TAB: Record<CategoryType, string> = {
   nanny: "nanny",
 };
 
+const PRIMARY_BUTTON_CLASS = "bg-[rgb(255_140_107)] hover:bg-[rgb(255_126_91)] text-white border border-[rgb(255_140_107)] font-bold disabled:!bg-[rgb(255_170_145)] disabled:!border-[rgb(255_170_145)] disabled:!text-white disabled:!opacity-100 disabled:cursor-not-allowed";
+
 const getCategoryConfig = (pageContent: BigChefPageContent): Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> => ({
   corporate: { label: "Corporate / Private", icon: pageContent.categoryIcons?.corporate || "/icons/knives.png", minGuests: 6, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
   classics: { label: "Our Classics", icon: pageContent.categoryIcons?.classics || "/icons/whisk.png", minGuests: 1, maxGuests: 35, description: "Classic cooking experiences for groups" },
@@ -84,7 +86,7 @@ function WaiverModal({ isOpen, onClose, onAccept }: { isOpen: boolean; onClose: 
           </label>
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-            <Button onClick={onAccept} disabled={!hasRead} className="flex-1 bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300">I Accept & Continue</Button>
+            <Button onClick={onAccept} disabled={!hasRead} className={`flex-1 ${PRIMARY_BUTTON_CLASS}`}>I Accept & Continue</Button>
           </div>
         </div>
       </div>
@@ -395,7 +397,7 @@ export default function BigChefPage() {
                     </div>
                     {/* Desktop Continue Button - Inside Card */}
                     <div className="hidden lg:flex justify-end items-center pt-4 border-t">
-                      <Button className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold" onClick={() => setStep(step + 1)} disabled={!canProceed()}>Continue<ArrowRight className="ml-2 h-4 w-4" /></Button>
+                      <Button className={`px-8 ${PRIMARY_BUTTON_CLASS}`} onClick={() => setStep(step + 1)} disabled={!canProceed()}>Continue<ArrowRight className="ml-2 h-4 w-4" /></Button>
                     </div>
                   </CardContent></Card>
                 )}
@@ -405,7 +407,7 @@ export default function BigChefPage() {
                 {isNanny && (
                   <div className="hidden lg:flex justify-end items-center pb-4">
                     <Button 
-                      className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold" 
+                      className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
                       onClick={() => setStep(step + 1)} 
                       disabled={!canProceed()}
                     >
@@ -498,7 +500,7 @@ export default function BigChefPage() {
                 {/* Navigation Buttons - Desktop */}
                 <div className="hidden lg:flex justify-between items-center pt-6 border-t">
                   <Button variant="outline" onClick={() => setStep(step - 1)} className="px-6 font-bold"><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
-                  <Button className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold" onClick={() => setStep(step + 1)}>Continue<ArrowRight className="ml-2 h-4 w-4" /></Button>
+                  <Button className={`px-8 ${PRIMARY_BUTTON_CLASS}`} onClick={() => setStep(step + 1)}>Continue<ArrowRight className="ml-2 h-4 w-4" /></Button>
                 </div>
               </div>
             )}
@@ -630,7 +632,7 @@ export default function BigChefPage() {
                 {/* Navigation Buttons - Desktop */}
                 <div className="hidden lg:flex justify-between items-center pt-6 border-t">
                   <Button variant="outline" onClick={() => setStep(step - 1)} className="px-6 font-bold"><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
-                  <Button className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold" onClick={() => setStep(step + 1)} disabled={!canProceed()}>Continue<ArrowRight className="ml-2 h-4 w-4" /></Button>
+                  <Button className={`px-8 ${PRIMARY_BUTTON_CLASS}`} onClick={() => setStep(step + 1)} disabled={!canProceed()}>Continue<ArrowRight className="ml-2 h-4 w-4" /></Button>
                 </div>
               </div>
             )}
@@ -663,7 +665,7 @@ export default function BigChefPage() {
                 {/* Navigation Buttons - Desktop */}
                 <div className="hidden lg:flex justify-between items-center pt-6 border-t">
                   <Button variant="outline" onClick={() => setStep(step - 1)} className="px-6 font-bold"><ArrowLeft className="mr-2 h-4 w-4" />Back</Button>
-                  <Button className="bg-stone-900 hover:bg-stone-800 text-white px-8 font-bold" onClick={() => handleSubmit()} disabled={submitting || !canProceed()}>{submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{submitting ? "Processing..." : "Pay Now"}{!submitting && <ArrowRight className="ml-2 h-4 w-4" />}</Button>
+                  <Button className={`px-8 ${PRIMARY_BUTTON_CLASS}`} onClick={() => handleSubmit()} disabled={submitting || !canProceed()}>{submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}{submitting ? "Processing..." : "Pay Now"}{!submitting && <ArrowRight className="ml-2 h-4 w-4" />}</Button>
                 </div>
               </div>
             )}
@@ -699,7 +701,7 @@ export default function BigChefPage() {
                 
                 {step < maxStep ? (
                   <Button
-                    className="bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300 font-bold"
+                    className={PRIMARY_BUTTON_CLASS}
                     onClick={() => setStep(step + 1)}
                     disabled={!canProceed()}
                   >
@@ -708,7 +710,7 @@ export default function BigChefPage() {
                   </Button>
                 ) : (
                   <Button
-                    className="bg-[#f5e6dc] hover:bg-[#f0ddd0] text-stone-800 border border-stone-300 font-bold"
+                    className={PRIMARY_BUTTON_CLASS}
                     onClick={() => handleSubmit()}
                     disabled={submitting || !canProceed()}
                   >
