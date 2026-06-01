@@ -50,6 +50,7 @@ const navigation = [
   { name: "WhatsApp Monitor", href: "/admin/whatsapp", icon: Phone, superAdminOnly: true },
   { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
   { name: "Menu Items", href: "/admin/menu-items", icon: UtensilsCrossed },
+  { name: "Time Slots", href: "/admin/time-slots", icon: Clock },
   { name: "Party Extras", href: "/admin/party-extras", icon: PartyPopper },
   { name: "Packages", href: "/admin/packages", icon: Package },
   { name: "Marketing", href: "/admin/marketing", icon: Tags, children: [

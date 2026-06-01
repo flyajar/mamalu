@@ -93,6 +93,14 @@ interface DbPackage {
 // Category type
 type CategoryType = "classics" | "monthly" | "mommy_me" | "birthdays" | "packages";
 
+const AVAILABILITY_CATEGORY_BY_TAB: Record<CategoryType, string> = {
+  classics: "classics_mini",
+  monthly: "monthly_mini",
+  mommy_me: "mommy_me",
+  birthdays: "birthday",
+  packages: "packages",
+};
+
 // Category configuration with min guests - Birthdays last
 const getCategoryConfig = (pageContent: MiniChefPageContent): Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> => ({
   classics: { label: "Our Classics", icon: pageContent.categoryIcons?.classics || "/icons/boy.png", minGuests: 1, maxGuests: 35, description: "Fun cooking classes for kids" },
@@ -241,7 +249,6 @@ export default function MiniChefPage() {
   const currentConfig = categoryConfig[activeCategory];
   const isBirthday = activeCategory === "birthdays";
   const hasExtras = isBirthday;
-
   // Fetch page content
   useEffect(() => {
     fetch("/api/site-content?page=minichef")
@@ -398,7 +405,7 @@ export default function MiniChefPage() {
     }
     setLoadingSlots(true);
     setEventTime("");
-    fetch(`/api/services/availability?date=${eventDate}`)
+    fetch(`/api/services/availability?date=${eventDate}&category=${AVAILABILITY_CATEGORY_BY_TAB[activeCategory]}`)
       .then(res => res.json())
       .then(data => {
         setAllTimeSlots(data.allSlots || []);
@@ -406,7 +413,7 @@ export default function MiniChefPage() {
       })
       .catch(err => console.error("Failed to fetch availability:", err))
       .finally(() => setLoadingSlots(false));
-  }, [eventDate]);
+  }, [eventDate, activeCategory, isMonthlySpecial]);
 
   // Calculate totals
   const calculateBaseAmount = () => {

@@ -11,11 +11,21 @@ import {
   ArrowLeft, ArrowRight, Check, Clock, Calendar, Minus, Plus, Loader2,
   Gift, Cake, PartyPopper, Utensils, ChefHat, MessageCircle, X, AlertTriangle,
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { BigChefPageContent, defaultBigChefContent } from "@/types/site-content";
 
 interface MenuItem { id: string; name: string; price: number; image: string; dishes: string[]; category: string; scheduled_date?: string | null; }
-interface ExtraItem { id: string; name: string; description: string; price: number; icon: any; category: string; image?: string; }
+interface ExtraItem { id: string; name: string; description: string; price: number; icon: LucideIcon; category: string; image?: string; }
+interface TimeSlot { start: string; end: string; duration: number; label: string; days?: number[]; }
 type CategoryType = "corporate" | "classics" | "monthly" | "teenagers" | "nanny";
+
+const AVAILABILITY_CATEGORY_BY_TAB: Record<CategoryType, string> = {
+  corporate: "corporate",
+  classics: "classics_big",
+  monthly: "monthly_big",
+  teenagers: "teenagers",
+  nanny: "nanny",
+};
 
 const getCategoryConfig = (pageContent: BigChefPageContent): Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> => ({
   corporate: { label: "Corporate / Private", icon: pageContent.categoryIcons?.corporate || "/icons/knives.png", minGuests: 6, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
@@ -104,8 +114,8 @@ export default function BigChefPage() {
 
   const [eventDate, setEventDate] = useState("");
   const [eventTime, setEventTime] = useState("");
-  const [allTimeSlots, setAllTimeSlots] = useState<any[]>([]);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<any[]>([]);
+  const [allTimeSlots, setAllTimeSlots] = useState<TimeSlot[]>([]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -122,7 +132,6 @@ export default function BigChefPage() {
   const isNanny = activeCategory === "nanny";
   const hasExtras = isCorporate;
   const maxStep = hasExtras ? 4 : 3;
-
   // Fetch menu items from DB on mount
   useEffect(() => {
     async function fetchMenuData() {
@@ -202,11 +211,11 @@ export default function BigChefPage() {
     if (!eventDate) { setAllTimeSlots([]); setAvailableTimeSlots([]); return; }
     setLoadingSlots(true);
     setEventTime("");
-    fetch(`/api/services/availability?date=${eventDate}`)
+    fetch(`/api/services/availability?date=${eventDate}&category=${AVAILABILITY_CATEGORY_BY_TAB[activeCategory]}`)
       .then(res => res.json())
       .then(data => { setAllTimeSlots(data.allSlots || []); setAvailableTimeSlots(data.availableSlots || []); })
       .finally(() => setLoadingSlots(false));
-  }, [eventDate, isMonthlySpecial]);
+  }, [eventDate, activeCategory, isMonthlySpecial]);
 
   const toggleNannyMenu = (menu: MenuItem) => {
     setSelectedNannyMenus(prev => {
@@ -442,7 +451,7 @@ export default function BigChefPage() {
                       <div><label className="block text-base font-bold text-stone-700 mb-1"><Calendar className="inline h-4 w-4 mr-1" />Event Date *</label><input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} min={today} className="w-full px-4 py-2 border border-stone-300 rounded-lg" required /></div>
                       <div><label className="block text-base font-bold text-stone-700 mb-1"><Clock className="inline h-4 w-4 mr-1" />Time Slot *</label>
                         {loadingSlots ? <div className="flex items-center gap-2 py-2 text-stone-500"><Loader2 className="h-4 w-4 animate-spin" />Loading...</div> : eventDate && allTimeSlots.length > 0 ? (
-                          <div className="grid grid-cols-2 gap-2">{allTimeSlots.map((slot: any) => { const isAvailable = availableTimeSlots.some((s: any) => s.start === slot.start); return (<button key={slot.start} type="button" disabled={!isAvailable} onClick={() => setEventTime(slot.start)} className={`px-3 py-2 text-sm rounded-lg border ${eventTime === slot.start ? "bg-[#f5e6dc] text-stone-800 border border-stone-300" : isAvailable ? "border-stone-300 hover:border-stone-900" : "bg-stone-100 text-stone-400 cursor-not-allowed line-through"}`}>{slot.label}</button>); })}</div>
+                          <div className="grid grid-cols-2 gap-2">{allTimeSlots.map((slot) => { const isAvailable = availableTimeSlots.some((s) => s.start === slot.start); return (<button key={slot.start} type="button" disabled={!isAvailable} onClick={() => setEventTime(slot.start)} className={`px-3 py-2 text-sm rounded-lg border ${eventTime === slot.start ? "bg-[#f5e6dc] text-stone-800 border border-stone-300" : isAvailable ? "border-stone-300 hover:border-stone-900" : "bg-stone-100 text-stone-400 cursor-not-allowed line-through"}`}>{slot.label}</button>); })}</div>
                         ) : <p className="text-sm text-stone-500 py-2">{eventDate ? "No slots available" : "Select a date first"}</p>}
                       </div>
                     </div>

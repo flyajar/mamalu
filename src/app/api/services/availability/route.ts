@@ -1,19 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DEFAULT_BOOKING_TIME_SLOTS } from "@/lib/booking-time-slots";
 
 // Buffer time after each booking for preparation/cleaning (in minutes)
 const BUFFER_MINUTES = 60;
-
-// Mamalu Schedule Time Slots with their durations
-// Each slot has a start time, end time, duration, and days available
-// days: 0=Sunday, 1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday
-const MAMALU_TIME_SLOTS = [
-  { start: "11:00", end: "12:30", duration: 90, label: "11:00 AM - 12:30 PM", days: [0, 1, 2, 3, 4, 5, 6] }, // Mon-Sun
-  { start: "13:30", end: "15:00", duration: 90, label: "1:30 PM - 3:00 PM", days: [0, 1, 2, 3, 4, 5, 6] }, // Mon-Sun
-  { start: "16:00", end: "17:30", duration: 90, label: "4:00 PM - 5:30 PM", days: [0, 1, 2, 3, 4, 5, 6] }, // Mon-Sun
-  { start: "18:30", end: "20:00", duration: 90, label: "6:30 PM - 8:00 PM", days: [0, 1, 2, 3, 4, 5, 6] }, // Mon-Sun
-  { start: "21:00", end: "22:30", duration: 90, label: "9:00 PM - 10:30 PM", days: [4, 5] }, // Thu & Fri only
-];
 
 interface BookedSlot {
   event_time: string;
@@ -26,6 +16,14 @@ interface TimeSlotInfo {
   duration: number;
   label: string;
   days: number[];
+}
+
+interface TimeSlotRow {
+  start_time: string;
+  end_time: string;
+  duration_minutes: number;
+  label: string;
+  days_of_week: number[];
 }
 
 function parseTime(timeStr: string): number {
@@ -58,14 +56,39 @@ function isSlotBlockedByBooking(
   return false;
 }
 
-function getSlotsForDay(dayOfWeek: number): TimeSlotInfo[] {
-  return MAMALU_TIME_SLOTS.filter(slot => slot.days.includes(dayOfWeek));
+function normalizeTime(time: string): string {
+  return time.slice(0, 5);
+}
+
+function toTimeSlotInfo(slot: typeof DEFAULT_BOOKING_TIME_SLOTS[number] | TimeSlotRow): TimeSlotInfo {
+  if ("start_time" in slot) {
+    return {
+      start: normalizeTime(slot.start_time),
+      end: normalizeTime(slot.end_time),
+      duration: slot.duration_minutes,
+      label: slot.label,
+      days: slot.days_of_week || [],
+    };
+  }
+
+  return {
+    start: slot.start,
+    end: slot.end,
+    duration: slot.duration,
+    label: slot.label,
+    days: [...slot.days],
+  };
+}
+
+function getSlotsForDay(dayOfWeek: number, slots: TimeSlotInfo[]): TimeSlotInfo[] {
+  return slots.filter(slot => slot.days.includes(dayOfWeek));
 }
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const date = searchParams.get("date");
+    const category = searchParams.get("category");
 
     if (!date) {
       return NextResponse.json(
@@ -78,23 +101,45 @@ export async function GET(request: NextRequest) {
     const dateObj = new Date(date + "T00:00:00");
     const dayOfWeek = dateObj.getDay();
 
-    // Get slots available for this day of the week
-    const slotsForDay = getSlotsForDay(dayOfWeek);
+    const fallbackSlots = DEFAULT_BOOKING_TIME_SLOTS.map(toTimeSlotInfo);
 
     const supabase = createAdminClient();
     
-    // If no supabase client, return all slots as available
+    // If no supabase client, return all default slots as available
     if (!supabase) {
       console.log("Supabase not configured, returning all slots as available");
+      const slotsForDay = getSlotsForDay(dayOfWeek, fallbackSlots);
       return NextResponse.json({
         date,
         dayOfWeek,
+        category,
         allSlots: slotsForDay,
         availableSlots: slotsForDay,
         blockedSlots: [],
         bufferMinutes: BUFFER_MINUTES,
       });
     }
+
+    let configuredSlots = fallbackSlots;
+
+    if (category) {
+      const { data: timeSlots, error: slotError } = await supabase
+        .from("booking_time_slots")
+        .select("start_time, end_time, duration_minutes, label, days_of_week")
+        .eq("category_id", category)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("start_time", { ascending: true });
+
+      if (slotError) {
+        console.error("Error fetching configured time slots:", slotError);
+      } else if (timeSlots && timeSlots.length > 0) {
+        configuredSlots = timeSlots.map(toTimeSlotInfo);
+      }
+    }
+
+    // Get slots available for this day of the week
+    const slotsForDay = getSlotsForDay(dayOfWeek, configuredSlots);
 
     // Fetch all confirmed bookings for the given date
     let bookedSlots: BookedSlot[] = [];
@@ -112,6 +157,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           date,
           dayOfWeek,
+          category,
           allSlots: slotsForDay,
           availableSlots: slotsForDay,
           blockedSlots: [],
@@ -130,6 +176,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         date,
         dayOfWeek,
+        category,
         allSlots: slotsForDay,
         availableSlots: slotsForDay,
         blockedSlots: [],
@@ -150,6 +197,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       date,
       dayOfWeek,
+      category,
       allSlots: slotsForDay,
       availableSlots,
       blockedSlots,
