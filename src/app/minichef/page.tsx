@@ -785,13 +785,13 @@ export default function MiniChefPage() {
                 <button
                   key={cat}
                   onClick={() => setActiveCategory(cat)}
-                  className={`px-3 py-2 sm:px-6 sm:py-3 rounded-full font-bold transition-all text-sm sm:text-lg ${
+                  className={`flex items-center gap-1.5 sm:gap-2 px-4 py-2.5 sm:px-7 sm:py-3.5 rounded-full font-extrabold transition-all text-base sm:text-xl ${
                     activeCategory === cat
                       ? "bg-[#FF8C6B] text-white border border-[#FF8C6B] shadow-md"
                       : "text-stone-700 hover:bg-stone-200"
                   }`}
                 >
-                  <Image src={categoryConfig[cat].icon} alt="" width={28} height={28} className="inline-block w-5 h-5 sm:w-7 sm:h-7 mr-1 sm:mr-2" /> {categoryConfig[cat].label}
+                  <Image src={categoryConfig[cat].icon} alt="" width={32} height={32} className="w-6 h-6 sm:w-8 sm:h-8" /> {categoryConfig[cat].label}
                 </button>
               ))}
             </div>

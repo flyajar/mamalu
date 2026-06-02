@@ -377,7 +377,7 @@ export default function BigChefPage() {
           <div className="space-y-6">
             <div className="flex flex-wrap gap-2 sm:gap-3 p-1 sm:p-2 bg-stone-100 rounded-2xl sm:rounded-full">
               {(Object.keys(categoryConfig) as CategoryType[]).map(cat => (
-                <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-3 py-2 sm:px-6 sm:py-3 rounded-full font-bold transition-all text-sm sm:text-lg flex items-center gap-1 sm:gap-2 ${activeCategory === cat ? "bg-[#FF8C6B] text-white border border-[#FF8C6B] shadow-md" : "text-stone-700 hover:bg-stone-200"}`}><Image src={categoryConfig[cat].icon} alt="" width={28} height={28} className="w-5 h-5 sm:w-7 sm:h-7" /> {categoryConfig[cat].label}</button>
+                <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-2.5 sm:px-7 sm:py-3.5 rounded-full font-extrabold transition-all text-base sm:text-xl flex items-center gap-1.5 sm:gap-2 ${activeCategory === cat ? "bg-[#FF8C6B] text-white border border-[#FF8C6B] shadow-md" : "text-stone-700 hover:bg-stone-200"}`}><Image src={categoryConfig[cat].icon} alt="" width={32} height={32} className="w-6 h-6 sm:w-8 sm:h-8" /> {categoryConfig[cat].label}</button>
               ))}
             </div>
             {step === 1 && (
