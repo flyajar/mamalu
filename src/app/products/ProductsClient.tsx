@@ -8,13 +8,13 @@ import { Input } from "@/components/ui/input";
 import { ShoppingBag, Search, X, SlidersHorizontal, ShoppingCart, CheckCircle, Minus, Plus } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
-interface Category {
+export interface Category {
   _id: string;
   title: string;
   slug: { current: string };
 }
 
-interface Product {
+export interface Product {
   _id: string;
   title: string;
   slug: { current: string };
@@ -23,6 +23,7 @@ interface Product {
   compareAtPrice?: number;
   images?: { asset: { _ref: string }; alt?: string }[];
   imageUrl?: string | null;
+  previewImageUrl?: string | null;
   categories?: Category[];
   inStock: boolean;
   featured?: boolean;
@@ -45,6 +46,7 @@ export default function ProductsClient({
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [cartNotice, setCartNotice] = useState<{ id: number; title: string } | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const allCategories = [
     { _id: "all", title: "All", slug: { current: "all" } },
@@ -107,6 +109,24 @@ export default function ProductsClient({
 
     return () => window.clearTimeout(timeout);
   }, [cartNotice]);
+
+  useEffect(() => {
+    if (!selectedProduct) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSelectedProduct(null);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedProduct]);
 
   const getQuantity = (productId: string) => quantities[productId] ?? 1;
 
@@ -207,6 +227,132 @@ export default function ProductsClient({
           </div>
         </div>
       )}
+      {selectedProduct && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="product-preview-title"
+          onClick={() => setSelectedProduct(null)}
+        >
+          <div
+            className="relative max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-2xl sm:p-6"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setSelectedProduct(null)}
+              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-lg transition-colors hover:bg-stone-100"
+              aria-label="Close product preview"
+            >
+              <X className="h-5 w-5" />
+            </button>
+
+            <div className="grid gap-6 md:grid-cols-[minmax(240px,320px)_1fr]">
+              <div className="relative aspect-square overflow-hidden rounded-xl bg-stone-50">
+                {selectedProduct.previewImageUrl || selectedProduct.imageUrl ? (
+                  <Image
+                    src={selectedProduct.previewImageUrl || selectedProduct.imageUrl || ""}
+                    alt={selectedProduct.images?.[0]?.alt || selectedProduct.title}
+                    fill
+                    sizes="(min-width: 768px) 320px, calc(100vw - 4rem)"
+                    className="object-contain"
+                  />
+                ) : (
+                  <div className="flex h-full items-center justify-center">
+                    <ShoppingBag className="h-20 w-20 text-[#ff7f5c]/40" />
+                  </div>
+                )}
+                {!selectedProduct.inStock && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <span className="rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white">
+                      Sold Out
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex min-h-full flex-col pt-2 md:pr-10">
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {selectedProduct.categories?.map((category) => (
+                    <Badge key={category._id} className="bg-[#ff7f5c]/10 text-[#ff7f5c] hover:bg-[#ff7f5c]/10">
+                      {category.title}
+                    </Badge>
+                  ))}
+                  {selectedProduct.featured && (
+                    <Badge className="bg-stone-900 text-white hover:bg-stone-900">Featured</Badge>
+                  )}
+                </div>
+
+                <h2 id="product-preview-title" className="mb-4 text-3xl font-bold leading-tight text-stone-900 sm:text-4xl">
+                  {selectedProduct.title}
+                </h2>
+
+                <div className="mb-5 flex items-center gap-3">
+                  <span className="text-2xl font-bold text-gradient">
+                    {formatPrice(selectedProduct.price)}
+                  </span>
+                  {selectedProduct.compareAtPrice && selectedProduct.compareAtPrice > selectedProduct.price && (
+                    <span className="text-base text-stone-400 line-through">
+                      {formatPrice(selectedProduct.compareAtPrice)}
+                    </span>
+                  )}
+                </div>
+
+                {selectedProduct.description && (
+                  <p className="mb-8 text-sm font-bold leading-7 text-stone-600 sm:text-base">
+                    {selectedProduct.description}
+                  </p>
+                )}
+
+                <div className="mt-auto space-y-4 pt-2">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className="text-sm font-bold uppercase tracking-wide text-stone-500">Quantity</span>
+                    <div className="flex h-12 w-36 items-center rounded-full border border-stone-200 bg-white shadow-sm">
+                      <button
+                        type="button"
+                        onClick={() => setProductQuantity(selectedProduct._id, getQuantity(selectedProduct._id) - 1)}
+                        className="flex h-full w-10 items-center justify-center rounded-l-full text-stone-600 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:text-stone-300"
+                        disabled={!selectedProduct.inStock || getQuantity(selectedProduct._id) <= 1}
+                        aria-label={`Decrease ${selectedProduct.title} quantity`}
+                      >
+                        <Minus className="h-4 w-4" />
+                      </button>
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={1}
+                        value={getQuantity(selectedProduct._id)}
+                        onChange={(event) => setProductQuantity(selectedProduct._id, Number(event.target.value))}
+                        className="h-full w-16 border-x border-stone-200 bg-transparent text-center text-sm font-bold text-stone-900 outline-none [appearance:textfield] disabled:text-stone-400 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        disabled={!selectedProduct.inStock}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setProductQuantity(selectedProduct._id, getQuantity(selectedProduct._id) + 1)}
+                        className="flex h-full w-10 items-center justify-center rounded-r-full text-stone-600 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:text-stone-300"
+                        disabled={!selectedProduct.inStock}
+                        aria-label={`Increase ${selectedProduct.title} quantity`}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={() => addToCart(selectedProduct)}
+                    className="h-12 w-full rounded-full text-sm font-bold text-white gradient-peach-glow"
+                    disabled={!selectedProduct.inStock}
+                  >
+                    <ShoppingCart className="mr-2 h-4 w-4" />
+                    Add to Cart
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Desktop Sidebar */}
@@ -299,7 +445,19 @@ export default function ProductsClient({
                     className="group glass-card rounded-2xl overflow-hidden card-hover flex h-full flex-col"
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
-                    <div className="aspect-square relative overflow-hidden">
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedProduct(product)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setSelectedProduct(product);
+                        }
+                      }}
+                      className="aspect-square relative block w-full overflow-hidden text-left"
+                      aria-label={`Preview ${product.title}`}
+                    >
                       {product.imageUrl ? (
                         <Image
                           src={product.imageUrl}
@@ -330,8 +488,10 @@ export default function ProductsClient({
                       <button
                         onClick={(e) => {
                           e.preventDefault();
+                          e.stopPropagation();
                           addToCart(product);
                         }}
+                        type="button"
                         className="absolute bottom-3 right-3 w-12 h-12 bg-white rounded-full shadow-xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all hover:bg-gradient-to-r hover:from-[#ff7f5c] hover:to-[#ffa891] hover:text-white hover:scale-110"
                         disabled={!product.inStock}
                       >
@@ -339,9 +499,15 @@ export default function ProductsClient({
                       </button>
                     </div>
                     <div className="flex flex-1 flex-col p-4 sm:p-5">
-                      <h3 className="font-bold text-stone-900 text-sm sm:text-base leading-snug mb-2 group-hover:text-[#ff7f5c] transition-colors">
-                        {product.title}
-                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedProduct(product)}
+                        className="mb-2 text-left"
+                      >
+                        <h3 className="font-bold text-stone-900 text-sm sm:text-base leading-snug group-hover:text-[#ff7f5c] transition-colors">
+                          {product.title}
+                        </h3>
+                      </button>
                       <div className="mt-auto">
                         <div className="flex items-center gap-2 mb-4">
                           <span className="text-lg sm:text-xl font-bold text-gradient">

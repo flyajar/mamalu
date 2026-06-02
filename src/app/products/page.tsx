@@ -2,7 +2,8 @@ import { Metadata } from "next";
 import { getProducts, getProductCategories } from "@/lib/sanity/queries";
 import { urlFor } from "@/lib/sanity/client";
 import ProductsClient from "./ProductsClient";
-import { Sparkles, ShoppingBag, Truck, Shield } from "lucide-react";
+import type { Product } from "./ProductsClient";
+import { ShoppingBag, Truck, Shield } from "lucide-react";
 import Image from "next/image";
 
 export const metadata: Metadata = {
@@ -18,12 +19,15 @@ export default async function ProductsPage() {
   ]);
 
   // Pre-process image URLs on the server
-  const productsWithImages = (products || []).map((product: any) => ({
-    ...product,
-    imageUrl: product.images?.[0] 
-      ? urlFor(product.images[0]).width(400).height(400).url() 
-      : null,
-  }));
+  const productsWithImages = ((products || []) as Product[]).map((product) => {
+    const image = product.images?.[0];
+
+    return {
+      ...product,
+      imageUrl: image ? urlFor(image).width(400).height(400).url() : null,
+      previewImageUrl: image ? urlFor(image).width(900).height(900).url() : null,
+    };
+  });
 
   return (
     <div className="min-h-screen">
