@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { ShoppingBag, Filter, ArrowRight, Search, X, SlidersHorizontal, ShoppingCart } from "lucide-react";
+import { ShoppingBag, Filter, ArrowRight, Search, X, SlidersHorizontal, ShoppingCart, CheckCircle } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
 interface Category {
@@ -45,6 +45,7 @@ export default function ProductsClient({
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<SortOption>("latest");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [cartNotice, setCartNotice] = useState<{ id: number; title: string } | null>(null);
 
   const allCategories = [
     { _id: "all", title: "All", slug: { current: "all" } },
@@ -98,6 +99,16 @@ export default function ProductsClient({
     return result;
   }, [products, activeCategory, searchQuery, sortBy]);
 
+  useEffect(() => {
+    if (!cartNotice) return;
+
+    const timeout = window.setTimeout(() => {
+      setCartNotice(null);
+    }, 2600);
+
+    return () => window.clearTimeout(timeout);
+  }, [cartNotice]);
+
   const addToCart = (product: Product) => {
     const cart = JSON.parse(localStorage.getItem("mamalu_cart") || "[]");
     const existingItem = cart.find((item: { id: string }) => item.id === product._id);
@@ -117,7 +128,7 @@ export default function ProductsClient({
     localStorage.setItem("mamalu_cart", JSON.stringify(cart));
     // Trigger storage event for other components
     window.dispatchEvent(new Event("storage"));
-    alert(`${product.title} added to cart!`);
+    setCartNotice({ id: Date.now(), title: product.title });
   };
 
   const Sidebar = () => (
@@ -171,6 +182,20 @@ export default function ProductsClient({
 
   return (
     <section className="py-12">
+      {cartNotice && (
+        <div
+          key={cartNotice.id}
+          role="status"
+          aria-live="polite"
+          className="fixed left-4 right-4 top-24 z-50 mx-auto flex max-w-sm items-start gap-3 rounded-2xl border border-[#ff7f5c]/30 bg-[#ff7f5c] px-4 py-3 text-white shadow-2xl shadow-[#ff7f5c]/25 sm:left-auto sm:right-6 sm:mx-0"
+        >
+          <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-extrabold">Added to cart</p>
+            <p className="text-sm leading-snug text-white/90">{cartNotice.title}</p>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Desktop Sidebar */}
@@ -260,7 +285,7 @@ export default function ProductsClient({
                 {filteredAndSortedProducts.map((product, idx) => (
                   <div
                     key={product._id}
-                    className="group glass-card rounded-2xl overflow-hidden card-hover"
+                    className="group glass-card rounded-2xl overflow-hidden card-hover flex h-full flex-col"
                     style={{ animationDelay: `${idx * 50}ms` }}
                   >
                     <div className="aspect-square relative overflow-hidden">
@@ -302,31 +327,33 @@ export default function ProductsClient({
                         <ShoppingCart className="h-5 w-5" />
                       </button>
                     </div>
-                    <div className="p-4 sm:p-5">
-                      <h3 className="font-bold text-stone-900 text-sm sm:text-base mb-2 group-hover:text-[#ff7f5c] transition-colors line-clamp-1">
+                    <div className="flex flex-1 flex-col p-4 sm:p-5">
+                      <h3 className="font-bold text-stone-900 text-sm sm:text-base leading-snug mb-2 group-hover:text-[#ff7f5c] transition-colors">
                         {product.title}
                       </h3>
-                      <div className="flex items-center gap-2 mb-4">
-                        <span className="text-lg sm:text-xl font-bold text-gradient">
-                          {formatPrice(product.price)}
-                        </span>
-                        {product.compareAtPrice && product.compareAtPrice > product.price && (
-                          <span className="text-xs sm:text-sm text-stone-400 line-through">
-                            {formatPrice(product.compareAtPrice)}
+                      <div className="mt-auto">
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="text-lg sm:text-xl font-bold text-gradient">
+                            {formatPrice(product.price)}
                           </span>
-                        )}
+                          {product.compareAtPrice && product.compareAtPrice > product.price && (
+                            <span className="text-xs sm:text-sm text-stone-400 line-through">
+                              {formatPrice(product.compareAtPrice)}
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            addToCart(product);
+                          }}
+                          className="w-full gradient-peach-glow text-white text-sm font-bold rounded-full h-11"
+                          disabled={!product.inStock}
+                        >
+                          <ShoppingCart className="h-4 w-4 mr-2" />
+                          Add to Cart
+                        </Button>
                       </div>
-                      <Button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          addToCart(product);
-                        }}
-                        className="w-full gradient-peach-glow text-white text-sm font-bold rounded-full h-11"
-                        disabled={!product.inStock}
-                      >
-                        <ShoppingCart className="h-4 w-4 mr-2" />
-                        Add to Cart
-                      </Button>
                     </div>
                   </div>
                 ))}
