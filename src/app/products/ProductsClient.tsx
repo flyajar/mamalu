@@ -159,6 +159,7 @@ export default function ProductsClient({
     localStorage.setItem("mamalu_cart", JSON.stringify(cart));
     // Trigger storage event for other components
     window.dispatchEvent(new Event("storage"));
+    window.dispatchEvent(new Event("cartUpdated"));
     setCartNotice({ id: Date.now(), title: `${addQuantity} x ${product.title}` });
   };
 
@@ -218,7 +219,7 @@ export default function ProductsClient({
           key={cartNotice.id}
           role="status"
           aria-live="polite"
-          className="fixed left-4 right-4 top-24 z-50 mx-auto flex max-w-sm items-start gap-3 rounded-2xl border border-[#ff7f5c]/30 bg-[#ff7f5c] px-4 py-3 text-white shadow-2xl shadow-[#ff7f5c]/25 sm:left-auto sm:right-6 sm:mx-0"
+          className="fixed left-4 right-4 top-20 z-[80] mx-auto flex max-w-sm items-start gap-3 rounded-2xl border border-[#ff7f5c]/30 bg-[#ff7f5c] px-4 py-3 text-white shadow-2xl shadow-[#ff7f5c]/25 sm:left-auto sm:right-6 sm:mx-0"
         >
           <CheckCircle className="mt-0.5 h-5 w-5 flex-shrink-0" />
           <div>
