@@ -150,7 +150,7 @@ export default function MembershipsPage() {
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-wrap gap-4 items-center">
-                <div className="flex-1 min-w-[250px] relative">
+                <div className="relative min-w-0 flex-1 basis-full sm:basis-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
                   <input type="text" placeholder="Search members..." className="w-full pl-10 pr-4 py-2 border border-stone-200 rounded-lg text-sm" />
                 </div>

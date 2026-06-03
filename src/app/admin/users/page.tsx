@@ -83,7 +83,7 @@ export default async function UsersPage() {
       <Card>
         <CardContent className="p-4">
           <div className="flex flex-wrap gap-4">
-            <div className="flex-1 min-w-[200px]">
+            <div className="min-w-0 flex-1 basis-full sm:basis-52">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
                 <input

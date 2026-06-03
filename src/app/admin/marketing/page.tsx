@@ -662,7 +662,7 @@ export default function MarketingPage() {
                 </div>
 
                 {campaign.total_sent > 0 && (
-                  <div className="grid grid-cols-5 gap-4 mt-6 pt-4 border-t border-stone-100">
+                  <div className="mt-6 grid grid-cols-2 gap-4 border-t border-stone-100 pt-4 sm:grid-cols-5">
                     <div>
                       <p className="text-2xl font-bold text-stone-900">{campaign.total_sent.toLocaleString()}</p>
                       <p className="text-sm text-stone-500">Sent</p>

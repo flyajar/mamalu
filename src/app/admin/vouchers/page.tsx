@@ -221,7 +221,7 @@ export default function VouchersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
           { label: "Total Vouchers", value: stats.total, color: "from-violet-500 to-purple-600" },
           { label: "Currently Active", value: stats.active, color: "from-green-500 to-emerald-600" },

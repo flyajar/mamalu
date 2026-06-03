@@ -11,6 +11,7 @@ import {
   User,
   ExternalLink,
   ShoppingBag,
+  Menu,
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ interface AdminHeaderProps {
     avatar?: string;
     role: string;
   };
+  onMenuClick?: () => void;
 }
 
 interface RecentOrder {
@@ -31,7 +33,7 @@ interface RecentOrder {
   created_at: string;
 }
 
-export function AdminHeader({ user }: AdminHeaderProps) {
+export function AdminHeader({ user, onMenuClick }: AdminHeaderProps) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
@@ -79,9 +81,18 @@ export function AdminHeader({ user }: AdminHeaderProps) {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-stone-200 flex items-center justify-between px-6">
+    <header className="h-16 bg-white border-b border-stone-200 flex items-center justify-between gap-3 px-4 sm:px-6">
+      <button
+        type="button"
+        aria-label="Open navigation"
+        className="rounded-lg p-2 text-stone-600 hover:bg-stone-100 lg:hidden"
+        onClick={onMenuClick}
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
       {/* Search */}
-      <div className="flex-1 max-w-md">
+      <div className="hidden min-w-0 flex-1 max-w-md sm:block">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
           <input
@@ -93,12 +104,12 @@ export function AdminHeader({ user }: AdminHeaderProps) {
       </div>
 
       {/* Right side */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 sm:gap-4">
         {/* View site */}
         <Link
           href="/"
           target="_blank"
-          className="text-sm text-stone-600 hover:text-amber-600 flex items-center gap-1"
+          className="hidden text-sm text-stone-600 hover:text-amber-600 sm:flex items-center gap-1"
         >
           View Site
           <ExternalLink className="h-3 w-3" />
@@ -124,7 +135,7 @@ export function AdminHeader({ user }: AdminHeaderProps) {
                 className="fixed inset-0 z-10"
                 onClick={() => setShowNotifications(false)}
               />
-              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-stone-200 z-20 overflow-hidden">
+              <div className="fixed left-4 right-4 top-16 bg-white rounded-lg shadow-lg border border-stone-200 z-20 overflow-hidden sm:absolute sm:left-auto sm:right-0 sm:mt-2 sm:w-80">
                 <div className="px-4 py-3 bg-stone-50 border-b flex items-center justify-between">
                   <h3 className="font-semibold text-stone-900">Notifications</h3>
                   {totalNotifications > 0 && (

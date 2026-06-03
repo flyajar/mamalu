@@ -960,7 +960,7 @@ export default function AdminSalesPage() {
                 ))}
               </div>
               {/* Summary stats */}
-              <div className="grid grid-cols-3 gap-4 pt-4 border-t border-stone-100">
+              <div className="grid grid-cols-1 gap-4 border-t border-stone-100 pt-4 sm:grid-cols-3">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-stone-900">
                     {formatCurrency(salesData.dailyData.reduce((sum, d) => sum + d.revenue, 0))}

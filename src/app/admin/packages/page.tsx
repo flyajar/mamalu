@@ -346,7 +346,7 @@ export default function AdminPackagesPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
             { label: "Total Packages", value: stats.total, color: "from-stone-500 to-stone-600" },
             { label: "Active", value: stats.active, color: "from-green-500 to-emerald-600" },
@@ -641,7 +641,7 @@ export default function AdminPackagesPage() {
               </div>
 
               {/* Price + Unit + Class Count */}
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
                   <label className="block text-sm font-medium text-stone-700 mb-1">
                     Price (AED) <span className="text-red-500">*</span>

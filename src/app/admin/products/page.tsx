@@ -310,7 +310,7 @@ export default function AdminProductsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-2xl bg-gradient-to-br from-stone-600 to-stone-800 p-5 text-white">
             <p className="text-3xl font-bold">{stats.products}</p>
             <p className="text-sm opacity-80 mt-1">Total Products</p>

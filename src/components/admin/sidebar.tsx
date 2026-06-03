@@ -29,6 +29,7 @@ import {
 
 interface AdminSidebarProps {
   userRole: string;
+  onNavigate?: () => void;
 }
 
 const navigation = [
@@ -69,7 +70,7 @@ const navigation = [
   { name: "Site Content", href: "/admin/site-content", icon: Palette },
 ];
 
-export function AdminSidebar({ userRole }: AdminSidebarProps) {
+export function AdminSidebar({ userRole, onNavigate }: AdminSidebarProps) {
   const pathname = usePathname();
 
   // Filter navigation items based on user role
@@ -81,7 +82,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
   });
 
   return (
-    <aside className="w-64 bg-stone-900 text-white flex flex-col h-screen sticky top-0">
+    <aside className="w-full lg:w-64 bg-stone-900 text-white flex flex-col h-screen sticky top-0">
       {/* Logo */}
       <div className="h-16 flex items-center px-6 border-b border-stone-800">
         <Link href="/admin" className="flex items-center gap-2">
@@ -107,6 +108,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
               <li key={item.name}>
                 <Link
                   href={item.href}
+                  onClick={onNavigate}
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                     isActive
@@ -125,6 +127,7 @@ export function AdminSidebar({ userRole }: AdminSidebarProps) {
                       <li key={child.name}>
                         <Link
                           href={child.href}
+                          onClick={onNavigate}
                           className={cn(
                             "block px-3 py-1.5 rounded text-sm transition-colors",
                             pathname === child.href

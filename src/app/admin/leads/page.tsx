@@ -358,10 +358,10 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold bg-gradient-to-r from-stone-900 via-stone-700 to-stone-900 bg-clip-text text-transparent">
             Lead Management
           </h1>
@@ -556,7 +556,7 @@ export default function LeadsPage() {
       {/* Filters & Search */}
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-4 space-y-4">
         <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex-1 min-w-[250px] relative">
+          <div className="relative min-w-0 flex-1 basis-full sm:basis-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
             <input
               type="text"
@@ -570,7 +570,7 @@ export default function LeadsPage() {
           <select 
             value={selectedSource}
             onChange={(e) => { setSelectedSource(e.target.value); setCurrentPage(1); }}
-            className="px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 sm:w-auto"
           >
             <option value="all">All Sources</option>
             {leadSources.map(source => (
@@ -581,7 +581,7 @@ export default function LeadsPage() {
           <select 
             value={selectedStatus}
             onChange={(e) => { setSelectedStatus(e.target.value); setCurrentPage(1); }}
-            className="px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 sm:w-auto"
           >
             <option value="all">All Statuses</option>
             {leadStatuses.map(status => (
@@ -589,11 +589,12 @@ export default function LeadsPage() {
             ))}
           </select>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto">
             <Button 
               variant={viewMode === 'list' ? 'default' : 'outline'} 
               size="sm"
               onClick={() => setViewMode('list')}
+              className="flex-1 sm:flex-none"
             >
               List
             </Button>
@@ -601,6 +602,7 @@ export default function LeadsPage() {
               variant={viewMode === 'kanban' ? 'default' : 'outline'} 
               size="sm"
               onClick={() => setViewMode('kanban')}
+              className="flex-1 sm:flex-none"
             >
               Kanban
             </Button>
@@ -611,24 +613,24 @@ export default function LeadsPage() {
         <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-stone-100">
           <CalendarDays className="h-4 w-4 text-stone-400" />
           <span className="text-sm text-stone-500 mr-2">Date Range:</span>
-          <div className="flex gap-2">
+          <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-3">
             <Button variant="outline" size="sm" onClick={() => setDateRange(7)}>Last 7 Days</Button>
             <Button variant="outline" size="sm" onClick={() => setDateRange(30)}>Last 30 Days</Button>
             <Button variant="outline" size="sm" onClick={() => setDateRange(90)}>Last 90 Days</Button>
           </div>
-          <div className="flex items-center gap-2 ml-2">
+          <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center gap-2 sm:ml-2 sm:w-auto">
             <input
               type="date"
               value={startDate}
               onChange={(e) => { setStartDate(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="min-w-0 px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <span className="text-stone-400">to</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => { setEndDate(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+              className="min-w-0 px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
           </div>
           {(startDate || endDate) && (
@@ -643,7 +645,7 @@ export default function LeadsPage() {
       {/* Leads List or Kanban */}
       {viewMode === 'list' ? (
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden relative">
-        <div className="overflow-x-auto">
+        <div className="hidden md:block">
           <table className="w-full">
             <thead className="bg-stone-50 border-b border-stone-200">
               <tr>
@@ -715,6 +717,65 @@ export default function LeadsPage() {
           </table>
         </div>
 
+        <div className="divide-y divide-stone-100 md:hidden">
+          {filteredLeads.map((lead) => {
+            const SourceIcon = getSourceIcon(lead.source);
+            return (
+              <div key={lead.id} className="p-4">
+                <div className="flex min-w-0 items-start gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white">
+                    {lead.name?.charAt(0) || '?'}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-stone-900">{lead.name}</p>
+                        <p className="truncate text-sm text-stone-500">{lead.email || lead.phone || 'No contact'}</p>
+                      </div>
+                      <Badge className={`${getStatusBadge(lead.status)} shrink-0`}>
+                        {leadStatuses.find(s => s.id === lead.status)?.name || lead.status}
+                      </Badge>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <span className={`inline-flex max-w-full items-center gap-1.5 rounded-lg bg-gradient-to-r ${getSourceColor(lead.source)} px-2.5 py-1 text-xs text-white`}>
+                        <SourceIcon className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{leadSources.find(s => s.id === lead.source)?.name || lead.source}</span>
+                      </span>
+                      {lead.company && (
+                        <span className="max-w-full truncate rounded-lg bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
+                          {lead.company}
+                        </span>
+                      )}
+                      {lead.lead_type && (
+                        <span className="rounded-lg bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
+                          {lead.lead_type}
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
+                      <div className="flex min-w-0 items-center gap-1 text-xs text-stone-500">
+                        <Clock className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{lead.last_contacted_at ? formatDate(lead.last_contacted_at) : 'Never'}</span>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/leads/${lead.id}`)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => router.push(`/admin/leads/${lead.id}`)}>
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-600 hover:bg-red-50" onClick={() => handleDeleteLead(lead.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
         {filteredLeads.length === 0 && (
           <div className="text-center py-12">
             <UserPlus className="h-12 w-12 text-stone-300 mx-auto mb-4" />
@@ -725,11 +786,11 @@ export default function LeadsPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-stone-200">
+          <div className="flex flex-col gap-3 border-t border-stone-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
             <div className="text-sm text-stone-500">
               Showing {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalCount)} of {totalCount} leads
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -787,13 +848,13 @@ export default function LeadsPage() {
       </div>
       ) : (
       /* Kanban View */
-      <div className="overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-max">
+      <div className="min-w-0 pb-4 md:overflow-x-auto">
+        <div className="grid gap-4 md:flex md:min-w-max">
           {leadStatuses.map((status) => {
             const statusLeads = filteredLeads.filter(l => l.status === status.id);
             const statusCount = stats.byStatus[status.id] || 0;
             return (
-              <div key={status.id} className="w-80 flex-shrink-0 bg-stone-50 rounded-2xl">
+              <div key={status.id} className="min-w-0 bg-stone-50 rounded-2xl md:w-80 md:flex-shrink-0">
                 <div className={`p-4 rounded-t-2xl ${status.color}`}>
                   <div className="flex items-center justify-between text-white">
                     <h3 className="font-semibold">{status.name}</h3>
@@ -860,18 +921,35 @@ export default function LeadsPage() {
       )}
 
       {/* Pipeline Summary */}
-      <div className="bg-white rounded-2xl border border-stone-200 shadow-sm p-6">
+      <div className="min-w-0 bg-white rounded-2xl border border-stone-200 shadow-sm p-4 sm:p-6">
         <h3 className="font-semibold text-stone-900 mb-4">Pipeline Overview</h3>
-        <div className="flex items-center gap-2">
+        <div className="hidden items-start gap-2 sm:flex">
           {leadStatuses.slice(0, -1).map((status, i) => {
             const count = stats.byStatus[status.id] || 0;
             const width = stats.total > 0 ? Math.max((count / stats.total) * 100, 5) : 5;
             return (
               <div key={status.id} className="flex-1" style={{ flex: width }}>
                 <div className={`h-3 ${status.color} ${i === 0 ? 'rounded-l-full' : ''} ${i === leadStatuses.length - 2 ? 'rounded-r-full' : ''}`} />
-                <div className="flex justify-between mt-2">
-                  <span className="text-xs text-stone-500">{status.name}</span>
+                <div className="mt-2 flex min-w-0 justify-between gap-1">
+                  <span className="truncate text-xs text-stone-500">{status.name}</span>
                   <span className="text-xs font-medium text-stone-700">{count}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="space-y-3 sm:hidden">
+          {leadStatuses.slice(0, -1).map((status) => {
+            const count = stats.byStatus[status.id] || 0;
+            const width = stats.total > 0 ? Math.max((count / stats.total) * 100, 5) : 5;
+            return (
+              <div key={status.id}>
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="truncate text-xs text-stone-500">{status.name}</span>
+                  <span className="text-xs font-medium text-stone-700">{count}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-stone-100">
+                  <div className={`h-full ${status.color}`} style={{ width: `${width}%` }} />
                 </div>
               </div>
             );

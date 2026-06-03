@@ -471,18 +471,18 @@ export default function AdminMenuItemsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-50 p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen min-w-0 bg-stone-50 p-0 sm:p-6">
+      <div className="mx-auto max-w-7xl min-w-0">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
+        <div className="mb-6 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
               <UtensilsCrossed className="h-7 w-7" />
               Menu Items
             </h1>
             <p className="text-stone-500 mt-1">Manage your restaurant menu items</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2 sm:justify-end">
             {selectedItems.size > 0 && (
               <Button variant="outline" className="bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100" onClick={openBulkCategoryModal}>
                 <CheckCircle className="h-4 w-4 mr-2" />
@@ -510,7 +510,7 @@ export default function AdminMenuItemsPage() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[
             { label: "Total Items", value: stats.total, color: "from-stone-500 to-stone-600" },
             { label: "Active Items", value: stats.active, color: "from-green-500 to-emerald-600" },
@@ -549,7 +549,7 @@ export default function AdminMenuItemsPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
+        <div className="hidden overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm md:block">
           <table className="w-full">
             <thead className="bg-stone-50 border-b border-stone-200">
               <tr>
@@ -692,7 +692,7 @@ export default function AdminMenuItemsPage() {
               ))}
               {filteredItems.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-16 text-center text-stone-500">
+                  <td colSpan={8} className="px-6 py-16 text-center text-stone-500">
                     <UtensilsCrossed className="h-10 w-10 mx-auto mb-3 text-stone-300" />
                     <p className="font-medium">No menu items found</p>
                     <p className="text-sm mt-1">
@@ -705,6 +705,100 @@ export default function AdminMenuItemsPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+        <div className="space-y-3 md:hidden">
+          {filteredItems.map((item) => (
+            <div key={item.id} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
+              <div className="flex min-w-0 items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.has(item.id)}
+                  onChange={() => toggleSelectItem(item.id)}
+                  className="mt-4 rounded"
+                  aria-label={`Select ${item.name}`}
+                />
+                <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-stone-100 flex items-center justify-center">
+                  {item.image_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={item.image_url} alt={item.name} className="h-full w-full object-cover" />
+                  ) : item.emoji ? (
+                    <span className="text-2xl">{item.emoji}</span>
+                  ) : (
+                    <ImageIcon className="h-5 w-5 text-stone-300" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-stone-900">{item.name}</p>
+                      <p className="mt-1 text-sm text-stone-500 line-clamp-2">{item.description || "No description"}</p>
+                    </div>
+                    <Badge
+                      className={
+                        item.is_active
+                          ? "shrink-0 bg-green-100 text-green-700 border-green-200"
+                          : "shrink-0 bg-stone-100 text-stone-500 border-stone-200"
+                      }
+                      variant="outline"
+                    >
+                      {item.is_active ? "Active" : "Hidden"}
+                    </Badge>
+                  </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-700">
+                      {formatPrice(item.price)}
+                    </span>
+                    <span className="rounded-full bg-stone-100 px-2.5 py-1 text-xs text-stone-500">
+                      {item.price_unit}
+                    </span>
+                    {(item.categories || []).map((catId) => (
+                      <span
+                        key={catId}
+                        className={`text-xs px-2 py-1 rounded-full ${CATEGORY_COLORS[catId] || "bg-stone-100 text-stone-600"}`}
+                      >
+                        {CATEGORIES.find((c) => c.id === catId)?.name || catId}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-4 flex justify-end gap-1 border-t border-stone-100 pt-3">
+                    <button
+                      onClick={() => handleToggleActive(item)}
+                      className="rounded-lg p-2 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                      title={item.is_active ? "Hide" : "Show"}
+                    >
+                      {item.is_active ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                    <button
+                      onClick={() => { setEditingItem({ ...item }); setIsCreating(false); }}
+                      className="rounded-lg p-2 text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                      title="Edit"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="rounded-lg p-2 text-stone-500 transition-colors hover:bg-red-50 hover:text-red-600"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+          {filteredItems.length === 0 && (
+            <div className="rounded-2xl border border-stone-200 bg-white px-6 py-12 text-center text-stone-500 shadow-sm">
+              <UtensilsCrossed className="h-10 w-10 mx-auto mb-3 text-stone-300" />
+              <p className="font-medium">No menu items found</p>
+              <p className="text-sm mt-1">
+                {search || categoryFilter !== "all"
+                  ? "Try adjusting your filters"
+                  : 'Click "Add Item" to create your first menu item'}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

@@ -565,3 +565,36 @@ a:focus-visible, button:focus-visible {
     margin-top: -3rem !important;
   }
 }
+
+/* ===== ADMIN MOBILE OVERFLOW GUARDS ===== */
+@media (max-width: 767px) {
+  .admin-shell,
+  .admin-shell main,
+  .admin-shell main > div {
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .admin-shell .overflow-x-auto {
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-shell table {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    min-width: max-content;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    table-layout: auto;
+  }
+
+  .admin-shell th,
+  .admin-shell td {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    white-space: nowrap;
+  }
+}
