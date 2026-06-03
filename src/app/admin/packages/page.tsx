@@ -53,6 +53,9 @@ interface PackageItem {
   created_at: string;
 }
 
+const isPackageSelectableMenuItem = (item: MenuItem) =>
+  !(item.categories || []).includes("party_extras");
+
 const CATEGORIES = [
   { id: "all", name: "All" },
   { id: "packages", name: "Packages" },
@@ -195,6 +198,9 @@ export default function AdminPackagesPage() {
       const method = isCreating ? "POST" : "PUT";
       const payload = {
         ...editingPkg,
+        menu_item_ids: editingPkg.menu_item_ids.filter((id) =>
+          allMenuItems.some((item) => item.id === id && isPackageSelectableMenuItem(item))
+        ),
         metadata: {
           ...(editingPkg.metadata || {}),
           class_count: Math.max(1, Number(editingPkg.metadata?.class_count) || 1),
@@ -286,6 +292,22 @@ export default function AdminPackagesPage() {
     });
   };
 
+  const toggleAllMenuItems = () => {
+    setEditingPkg((prev) => {
+      if (!prev) return prev;
+      const allItemIds = packageSelectableMenuItems.map((item) => item.id);
+      const selectedIds = prev.menu_item_ids || [];
+      const allSelected = allItemIds.length > 0 && allItemIds.every((id) => selectedIds.includes(id));
+
+      return {
+        ...prev,
+        menu_item_ids: allSelected
+          ? selectedIds.filter((id) => !allItemIds.includes(id))
+          : Array.from(new Set([...selectedIds, ...allItemIds])),
+      };
+    });
+  };
+
   const toggleRow = (id: string) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
@@ -312,6 +334,15 @@ export default function AdminPackagesPage() {
       itemCategoryFilter === "all" || (item.categories || []).includes(itemCategoryFilter);
     return matchesSearch && matchesCategory;
   });
+
+  const packageSelectableMenuItems = allMenuItems.filter(isPackageSelectableMenuItem);
+  const selectedMenuItemIds = editingPkg?.menu_item_ids || [];
+  const selectedPackageSelectableMenuItemCount = selectedMenuItemIds.filter((id) =>
+    packageSelectableMenuItems.some((item) => item.id === id)
+  ).length;
+  const allMenuItemsSelected =
+    packageSelectableMenuItems.length > 0 &&
+    packageSelectableMenuItems.every((item) => selectedMenuItemIds.includes(item.id));
 
   const stats = {
     total: packages.length,
@@ -719,6 +750,22 @@ export default function AdminPackagesPage() {
                     })}
                   </div>
                 )}
+
+                <label className="mb-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg border border-stone-200 bg-stone-50 px-3 py-2.5 transition-colors hover:bg-stone-100">
+                  <div>
+                    <p className="text-sm font-medium text-stone-800">Select all menu items</p>
+                    <p className="text-xs text-stone-400">
+                      {selectedPackageSelectableMenuItemCount} of {packageSelectableMenuItems.length} selected
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={allMenuItemsSelected}
+                    onChange={toggleAllMenuItems}
+                    disabled={allMenuItems.length === 0}
+                    className="h-4 w-4 rounded border-stone-300 text-amber-500 focus:ring-amber-500"
+                  />
+                </label>
 
                 {/* Search + filter for menu items */}
                 <div className="flex gap-2 mb-2">

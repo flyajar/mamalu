@@ -444,7 +444,9 @@ export default function AdminMenuItemsPage() {
     }
   };
 
-  const filteredItems = items.filter((i) => {
+  const adminVisibleItems = items.filter((i) => !(i.categories || []).includes("party_extras"));
+
+  const filteredItems = adminVisibleItems.filter((i) => {
     const matchesSearch =
       !search ||
       i.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -454,11 +456,11 @@ export default function AdminMenuItemsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const uniqueCategoryCount = new Set(items.flatMap((i) => i.categories || [])).size;
+  const uniqueCategoryCount = new Set(adminVisibleItems.flatMap((i) => i.categories || [])).size;
 
   const stats = {
-    total: items.length,
-    active: items.filter((i) => i.is_active).length,
+    total: adminVisibleItems.length,
+    active: adminVisibleItems.filter((i) => i.is_active).length,
     categories: uniqueCategoryCount,
   };
 
