@@ -92,10 +92,10 @@ export default function PrivacyPage() {
               If you have questions about this privacy policy or our data
               practices, please contact us at{" "}
               <a
-                href="mailto:privacy@mamalukitchen.com"
+                href="mailto:info@mamalukitchen.com"
                 className="text-amber-600 hover:text-amber-700"
               >
-                privacy@mamalukitchen.com
+                info@mamalukitchen.com
               </a>
             </p>
           </section>
