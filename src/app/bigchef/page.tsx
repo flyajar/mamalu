@@ -32,7 +32,7 @@ const PRIMARY_BUTTON_CLASS = "bg-[rgb(255_140_107)] hover:bg-[rgb(255_126_91)] t
 
 const getCategoryConfig = (pageContent: BigChefPageContent): Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> => ({
   corporate: { label: "Corporate / Private", icon: pageContent.categoryIcons?.corporate || "/icons/knives.png", minGuests: 6, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
-  classics: { label: "Our Classics", icon: pageContent.categoryIcons?.classics || "/icons/whisk.png", minGuests: 1, maxGuests: 35, description: "Classic cooking experiences for groups" },
+  classics: { label: "Our Classics", icon: pageContent.categoryIcons?.classics || "/icons/whisk.png", minGuests: 1, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
   monthly: { label: "Monthly Specials", icon: pageContent.categoryIcons?.monthly || "/icons/knives.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
   teenagers: { label: "Teenager Course", icon: pageContent.categoryIcons?.teenagers || "/icons/whisk.png", minGuests: 1, maxGuests: 20, description: "Fun cooking classes for teens aged 12-17" },
   nanny: { label: "Nanny Class", icon: pageContent.categoryIcons?.nanny || "/icons/knives.png", minGuests: 1, maxGuests: 10, description: "Mummy's Fabulous Helpers - Turn your housekeeper into a chef" },

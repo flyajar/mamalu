@@ -174,8 +174,8 @@ export default function ProductsClient({
               onClick={() => setActiveCategory(category.slug.current)}
               className={`block w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${
                 activeCategory === category.slug.current
-                  ? "bg-[#ff7f5c] text-white font-bold"
-                  : "text-stone-600 font-bold hover:bg-[#ff7f5c]/10 hover:text-[#ff7f5c]"
+                  ? "bg-[#fff5eb] text-stone-900 font-bold"
+                  : "text-stone-600 font-bold hover:bg-[#fff5eb] hover:text-stone-900"
               }`}
             >
               {category.title}
