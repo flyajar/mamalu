@@ -2,23 +2,31 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
-import { User, Mail, Lock, ArrowRight, AlertCircle, CheckCircle, LogOut, Package, Calendar, Heart, KeyRound, X } from "lucide-react";
+import { User as UserIcon, Mail, Lock, ArrowRight, AlertCircle, CheckCircle, LogOut, Package, Calendar, Gift, KeyRound, X } from "lucide-react";
 
 type AuthMode = "login" | "register";
+
+interface Profile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  phone: string | null;
+}
 
 export default function AccountPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const router = useRouter();
 
   // Form state
@@ -107,8 +115,8 @@ export default function AccountPage() {
           router.refresh();
         }
       }
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Authentication failed");
     } finally {
       setLoading(false);
     }
@@ -163,7 +171,7 @@ export default function AccountPage() {
       } else {
         setPasswordError(data.error || "Failed to change password");
       }
-    } catch (error) {
+    } catch {
       setPasswordError("An error occurred while changing password");
     } finally {
       setChangingPassword(false);
@@ -199,12 +207,12 @@ export default function AccountPage() {
                 </CardContent>
               </Card>
             </Link>
-            <Link href="/account/wishlist">
+            <Link href="/account/vouchers">
               <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <CardContent className="p-6 text-center">
-                  <Heart className="h-10 w-10 text-[#FF8C6B] mx-auto mb-3" />
-                  <h3 className="font-semibold text-stone-900">Wishlist</h3>
-                  <p className="text-sm text-stone-500 mt-1">Saved items</p>
+                  <Gift className="h-10 w-10 text-[#FF8C6B] mx-auto mb-3" />
+                  <h3 className="font-semibold text-stone-900">My Vouchers</h3>
+                  <p className="text-sm text-stone-500 mt-1">View gift cards</p>
                 </CardContent>
               </Card>
             </Link>
@@ -361,7 +369,7 @@ export default function AccountPage() {
         <Card>
           <CardHeader className="text-center">
             <div className="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-              <User className="h-7 w-7 text-[#FF8C6B]" />
+              <UserIcon className="h-7 w-7 text-[#FF8C6B]" />
             </div>
             <CardTitle className="text-2xl">
               {mode === "login" ? "Welcome Back" : "Create Account"}
@@ -393,7 +401,7 @@ export default function AccountPage() {
                     Full Name
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
+                    <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
                     <Input 
                       placeholder="John Doe" 
                       className="pl-10" 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureCustomerAccountAndSendAccess } from "@/lib/account/customer-account";
 import { sendBookingConfirmationEmail } from "@/lib/email/booking-confirmation";
 import { sendServiceBookingConfirmationEmail } from "@/lib/email/service-booking-confirmation";
 import { sendVoucherConfirmationEmail } from "@/lib/email/voucher-confirmation";
@@ -105,6 +106,25 @@ export async function POST(request: NextRequest) {
               }
 
               if (booking.customer_email) {
+                const accountResult = await ensureCustomerAccountAndSendAccess({
+                  supabase,
+                  email: booking.customer_email,
+                  name: booking.customer_name,
+                  phone: booking.customer_phone,
+                  reason: "booking",
+                });
+
+                if (accountResult.userId && !booking.user_id) {
+                  await supabase
+                    .from("service_bookings")
+                    .update({ user_id: accountResult.userId })
+                    .eq("id", bookingId);
+                }
+
+                if (!accountResult.emailSent) {
+                  console.error(`Customer account email failed for ${booking.customer_email}: ${accountResult.error}`);
+                }
+
                 const { success, error } = await sendServiceBookingConfirmationEmail({
                   bookingNumber: booking.booking_number,
                   customerName: booking.customer_name,
@@ -307,6 +327,17 @@ export async function POST(request: NextRequest) {
                   .update({ email_sent_at: new Date().toISOString() })
                   .eq("stripe_session_id", session.id);
               }
+
+              const accountResult = await ensureCustomerAccountAndSendAccess({
+                supabase,
+                email: customerEmail,
+                name: customerName,
+                reason: "voucher",
+              });
+
+              if (!accountResult.emailSent) {
+                console.error(`Customer account email failed for voucher purchase ${customerEmail}: ${accountResult.error}`);
+              }
             } else {
               console.warn("⚠️ Cannot send email - missing voucher or customer email");
             }
@@ -336,12 +367,15 @@ export async function POST(request: NextRequest) {
             };
             const shippingDetails = sessionWithShipping.shipping_details;
             const customerDetails = session.customer_details;
+            const orderCustomerName = shippingDetails?.name || customerDetails?.name || "Customer";
+            const orderCustomerEmail = customerDetails?.email || session.customer_email || "";
+            const orderCustomerPhone = customerDetails?.phone || "";
 
             // Create product order
             await supabase.from("product_orders").insert({
-              customer_name: shippingDetails?.name || customerDetails?.name || "Customer",
-              customer_email: customerDetails?.email || session.customer_email || "",
-              customer_phone: customerDetails?.phone || "",
+              customer_name: orderCustomerName,
+              customer_email: orderCustomerEmail,
+              customer_phone: orderCustomerPhone,
               shipping_address: shippingDetails?.address || null,
               shipping_city: shippingDetails?.address?.city || "",
               shipping_country: shippingDetails?.address?.country || "AE",
@@ -356,6 +390,20 @@ export async function POST(request: NextRequest) {
               paid_at: new Date().toISOString(),
               is_new: true,
             });
+
+            if (orderCustomerEmail) {
+              const accountResult = await ensureCustomerAccountAndSendAccess({
+                supabase,
+                email: orderCustomerEmail,
+                name: orderCustomerName,
+                phone: orderCustomerPhone,
+                reason: "order",
+              });
+
+              if (!accountResult.emailSent) {
+                console.error(`Customer account email failed for product order ${orderCustomerEmail}: ${accountResult.error}`);
+              }
+            }
 
             console.log(`Product order created for ${customerDetails?.email}`);
           } catch (orderError) {

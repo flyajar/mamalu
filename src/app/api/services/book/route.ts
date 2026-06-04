@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureCustomerAccountAndSendAccess } from "@/lib/account/customer-account";
 import { sendServiceBookingConfirmationEmail } from "@/lib/email/service-booking-confirmation";
 
 export async function POST(request: NextRequest) {
@@ -145,6 +146,25 @@ export async function POST(request: NextRequest) {
           .from("vouchers")
           .update({ is_active: false })
           .eq("id", voucher.id);
+      }
+
+      const accountResult = await ensureCustomerAccountAndSendAccess({
+        supabase,
+        email: booking.customer_email,
+        name: booking.customer_name,
+        phone: booking.customer_phone,
+        reason: "booking",
+      });
+
+      if (accountResult.userId && !booking.user_id) {
+        await supabase
+          .from("service_bookings")
+          .update({ user_id: accountResult.userId })
+          .eq("id", booking.id);
+      }
+
+      if (!accountResult.emailSent) {
+        console.error(`Customer account email failed for ${booking.customer_email}: ${accountResult.error}`);
       }
 
       const { success, error } = await sendServiceBookingConfirmationEmail({

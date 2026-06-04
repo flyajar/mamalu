@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Calendar,
   Clock,
-  MapPin,
   CheckCircle,
   XCircle,
   AlertCircle,
@@ -27,26 +26,36 @@ import { formatPrice, formatDate } from "@/lib/utils";
 
 interface Booking {
   id: string;
+  booking_type?: "class" | "service";
   booking_number: string;
-  class_id: string;
-  class_title: string;
+  class_id?: string;
+  class_title?: string;
+  service_name?: string;
+  package_name?: string | null;
+  menu_name?: string | null;
   instructor_name: string | null;
   status: string;
-  payment_type: string;
-  payment_method: string;
-  sessions_booked: number;
-  total_sessions: number;
+  payment_status?: string;
+  payment_type?: string;
+  payment_method?: string;
+  sessions_booked?: number;
+  total_sessions?: number;
   total_amount: number;
-  amount_paid: number;
-  amount_due: number;
+  amount_paid?: number;
+  amount_due?: number;
+  deposit_amount?: number | null;
+  balance_amount?: number | null;
+  guest_count?: number;
   paid_at: string | null;
   receipt_url: string | null;
-  receipt_verified: boolean;
+  receipt_verified?: boolean;
   payment_link: string | null;
   start_date: string | null;
+  event_date?: string | null;
+  event_time?: string | null;
   created_at: string;
   notes: string | null;
-  reminder_enabled: boolean;
+  reminder_enabled?: boolean;
   stripe_checkout_session_id: string | null;
 }
 
@@ -66,11 +75,22 @@ export default function MyBookingsPage() {
       const res = await fetch("/api/user/bookings");
       if (res.ok) {
         const data = await res.json();
-        setBookings(data.bookings || []);
+        const serviceBookings = (data.serviceBookings || []).map((booking: Booking) => ({
+          ...booking,
+          booking_type: "service" as const,
+        }));
+        const classBookings = (data.classBookings || []).map((booking: Booking) => ({
+          ...booking,
+          booking_type: "class" as const,
+        }));
+        const combined = [...serviceBookings, ...classBookings].sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+        setBookings(combined);
       } else {
         setError("Failed to load bookings");
       }
-    } catch (err) {
+    } catch {
       setError("Failed to load bookings");
     } finally {
       setLoading(false);
@@ -94,7 +114,7 @@ export default function MyBookingsPage() {
       } else {
         alert("Failed to upload receipt");
       }
-    } catch (err) {
+    } catch {
       alert("Failed to upload receipt");
     } finally {
       setUploadingReceipt(null);
@@ -117,7 +137,7 @@ export default function MyBookingsPage() {
       } else {
         alert("Failed to create payment session");
       }
-    } catch (err) {
+    } catch {
       alert("Failed to create payment session");
     }
   };
@@ -139,7 +159,7 @@ export default function MyBookingsPage() {
           alert(data.message || "Payment not found");
         }
       }
-    } catch (err) {
+    } catch {
       alert("Failed to verify payment");
     }
   };
@@ -156,13 +176,13 @@ export default function MyBookingsPage() {
         fetchBookings();
         alert(enabled ? "Reminder enabled! You will be notified before your class." : "Reminder disabled.");
       }
-    } catch (err) {
+    } catch {
       alert("Failed to update reminder");
     }
   };
 
   const getStatusBadge = (booking: Booking) => {
-    if (booking.status === "confirmed" && booking.paid_at) {
+    if ((booking.status === "confirmed" || booking.payment_status === "paid") && booking.paid_at) {
       return (
         <Badge className="bg-green-100 text-green-700">
           <CheckCircle className="h-3 w-3 mr-1" />
@@ -178,7 +198,7 @@ export default function MyBookingsPage() {
         </Badge>
       );
     }
-    if (booking.status === "pending") {
+    if (booking.status === "pending" || booking.payment_status === "pending" || booking.payment_status === "deposit_pending") {
       if (booking.payment_method === "cash" && booking.receipt_url && !booking.receipt_verified) {
         return (
           <Badge className="bg-amber-100 text-amber-700">
@@ -274,7 +294,7 @@ export default function MyBookingsPage() {
                           </div>
                           <div>
                             <h3 className="font-semibold text-stone-900">
-                              {booking.class_title}
+                              {booking.class_title || [booking.service_name, booking.package_name || booking.menu_name].filter(Boolean).join(" - ")}
                             </h3>
                             <p className="text-sm text-stone-500">
                               Booking #{booking.booking_number}
@@ -284,9 +304,11 @@ export default function MyBookingsPage() {
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                           <div>
-                            <p className="text-xs text-stone-500">Sessions</p>
+                            <p className="text-xs text-stone-500">{booking.booking_type === "service" ? "Guests" : "Sessions"}</p>
                             <p className="font-medium">
-                              {booking.sessions_booked} of {booking.total_sessions}
+                              {booking.booking_type === "service"
+                                ? booking.guest_count || 1
+                                : `${booking.sessions_booked || 1} of ${booking.total_sessions || 1}`}
                             </p>
                           </div>
                           <div>
@@ -296,12 +318,12 @@ export default function MyBookingsPage() {
                           <div>
                             <p className="text-xs text-stone-500">Payment</p>
                             <p className="font-medium capitalize">
-                              {booking.payment_method || "Pending"}
+                              {booking.payment_status || booking.payment_method || "Pending"}
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs text-stone-500">Booked On</p>
-                            <p className="font-medium">{formatDate(booking.created_at)}</p>
+                            <p className="text-xs text-stone-500">{booking.event_date ? "Event Date" : "Booked On"}</p>
+                            <p className="font-medium">{formatDate(booking.event_date || booking.start_date || booking.created_at)}</p>
                           </div>
                         </div>
 
@@ -319,7 +341,7 @@ export default function MyBookingsPage() {
                   </div>
 
                   {/* Action Bar */}
-                  {booking.status === "pending" && !booking.paid_at && (
+                  {booking.booking_type === "class" && booking.status === "pending" && !booking.paid_at && (
                     <div className="bg-stone-50 border-t px-6 py-4">
                       <div className="flex items-center justify-between">
                         <div className="text-sm">
@@ -411,7 +433,7 @@ export default function MyBookingsPage() {
                   )}
 
                   {/* Paid confirmation with reminder toggle */}
-                  {booking.paid_at && (
+                  {booking.paid_at && booking.booking_type === "class" && (
                     <div className="bg-green-50 border-t border-green-100 px-6 py-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-green-700 text-sm">
