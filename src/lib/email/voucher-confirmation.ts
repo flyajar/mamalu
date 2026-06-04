@@ -69,8 +69,8 @@ function generateEmailHtml({ customerName, amount, voucherCode }: VoucherEmailDe
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background-color:#ffffff;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;">
     <tr>
-      <td style="padding:40px 30px 30px;text-align:center;border-bottom:1px solid #000000;">
-        <img src="${baseUrl}/logos/logo-transparent.png" alt="Mamalu Kitchen" style="width:180px;height:auto;margin:0 auto;" />
+      <td style="padding:36px 30px 28px;text-align:center;background-color:#FF8C6B;border-bottom:4px solid #ff7a54;">
+        <img src="${baseUrl}/graphics/mamalu-logo-transparent.png" alt="Mamalu Kitchen" style="width:180px;height:auto;margin:0 auto;display:block;" />
       </td>
     </tr>
     <tr>
@@ -119,8 +119,8 @@ function generateFollowUpEmailHtml({ customerName, amount, checkoutUrl }: Vouche
 <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;background-color:#ffffff;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;margin:0 auto;background-color:#ffffff;">
     <tr>
-      <td style="padding:40px 30px 30px;text-align:center;border-bottom:1px solid #000000;">
-        <img src="${baseUrl}/logos/logo-transparent.png" alt="Mamalu Kitchen" style="width:180px;height:auto;margin:0 auto;" />
+      <td style="padding:36px 30px 28px;text-align:center;background-color:#FF8C6B;border-bottom:4px solid #ff7a54;">
+        <img src="${baseUrl}/graphics/mamalu-logo-transparent.png" alt="Mamalu Kitchen" style="width:180px;height:auto;margin:0 auto;display:block;" />
       </td>
     </tr>
     <tr>

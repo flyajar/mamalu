@@ -66,22 +66,22 @@ function generateEmailHtml(booking: ServiceBookingDetails): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Booking Confirmation</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; background-color: #ffffff;">
+<body style="margin: 0; padding: 0; font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif; background-color: #fff7f2;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
     <tr>
-      <td style="padding: 40px 30px 30px; text-align: center; border-bottom: 1px solid #000000;">
-        <img src="${baseUrl}/logos/logo-transparent.png" alt="Mamalu Kitchen" style="width: 180px; height: auto; margin: 0 auto;" />
+      <td style="padding: 36px 30px 28px; text-align: center; background-color: #FF8C6B; border-bottom: 4px solid #ff7a54;">
+        <img src="${baseUrl}/graphics/mamalu-logo-transparent.png" alt="Mamalu Kitchen" style="width: 180px; height: auto; margin: 0 auto; display: block;" />
       </td>
     </tr>
     <tr>
       <td style="padding: 50px 30px 30px; text-align: center;">
-        <h1 style="color: #000000; margin: 0 0 10px; font-size: 24px; font-weight: 600;">Booking Confirmed</h1>
-        <p style="color: #666666; margin: 0; font-size: 15px;">Thank you for your booking. Your payment has been received successfully.</p>
+        <h1 style="color: #1c1917; margin: 0 0 10px; font-size: 24px; font-weight: 600;">Booking Confirmed</h1>
+        <p style="color: #6b5f59; margin: 0; font-size: 15px;">Thank you for your booking. Your payment has been received successfully.</p>
       </td>
     </tr>
     <tr>
       <td style="padding: 20px 30px 40px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="12" style="font-size: 14px; border-top: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="12" style="font-size: 14px; border-top: 2px solid #FF8C6B; border-bottom: 1px solid #f1d8cf;">
           <tr>
             <td style="color: #666666; width: 150px; padding: 12px 0;">Booking Number</td>
             <td style="color: #000000; font-weight: 600; padding: 12px 0;">${booking.bookingNumber}</td>
@@ -120,9 +120,9 @@ function generateEmailHtml(booking: ServiceBookingDetails): string {
       </td>
     </tr>
     <tr>
-      <td style="padding: 30px; background-color: #fafafa; border-top: 1px solid #e5e5e5; border-bottom: 1px solid #e5e5e5;">
-        <h3 style="color: #000000; margin: 0 0 15px 0; font-size: 14px; font-weight: 600; text-transform: uppercase;">Important Information</h3>
-        <ul style="color: #666666; margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.8;">
+      <td style="padding: 30px; background-color: #fff7f2; border-top: 1px solid #f1d8cf; border-bottom: 1px solid #f1d8cf;">
+        <h3 style="color: #FF8C6B; margin: 0 0 15px 0; font-size: 14px; font-weight: 600; text-transform: uppercase;">Important Information</h3>
+        <ul style="color: #6b5f59; margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.8;">
           <li>Please arrive 10-15 minutes before your scheduled time</li>
           <li>Wear comfortable clothing suitable for cooking</li>
           <li>Notify us in advance about allergies or dietary restrictions</li>
@@ -133,7 +133,7 @@ function generateEmailHtml(booking: ServiceBookingDetails): string {
     <tr>
       <td style="padding: 30px; text-align: center;">
         <p style="color: #666666; margin: 0 0 10px 0; font-size: 13px;">
-          Questions? Contact us at <a href="mailto:info@mamalukitchen.com" style="color: #000000; text-decoration: none; border-bottom: 1px solid #000000;">info@mamalukitchen.com</a> or WhatsApp <a href="https://wa.me/971527479512" style="color: #000000; text-decoration: none; border-bottom: 1px solid #000000;">+971 52 747 9512</a>
+          Questions? Contact us at <a href="mailto:info@mamalukitchen.com" style="color: #FF8C6B; text-decoration: none; border-bottom: 1px solid #FF8C6B;">info@mamalukitchen.com</a> or WhatsApp <a href="https://wa.me/971527479512" style="color: #FF8C6B; text-decoration: none; border-bottom: 1px solid #FF8C6B;">+971 52 747 9512</a>
         </p>
         <p style="color: #999999; margin: 20px 0 0 0; font-size: 11px;">
           &copy; ${new Date().getFullYear()} Mamalu Kitchen. All rights reserved.

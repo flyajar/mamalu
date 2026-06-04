@@ -60,7 +60,7 @@ function generateEmailHtml(details: CustomerAccountAccessDetails): string {
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff;">
     <tr>
       <td style="padding: 40px 30px 30px; text-align: center; border-bottom: 1px solid #000000;">
-        <img src="${baseUrl}/logos/logo-transparent.png" alt="Mamalu Kitchen" style="width: 180px; height: auto; margin: 0 auto;" />
+        <img src="${baseUrl}/graphics/mamalu-logo-transparent.png" alt="Mamalu Kitchen" style="width: 180px; height: auto; margin: 0 auto; display: block;" />
       </td>
     </tr>
     <tr>
