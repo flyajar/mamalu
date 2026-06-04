@@ -6,13 +6,16 @@ import Link from "next/link";
 import { CheckCircle, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { openAccountWithAutoLogin } from "@/lib/account/auto-login-client";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
+  const bookingNumber = searchParams.get("booking");
   const [loading, setLoading] = useState(true);
+  const [openingAccount, setOpeningAccount] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [bookingDetails, setBookingDetails] = useState<{
+  const [bookingDetails] = useState<{
     bookingNumber: string;
     className: string;
     amount: string;
@@ -28,7 +31,7 @@ function SuccessContent() {
       try {
         // Payment is already verified by webhook, just show success
         setLoading(false);
-      } catch (err) {
+      } catch {
         setError("Failed to verify payment");
         setLoading(false);
       }
@@ -109,9 +112,19 @@ function SuccessContent() {
 
             <div className="flex gap-3 justify-center">
               <Button variant="outline" onClick={() => window.dispatchEvent(new CustomEvent("openMamaluMenu"))}>Browse More Classes</Button>
-              <Link href="/account">
-                <Button>View My Bookings</Button>
-              </Link>
+              <Button
+                disabled={openingAccount}
+                onClick={async () => {
+                  setOpeningAccount(true);
+                  await openAccountWithAutoLogin({
+                    sessionId,
+                    bookingNumber,
+                    destination: "/account/bookings",
+                  });
+                }}
+              >
+                {openingAccount ? "Opening..." : "View My Bookings"}
+              </Button>
             </div>
           </CardContent>
         </Card>

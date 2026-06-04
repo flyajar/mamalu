@@ -6,13 +6,14 @@ import Link from "next/link";
 import { CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { openAccountWithAutoLogin } from "@/lib/account/auto-login-client";
 
 function SuccessContent() {
   const searchParams = useSearchParams();
   const invoiceNumber = searchParams.get("invoice");
   const sessionId = searchParams.get("session_id");
   const [verifying, setVerifying] = useState(!!sessionId);
-  const [verified, setVerified] = useState(false);
+  const [openingAccount, setOpeningAccount] = useState(false);
 
   useEffect(() => {
     // Verify payment and update status when session_id is present
@@ -25,7 +26,6 @@ function SuccessContent() {
         .then((res) => res.json())
         .then((data) => {
           console.log("Payment verification:", data);
-          setVerified(true);
         })
         .catch((err) => {
           console.error("Verification error:", err);
@@ -80,9 +80,18 @@ function SuccessContent() {
               <Link href="/">
                 <Button variant="outline">Go Home</Button>
               </Link>
-              <Link href="/account">
-                <Button>View My Account</Button>
-              </Link>
+              <Button
+                disabled={openingAccount}
+                onClick={async () => {
+                  setOpeningAccount(true);
+                  await openAccountWithAutoLogin({
+                    sessionId,
+                    destination: sessionId ? "/account/orders" : "/account",
+                  });
+                }}
+              >
+                {openingAccount ? "Opening..." : "View My Account"}
+              </Button>
             </div>
           </CardContent>
         </Card>

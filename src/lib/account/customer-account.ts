@@ -36,17 +36,10 @@ export async function ensureCustomerAccountAndSendAccess({
         phone: phone || null,
       });
 
-      const { success, error } = await sendCustomerAccountAccessEmail({
-        customerName: existingProfile.full_name || name || "Customer",
-        customerEmail,
-        reason,
-      });
-
       return {
         userId: existingProfile.id,
         created: false,
-        emailSent: success,
-        error,
+        emailSent: false,
       };
     }
 

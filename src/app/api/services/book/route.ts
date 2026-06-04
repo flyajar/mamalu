@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
           .eq("id", booking.id);
       }
 
-      if (!accountResult.emailSent) {
+      if (accountResult.created && !accountResult.emailSent) {
         console.error(`Customer account email failed for ${booking.customer_email}: ${accountResult.error}`);
       }
 

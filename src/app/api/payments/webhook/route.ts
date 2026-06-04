@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
                     .eq("id", bookingId);
                 }
 
-                if (!accountResult.emailSent) {
+                if (accountResult.created && !accountResult.emailSent) {
                   console.error(`Customer account email failed for ${booking.customer_email}: ${accountResult.error}`);
                 }
 
@@ -335,7 +335,7 @@ export async function POST(request: NextRequest) {
                 reason: "voucher",
               });
 
-              if (!accountResult.emailSent) {
+              if (accountResult.created && !accountResult.emailSent) {
                 console.error(`Customer account email failed for voucher purchase ${customerEmail}: ${accountResult.error}`);
               }
             } else {
@@ -400,7 +400,7 @@ export async function POST(request: NextRequest) {
                 reason: "order",
               });
 
-              if (!accountResult.emailSent) {
+              if (accountResult.created && !accountResult.emailSent) {
                 console.error(`Customer account email failed for product order ${orderCustomerEmail}: ${accountResult.error}`);
               }
             }
