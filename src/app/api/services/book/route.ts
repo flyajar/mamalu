@@ -3,6 +3,7 @@ import { stripe } from "@/lib/stripe/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureCustomerAccountAndSendAccess } from "@/lib/account/customer-account";
 import { sendServiceBookingConfirmationEmail } from "@/lib/email/service-booking-confirmation";
+import { validateVoucherPurchaseWindow } from "@/lib/vouchers/validate-voucher-purchase";
 
 const BOOKED_SLOT_STATUSES = ["confirmed", "pending", "deposit_paid"];
 const MIN_BOOKING_NOTICE_MINUTES = 120;
@@ -107,6 +108,14 @@ export async function POST(request: NextRequest) {
       if (voucherError || !voucherData) {
         return NextResponse.json(
           { error: "Invalid or expired voucher code" },
+          { status: 400 }
+        );
+      }
+
+      const validity = await validateVoucherPurchaseWindow(supabase, voucherData.code);
+      if (!validity.valid) {
+        return NextResponse.json(
+          { error: validity.error },
           { status: 400 }
         );
       }

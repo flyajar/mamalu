@@ -80,8 +80,8 @@ export default function VouchersPage() {
           Vouchers
         </h1>
         <p className="text-stone-500 text-lg max-w-xl mx-auto">
-          Give the gift of cooking. Our vouchers never expire and can be used
-          on any Mamalu Kitchen experience.
+          Give the gift of cooking. Vouchers are valid for 6 months from purchase
+          and can be used on any Mamalu Kitchen experience.
         </p>
       </section>
 
@@ -139,7 +139,7 @@ export default function VouchersPage() {
                       {g.count} available
                     </span>
                     <span className="text-stone-400">·</span>
-                    <span className="text-stone-500">Never expires</span>
+                    <span className="text-stone-500">Valid 6 months</span>
                   </div>
 
                   <button
@@ -195,7 +195,9 @@ export default function VouchersPage() {
                   placeholder="you@example.com"
                   className="w-full px-3 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c]"
                 />
-                <p className="text-xs text-stone-400 mt-1">Your gift card code will be sent to this email.</p>
+                <p className="text-xs text-stone-400 mt-1">
+                  Your gift card code will be sent to this email and is valid for 6 months from purchase.
+                </p>
               </div>
 
               {error && (

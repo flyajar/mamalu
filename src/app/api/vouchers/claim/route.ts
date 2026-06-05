@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { validateVoucherPurchaseWindow } from "@/lib/vouchers/validate-voucher-purchase";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,17 +30,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const validity = await validateVoucherPurchaseWindow(supabase, voucher.code);
+    if (!validity.valid) {
+      return NextResponse.json(
+        { error: validity.error },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       voucher: {
         code: voucher.code,
         amount: voucher.discount_value,
+        expiresAt: validity.expiresAt,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error claiming voucher:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to claim voucher" },
+      { error: error instanceof Error ? error.message : "Failed to claim voucher" },
       { status: 500 }
     );
   }

@@ -87,7 +87,7 @@ function generateEmailHtml({ customerName, amount, voucherCode }: VoucherEmailDe
         <div style="display:inline-block;border:2px solid #000000;padding:20px 40px;margin:0 0 20px;">
           <span style="color:#000000;font-size:32px;font-weight:700;letter-spacing:4px;font-family:monospace;">${voucherCode}</span>
         </div>
-        <p style="color:#666666;margin:0;font-size:13px;line-height:1.6;">This code never expires and can be used on any<br/>Mamalu Kitchen experience.</p>
+        <p style="color:#666666;margin:0;font-size:13px;line-height:1.6;">This code is valid for 6 months from purchase and can be used on any<br/>Mamalu Kitchen experience.</p>
       </td>
     </tr>
     <tr>
