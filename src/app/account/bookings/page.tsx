@@ -137,12 +137,12 @@ export default function MyBookingsPage() {
     }
   };
 
-  const handlePayNow = async (bookingId: string) => {
+  const handlePayNow = async (bookingId: string, bookingType: "class" | "service" = "class") => {
     try {
-      const res = await fetch("/api/payments/create-checkout", {
+      const res = await fetch("/api/payments/resume-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId }),
+        body: JSON.stringify({ bookingId, bookingType }),
       });
 
       if (res.ok) {
@@ -151,10 +151,10 @@ export default function MyBookingsPage() {
           window.location.href = data.url;
         }
       } else {
-        alert("Failed to create payment session");
+        alert("Failed to open payment link");
       }
     } catch {
-      alert("Failed to create payment session");
+      alert("Failed to open payment link");
     }
   };
 
@@ -483,14 +483,23 @@ export default function MyBookingsPage() {
                         <div className="flex gap-2 flex-wrap">
                           {/* If Stripe payment initiated but not confirmed, show verify button */}
                           {booking.stripe_checkout_session_id && booking.payment_method === "stripe" && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => verifyPayment(booking.id)}
-                            >
-                              <RotateCw className="h-4 w-4 mr-2" />
-                              Verify Payment
-                            </Button>
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => handlePayNow(booking.id, "class")}
+                              >
+                                <CreditCard className="h-4 w-4 mr-2" />
+                                Open Payment Link
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => verifyPayment(booking.id)}
+                              >
+                                <RotateCw className="h-4 w-4 mr-2" />
+                                Verify Payment
+                              </Button>
+                            </>
                           )}
                           
                           {/* If no receipt uploaded yet, show both options */}
@@ -498,7 +507,7 @@ export default function MyBookingsPage() {
                             <>
                               <Button
                                 size="sm"
-                                onClick={() => handlePayNow(booking.id)}
+                                onClick={() => handlePayNow(booking.id, "class")}
                               >
                                 <CreditCard className="h-4 w-4 mr-2" />
                                 Pay with Card
@@ -558,6 +567,32 @@ export default function MyBookingsPage() {
                             </a>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {booking.booking_type === "service" && booking.status === "pending" && !booking.paid_at && (
+                    <div className="bg-stone-50 border-t px-6 py-4">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="text-sm">
+                          <span className="text-stone-500">
+                            {booking.is_deposit_payment && !booking.deposit_paid ? "Deposit Due: " : "Amount Due: "}
+                          </span>
+                          <span className="font-semibold text-amber-600">
+                            {formatPrice(
+                              booking.is_deposit_payment && !booking.deposit_paid
+                                ? booking.deposit_amount || booking.total_amount
+                                : booking.amount_due || booking.total_amount
+                            )}
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handlePayNow(booking.id, "service")}
+                        >
+                          <CreditCard className="h-4 w-4 mr-2" />
+                          Open Payment Link
+                        </Button>
                       </div>
                     </div>
                   )}

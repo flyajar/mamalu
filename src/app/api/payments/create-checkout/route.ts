@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClassBookingCheckoutSession } from "@/lib/payments/class-checkout";
+import { getSiteUrl } from "@/lib/url/site";
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,38 +44,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://mamalu.vercel.app";
-    const finalSuccessUrl = successUrl || `${siteUrl}/booking/success?session_id={CHECKOUT_SESSION_ID}`;
-    const finalCancelUrl = cancelUrl || `${siteUrl}/booking/cancelled?booking_id=${bookingId}`;
-
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment",
-      customer_email: booking.attendee_email,
-      line_items: [
-        {
-          price_data: {
-            currency: "aed",
-            product_data: {
-              name: booking.class_title,
-              description: `${booking.sessions_booked} session(s) - ${booking.payment_type === "full" ? "Full Course" : "Per Session"}`,
-            },
-            unit_amount: Math.round(booking.total_amount * 100), // Convert to fils
-          },
-          quantity: 1,
-        },
-      ],
-      metadata: {
-        booking_id: bookingId,
-        booking_number: booking.booking_number,
-      },
-      success_url: finalSuccessUrl,
-      cancel_url: finalCancelUrl,
+    const session = await createClassBookingCheckoutSession({
+      booking,
+      siteUrl: getSiteUrl(request),
+      successUrl,
+      cancelUrl,
     });
 
     // Update booking with checkout session ID and campaign attribution
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, string> = {
       stripe_checkout_session_id: session.id,
       payment_method: "stripe",
     };
