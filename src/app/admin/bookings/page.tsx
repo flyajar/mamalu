@@ -47,6 +47,20 @@ const MAMALU_TIME_SLOTS = [
   { start: "21:00", end: "22:30", label: "9:00 PM - 10:30 PM", days: [4, 5] },
 ];
 
+const CALENDAR_HOURS = Array.from({ length: 13 }, (_, index) => {
+  const hour = 9 + index;
+  const start = `${String(hour).padStart(2, "0")}:00`;
+  const end = `${String(hour + 1).padStart(2, "0")}:00`;
+  const labelDate = new Date(2000, 0, 1, hour, 0);
+
+  return {
+    start,
+    end,
+    label: labelDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+    days: [0, 1, 2, 3, 4, 5, 6],
+  };
+});
+
 interface ServiceBooking {
   id: string;
   booking_number: string;
@@ -98,6 +112,7 @@ interface ServiceBooking {
   is_voucher_redemption?: boolean;
   voucher_code?: string;
   original_price?: number;
+  time_label?: string | null;
 }
 
 interface BookingScheduleItem {
@@ -847,7 +862,7 @@ export default function AdminBookingsPage() {
                 bookings={filteredBookings}
                 date={calendarDate}
                 view={calendarView}
-                timeSlots={MAMALU_TIME_SLOTS}
+                timeSlots={CALENDAR_HOURS}
                 onSelectBooking={(b) => { setSelectedBooking(b); setShowModal(true); }}
               />
             )}
@@ -1986,11 +2001,80 @@ interface CalendarGridProps {
   bookings: ServiceBooking[];
   date: Date;
   view: "day" | "week" | "month";
-  timeSlots: typeof MAMALU_TIME_SLOTS;
+  timeSlots: typeof CALENDAR_HOURS;
   onSelectBooking: (booking: ServiceBooking) => void;
 }
 
 function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: CalendarGridProps) {
+  type CalendarEvent = {
+    id: string;
+    booking: ServiceBooking;
+    title: string;
+    date: string;
+    start: string;
+    end: string | null;
+    label: string;
+  };
+
+  const normalizeTime = (value?: string | null) => {
+    if (!value) return "";
+    const match = value.match(/(\d{1,2}):(\d{2})/);
+    if (!match) return "";
+    return `${match[1].padStart(2, "0")}:${match[2]}`;
+  };
+
+  const getEndTimeFromLabel = (label?: string | null) => {
+    if (!label?.includes("-")) return null;
+    const endLabel = label.split("-").pop()?.trim();
+    if (!endLabel) return null;
+
+    const parsed = new Date(`2000-01-01 ${endLabel}`);
+    if (Number.isNaN(parsed.getTime())) return normalizeTime(endLabel) || null;
+
+    return `${String(parsed.getHours()).padStart(2, "0")}:${String(parsed.getMinutes()).padStart(2, "0")}`;
+  };
+
+  const getEventRange = (startValue?: string | null, label?: string | null) => {
+    const start = normalizeTime(startValue);
+    const slot = timeSlots.find((s) => s.start === start);
+    const end = getEndTimeFromLabel(label) || slot?.end || null;
+    return {
+      start,
+      end,
+      label: label || slot?.label || start,
+    };
+  };
+
+  const calendarEvents: CalendarEvent[] = bookings.flatMap((booking) => {
+    const scheduledItems = Array.isArray(booking.items)
+      ? booking.items.filter((item) => item.event_date && item.event_time)
+      : [];
+
+    if (scheduledItems.length > 0) {
+      return scheduledItems.map((item, index) => {
+        const range = getEventRange(item.event_time, item.time_label);
+        return {
+          id: `${booking.id}-${item.id || index}`,
+          booking,
+          title: item.name || booking.customer_name,
+          date: item.event_date!,
+          ...range,
+        };
+      });
+    }
+
+    if (!booking.event_date || !booking.event_time) return [];
+
+    const range = getEventRange(booking.event_time, booking.time_label);
+    return [{
+      id: booking.id,
+      booking,
+      title: booking.customer_name,
+      date: booking.event_date,
+      ...range,
+    }];
+  });
+
   const getWeekDates = (d: Date) => {
     const start = new Date(d);
     start.setDate(start.getDate() - start.getDay());
@@ -2024,20 +2108,21 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
 
   const getBookingsForDate = (d: Date) => {
     const dateStr = d.toISOString().split("T")[0];
-    return bookings.filter(b => b.event_date === dateStr);
+    return calendarEvents.filter((event) => event.date === dateStr);
   };
 
   const getBookingsForSlot = (d: Date, slot: typeof timeSlots[0]) => {
     const dateStr = d.toISOString().split("T")[0];
-    return bookings.filter(b => {
-      if (b.event_date !== dateStr) return false;
-      if (!b.event_time) return false;
-      const bookingTime = b.event_time.replace(/[^0-9:]/g, "").substring(0, 5);
-      return bookingTime === slot.start;
+    const slotStartHour = Number(slot.start.split(":")[0]);
+    const nextSlotStartHour = Number(slot.end.split(":")[0]);
+
+    return calendarEvents.filter((event) => {
+      if (event.date !== dateStr) return false;
+      const eventStartHour = Number(event.start.split(":")[0]);
+      return eventStartHour >= slotStartHour && eventStartHour < nextSlotStartHour;
     });
   };
 
-  const formatShortDate = (d: Date) => d.toLocaleDateString("en-US", { weekday: "short", day: "numeric" });
   const isToday = (d: Date) => d.toDateString() === new Date().toDateString();
   const isCurrentMonth = (d: Date) => d.getMonth() === date.getMonth();
 
@@ -2053,7 +2138,6 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
 
   // Day View
   if (view === "day") {
-    const dayBookings = getBookingsForDate(date);
     return (
       <div className="border rounded-lg overflow-hidden">
         <div className={`p-3 text-center font-medium ${isToday(date) ? "bg-amber-50" : "bg-stone-50"}`}>
@@ -2073,14 +2157,15 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
                     <span className="text-xs text-stone-400">Not available</span>
                   ) : slotBookings.length > 0 ? (
                     <div className="space-y-1">
-                      {slotBookings.map((b) => (
+                      {slotBookings.map((event) => (
                         <div
-                          key={b.id}
-                          onClick={() => onSelectBooking(b)}
-                          className={`p-2 rounded border cursor-pointer hover:shadow-md transition-shadow ${getServiceColor(b.service_type)}`}
+                          key={event.id}
+                          onClick={() => onSelectBooking(event.booking)}
+                          className={`p-2 rounded border cursor-pointer hover:shadow-md transition-shadow ${getServiceColor(event.booking.service_type)}`}
                         >
-                          <div className="font-medium text-sm">{b.customer_name}</div>
-                          <div className="text-xs">{b.service_name} • {b.guest_count} guests</div>
+                          <div className="font-medium text-sm">{event.booking.customer_name}</div>
+                          <div className="text-xs">{event.label}</div>
+                          <div className="text-xs">{event.title} - {event.booking.guest_count} guests</div>
                         </div>
                       ))}
                     </div>
@@ -2121,14 +2206,15 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
                 const isAvailable = slot.days.includes(d.getDay());
                 return (
                   <div key={d.toISOString()} className={`p-1 min-h-[60px] border-r ${!isAvailable ? "bg-stone-100" : ""}`}>
-                    {slotBookings.map((b) => (
+                    {slotBookings.map((event) => (
                       <div
-                        key={b.id}
-                        onClick={() => onSelectBooking(b)}
-                        className={`p-1 rounded text-xs cursor-pointer hover:shadow-md mb-1 ${getServiceColor(b.service_type)}`}
+                        key={event.id}
+                        onClick={() => onSelectBooking(event.booking)}
+                        className={`p-1 rounded text-xs cursor-pointer hover:shadow-md mb-1 ${getServiceColor(event.booking.service_type)}`}
                       >
-                        <div className="font-medium truncate">{b.customer_name}</div>
-                        <div className="truncate">{b.guest_count}g</div>
+                        <div className="font-medium truncate">{event.booking.customer_name}</div>
+                        <div className="truncate">{event.label}</div>
+                        <div className="truncate">{event.booking.guest_count}g</div>
                       </div>
                     ))}
                   </div>
@@ -2164,13 +2250,13 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
                 {d.getDate()}
               </div>
               <div className="space-y-1">
-                {dayBookings.slice(0, 3).map((b) => (
+                {dayBookings.slice(0, 3).map((event) => (
                   <div
-                    key={b.id}
-                    onClick={() => onSelectBooking(b)}
-                    className={`p-1 rounded text-xs cursor-pointer truncate ${getServiceColor(b.service_type)}`}
+                    key={event.id}
+                    onClick={() => onSelectBooking(event.booking)}
+                    className={`p-1 rounded text-xs cursor-pointer truncate ${getServiceColor(event.booking.service_type)}`}
                   >
-                    {b.customer_name}
+                    {event.start} {event.booking.customer_name}
                   </div>
                 ))}
                 {dayBookings.length > 3 && (
@@ -2184,3 +2270,4 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
     </div>
   );
 }
+
