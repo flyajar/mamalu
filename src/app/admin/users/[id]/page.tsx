@@ -3,12 +3,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  ArrowLeft, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  ArrowLeft,
+  Mail,
+  Phone,
+  MapPin,
   Calendar,
   Edit3,
   Save,
@@ -19,17 +18,11 @@ import {
   BookOpen,
   Utensils,
   TrendingUp,
-  Clock,
-  CreditCard,
-  Receipt,
-  Award,
   Activity,
-  BarChart3,
-  PieChart,
-  Users,
-  Star,
+  TicketPercent,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  type LucideIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,37 +40,125 @@ interface UserProfile {
   city?: string;
   country?: string;
   created_at: string;
-  total_spend?: number;
-  total_classes_attended?: number;
-  dietary_restrictions?: string[];
-  emergency_contact?: string;
   notes?: string;
+}
+
+interface UserStats {
+  totalSpend: number;
+  totalRevenue: number;
+  orderCount: number;
+  totalOrders: number;
+  bookingCount: number;
+  totalClasses: number;
+  serviceBookingCount: number;
+  voucherCount: number;
+  rentalInquiryCount: number;
+  totalRentals: number;
+  averageOrderValue: number;
+  lifetimeValue: number;
 }
 
 interface ActivityItem {
   id: string;
-  type: 'order' | 'booking' | 'rental' | 'payment' | 'invoice';
+  type: "order" | "booking" | "voucher" | "rental";
   description: string;
-  amount?: number;
-  date: string;
+  amount?: number | null;
+  date?: string | null;
   status: string;
 }
 
+// API records are normalized from unrelated order, booking, voucher, and lead tables.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type DataRecord = Record<string, any>;
+
 const roleOptions = [
-  { value: 'customer', label: 'Customer', color: 'bg-stone-100 text-stone-700' },
-  { value: 'student', label: 'Student', color: 'bg-blue-100 text-blue-700' },
-  { value: 'renter', label: 'Kitchen Renter', color: 'bg-purple-100 text-purple-700' },
-  { value: 'instructor', label: 'Instructor', color: 'bg-green-100 text-green-700' },
-  { value: 'staff', label: 'Staff', color: 'bg-amber-100 text-amber-700' },
-  { value: 'admin', label: 'Admin', color: 'bg-[#FF8C6B]/20 text-[#FF8C6B]' },
-  { value: 'super_admin', label: 'Super Admin', color: 'bg-red-100 text-red-700' },
+  { value: "customer", label: "Customer", color: "bg-stone-100 text-stone-700" },
+  { value: "student", label: "Student", color: "bg-blue-100 text-blue-700" },
+  { value: "renter", label: "Kitchen Renter", color: "bg-purple-100 text-purple-700" },
+  { value: "instructor", label: "Instructor", color: "bg-green-100 text-green-700" },
+  { value: "staff", label: "Staff", color: "bg-amber-100 text-amber-700" },
+  { value: "admin", label: "Admin", color: "bg-[#FF8C6B]/20 text-[#FF8C6B]" },
+  { value: "super_admin", label: "Super Admin", color: "bg-red-100 text-red-700" },
 ];
 
-const getRoleColor = (role: string) => {
-  return roleOptions.find(r => r.value === role)?.color || 'bg-stone-100 text-stone-700';
+const emptyStats: UserStats = {
+  totalSpend: 0,
+  totalRevenue: 0,
+  orderCount: 0,
+  totalOrders: 0,
+  bookingCount: 0,
+  totalClasses: 0,
+  serviceBookingCount: 0,
+  voucherCount: 0,
+  rentalInquiryCount: 0,
+  totalRentals: 0,
+  averageOrderValue: 0,
+  lifetimeValue: 0,
 };
 
-const isCustomerRole = (role?: string | null) => role === 'customer';
+const getRoleColor = (role: string) => {
+  return roleOptions.find(r => r.value === role)?.color || "bg-stone-100 text-stone-700";
+};
+
+const isCustomerRole = (role?: string | null) => role === "customer";
+
+type BadgeVariant = "success" | "warning" | "secondary";
+
+const statusVariant = (status?: string): BadgeVariant => {
+  const normalized = String(status || "").toLowerCase();
+  if (["completed", "paid", "confirmed", "delivered"].includes(normalized)) return "success";
+  if (["pending", "processing", "new"].includes(normalized)) return "warning";
+  return "secondary";
+};
+
+const formatDateSafe = (date?: string | null) => date ? formatDate(date) : "Not set";
+
+const getRentalDetail = (notes?: string | null, label?: string) => {
+  if (!notes || !label) return null;
+  const line = notes.split("\n").find((item) => item.toLowerCase().startsWith(label.toLowerCase()));
+  return line?.split(":").slice(1).join(":").trim() || null;
+};
+
+function EmptyState({ icon: Icon, message }: { icon: LucideIcon; message: string }) {
+  return (
+    <div className="text-center py-10 text-stone-500">
+      <Icon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+      <p>{message}</p>
+    </div>
+  );
+}
+
+function ActivityRows({ activities }: { activities: ActivityItem[] }) {
+  if (activities.length === 0) {
+    return <EmptyState icon={Activity} message="No activity has been recorded for this customer." />;
+  }
+
+  return (
+    <div className="space-y-4">
+      {activities.map((activity) => (
+        <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg border border-stone-100">
+          <div className={`p-2 rounded-xl ${
+            activity.type === "order" ? "bg-amber-100 text-amber-600" :
+            activity.type === "booking" ? "bg-blue-100 text-blue-600" :
+            activity.type === "voucher" ? "bg-green-100 text-green-600" :
+            "bg-purple-100 text-purple-600"
+          }`}>
+            {activity.type === "order" && <ShoppingBag className="h-4 w-4" />}
+            {activity.type === "booking" && <BookOpen className="h-4 w-4" />}
+            {activity.type === "voucher" && <TicketPercent className="h-4 w-4" />}
+            {activity.type === "rental" && <Utensils className="h-4 w-4" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-stone-900 truncate">{activity.description}</p>
+            <p className="text-xs text-stone-500">{formatDateSafe(activity.date)}</p>
+          </div>
+          {activity.amount ? <p className="font-semibold text-stone-900">{formatPrice(activity.amount)}</p> : null}
+          <Badge variant={statusVariant(activity.status)}>{activity.status}</Badge>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function UserDetailPage() {
   const params = useParams();
@@ -85,40 +166,23 @@ export default function UserDetailPage() {
   const userId = params.id as string;
 
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [stats, setStats] = useState<UserStats>(emptyStats);
+  const [orders, setOrders] = useState<DataRecord[]>([]);
+  const [bookings, setBookings] = useState<DataRecord[]>([]);
+  const [vouchers, setVouchers] = useState<DataRecord[]>([]);
+  const [rentals, setRentals] = useState<DataRecord[]>([]);
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingRole, setEditingRole] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('');
+  const [selectedRole, setSelectedRole] = useState("");
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
   const [showPasswordReset, setShowPasswordReset] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmNewPassword, setConfirmNewPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmNewPassword, setConfirmNewPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [passwordSuccess, setPasswordSuccess] = useState("");
   const [resettingPassword, setResettingPassword] = useState(false);
-
-  // Mock data for demonstration - replace with actual API calls
-  const [stats, setStats] = useState({
-    totalRevenue: 12450,
-    totalOrders: 23,
-    totalClasses: 8,
-    totalRentals: 3,
-    averageOrderValue: 541,
-    lifetimeValue: 15200,
-    // Staff/Admin stats
-    salesMade: 45600,
-    invoicesCreated: 34,
-    cashPayments: 12,
-    commissionsEarned: 2280,
-  });
-
-  const [activities, setActivities] = useState<ActivityItem[]>([
-    { id: '1', type: 'order', description: 'Order #1234 - Spice Collection', amount: 450, date: '2024-12-05', status: 'completed' },
-    { id: '2', type: 'booking', description: 'Booked: Middle Eastern Essentials', amount: 350, date: '2024-12-03', status: 'confirmed' },
-    { id: '3', type: 'payment', description: 'Payment received - Invoice #892', amount: 1200, date: '2024-12-01', status: 'completed' },
-    { id: '4', type: 'rental', description: 'Kitchen Station A - 4 hours', amount: 800, date: '2024-11-28', status: 'completed' },
-    { id: '5', type: 'invoice', description: 'Created Invoice #893 for Client XYZ', amount: 2500, date: '2024-11-25', status: 'pending' },
-  ]);
 
   useEffect(() => {
     fetchUser();
@@ -131,15 +195,21 @@ export default function UserDetailPage() {
         const data = await response.json();
 
         if (!isCustomerRole(data.user?.role)) {
-          router.replace('/admin/users');
+          router.replace("/admin/users");
           return;
         }
 
         setUser(data.user);
         setSelectedRole(data.user.role);
+        setStats({ ...emptyStats, ...(data.stats || {}) });
+        setOrders(data.orders || []);
+        setBookings(data.bookings || []);
+        setVouchers(data.vouchers || []);
+        setRentals(data.rentals || []);
+        setActivities(data.activity || []);
       }
     } catch (error) {
-      console.error('Error fetching user:', error);
+      console.error("Error fetching user:", error);
     } finally {
       setLoading(false);
     }
@@ -149,8 +219,8 @@ export default function UserDetailPage() {
     setSaving(true);
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: selectedRole }),
       });
 
@@ -159,57 +229,53 @@ export default function UserDetailPage() {
         setEditingRole(false);
 
         if (!isCustomerRole(selectedRole)) {
-          router.replace('/admin/users');
+          router.replace("/admin/users");
         }
       }
     } catch (error) {
-      console.error('Error updating role:', error);
+      console.error("Error updating role:", error);
     } finally {
       setSaving(false);
     }
   };
 
-  const isStaffRole = (role: string) => {
-    return ['staff', 'admin', 'super_admin', 'instructor'].includes(role);
-  };
-
   const handleResetPassword = async () => {
-    setPasswordError('');
-    setPasswordSuccess('');
+    setPasswordError("");
+    setPasswordSuccess("");
 
     if (newPassword.length < 6) {
-      setPasswordError('Password must be at least 6 characters');
+      setPasswordError("Password must be at least 6 characters");
       return;
     }
 
     if (newPassword !== confirmNewPassword) {
-      setPasswordError('Passwords do not match');
+      setPasswordError("Passwords do not match");
       return;
     }
 
     setResettingPassword(true);
     try {
       const response = await fetch(`/api/admin/users/${userId}/reset-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setPasswordSuccess('Password reset successfully');
-        setNewPassword('');
-        setConfirmNewPassword('');
+        setPasswordSuccess("Password reset successfully");
+        setNewPassword("");
+        setConfirmNewPassword("");
         setTimeout(() => {
           setShowPasswordReset(false);
-          setPasswordSuccess('');
+          setPasswordSuccess("");
         }, 2000);
       } else {
-        setPasswordError(data.error || 'Failed to reset password');
+        setPasswordError(data.error || "Failed to reset password");
       }
-    } catch (error) {
-      setPasswordError('An error occurred while resetting password');
+    } catch {
+      setPasswordError("An error occurred while resetting password");
     } finally {
       setResettingPassword(false);
     }
@@ -235,9 +301,17 @@ export default function UserDetailPage() {
     );
   }
 
+  const tabs = [
+    { id: "overview", label: "Overview" },
+    { id: "orders", label: "Orders" },
+    { id: "bookings", label: "Bookings" },
+    { id: "vouchers", label: "Vouchers" },
+    { id: "rentals", label: "Rentals" },
+    { id: "activity", label: "Activity" },
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/admin/users">
           <Button variant="ghost" size="sm">
@@ -247,12 +321,10 @@ export default function UserDetailPage() {
         </Link>
       </div>
 
-      {/* Profile Header Card */}
       <Card className="overflow-hidden">
         <div className="bg-gradient-to-r from-[#FF8C6B] to-[#ff7a54] h-24" />
         <CardContent className="relative pt-0 pb-6">
           <div className="flex flex-col md:flex-row md:items-end gap-4 -mt-12">
-            {/* Avatar */}
             <div className="h-24 w-24 rounded-2xl bg-white border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt="" className="h-full w-full object-cover" />
@@ -263,17 +335,15 @@ export default function UserDetailPage() {
               )}
             </div>
 
-            {/* Info */}
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-stone-900">{user.full_name || 'No Name'}</h1>
+              <h1 className="text-2xl font-bold text-stone-900">{user.full_name || "No Name"}</h1>
               <p className="text-stone-500">{user.email}</p>
             </div>
 
-            {/* Role Badge & Edit */}
-            <div className="flex items-center gap-3">
-              <Button 
-                size="sm" 
-                variant="outline" 
+            <div className="flex items-center gap-3 flex-wrap">
+              <Button
+                size="sm"
+                variant="outline"
                 onClick={() => setShowPasswordReset(!showPasswordReset)}
                 className="bg-blue-50 hover:bg-blue-100 text-blue-600 border-blue-200"
               >
@@ -318,7 +388,6 @@ export default function UserDetailPage() {
             </div>
           </div>
 
-          {/* Quick Info */}
           <div className="flex flex-wrap gap-6 mt-6 text-sm text-stone-600">
             {user.phone && (
               <div className="flex items-center gap-2">
@@ -340,7 +409,6 @@ export default function UserDetailPage() {
         </CardContent>
       </Card>
 
-      {/* Password Reset Card */}
       {showPasswordReset && (
         <Card className="border-blue-200 bg-blue-50/50">
           <CardHeader>
@@ -349,17 +417,7 @@ export default function UserDetailPage() {
                 <KeyRound className="h-5 w-5 text-blue-600" />
                 Reset User Password
               </span>
-              <Button 
-                size="sm" 
-                variant="ghost" 
-                onClick={() => {
-                  setShowPasswordReset(false);
-                  setPasswordError('');
-                  setPasswordSuccess('');
-                  setNewPassword('');
-                  setConfirmNewPassword('');
-                }}
-              >
+              <Button size="sm" variant="ghost" onClick={() => setShowPasswordReset(false)}>
                 <X className="h-4 w-4" />
               </Button>
             </CardTitle>
@@ -378,199 +436,100 @@ export default function UserDetailPage() {
               </div>
             )}
             <div className="grid md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  New Password
-                </label>
-                <PasswordInput
-                  placeholder="Enter new password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  minLength={6}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  Confirm Password
-                </label>
-                <PasswordInput
-                  placeholder="Confirm new password"
-                  value={confirmNewPassword}
-                  onChange={(e) => setConfirmNewPassword(e.target.value)}
-                  minLength={6}
-                />
-              </div>
+              <PasswordInput placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} minLength={6} />
+              <PasswordInput placeholder="Confirm new password" value={confirmNewPassword} onChange={(e) => setConfirmNewPassword(e.target.value)} minLength={6} />
             </div>
             <div className="flex justify-end gap-3">
-              <Button 
-                variant="outline" 
-                onClick={() => {
-                  setShowPasswordReset(false);
-                  setPasswordError('');
-                  setPasswordSuccess('');
-                  setNewPassword('');
-                  setConfirmNewPassword('');
-                }}
-              >
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleResetPassword}
-                disabled={resettingPassword || !newPassword || !confirmNewPassword}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                {resettingPassword ? 'Resetting...' : 'Reset Password'}
+              <Button variant="outline" onClick={() => setShowPasswordReset(false)}>Cancel</Button>
+              <Button onClick={handleResetPassword} disabled={resettingPassword || !newPassword || !confirmNewPassword} className="bg-blue-600 hover:bg-blue-700">
+                {resettingPassword ? "Resetting..." : "Reset Password"}
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-stone-200">
-        {['overview', 'orders', 'classes', 'rentals', 'activity'].map((tab) => (
+      <div className="flex gap-2 border-b border-stone-200 overflow-x-auto">
+        {tabs.map((tab) => (
           <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab
-                ? 'border-amber-500 text-amber-600'
-                : 'border-transparent text-stone-500 hover:text-stone-700'
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              activeTab === tab.id
+                ? "border-amber-500 text-amber-600"
+                : "border-transparent text-stone-500 hover:text-stone-700"
             }`}
           >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Overview Tab */}
-      {activeTab === 'overview' && (
+      {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Revenue Stats - For Customers */}
-          {!isStaffRole(user.role) && (
-            <>
-              <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
-                  <CardContent className="p-4">
-                    <DollarSign className="h-8 w-8 mb-2 opacity-80" />
-                    <p className="text-2xl font-bold">{formatPrice(stats.totalRevenue)}</p>
-                    <p className="text-sm opacity-80">Total Revenue</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                  <CardContent className="p-4">
-                    <ShoppingBag className="h-8 w-8 mb-2 opacity-80" />
-                    <p className="text-2xl font-bold">{stats.totalOrders}</p>
-                    <p className="text-sm opacity-80">Orders</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gradient-to-br from-[#FF8C6B] to-[#ff7a54] text-white">
-                  <CardContent className="p-4">
-                    <BookOpen className="h-8 w-8 mb-2 opacity-80" />
-                    <p className="text-2xl font-bold">{stats.totalClasses}</p>
-                    <p className="text-sm opacity-80">Classes</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gradient-to-br from-rose-500 to-pink-600 text-white">
-                  <CardContent className="p-4">
-                    <Utensils className="h-8 w-8 mb-2 opacity-80" />
-                    <p className="text-2xl font-bold">{stats.totalRentals}</p>
-                    <p className="text-sm opacity-80">Rentals</p>
-                  </CardContent>
-                </Card>
+          <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-5 gap-4">
+            <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
+              <CardContent className="p-4">
+                <DollarSign className="h-8 w-8 mb-2 opacity-80" />
+                <p className="text-2xl font-bold">{formatPrice(stats.totalSpend)}</p>
+                <p className="text-sm opacity-80">Total Spend</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-violet-500 to-purple-600 text-white">
+              <CardContent className="p-4">
+                <ShoppingBag className="h-8 w-8 mb-2 opacity-80" />
+                <p className="text-2xl font-bold">{stats.orderCount}</p>
+                <p className="text-sm opacity-80">Orders</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-[#FF8C6B] to-[#ff7a54] text-white">
+              <CardContent className="p-4">
+                <BookOpen className="h-8 w-8 mb-2 opacity-80" />
+                <p className="text-2xl font-bold">{stats.bookingCount}</p>
+                <p className="text-sm opacity-80">Bookings</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+              <CardContent className="p-4">
+                <TicketPercent className="h-8 w-8 mb-2 opacity-80" />
+                <p className="text-2xl font-bold">{stats.voucherCount}</p>
+                <p className="text-sm opacity-80">Vouchers</p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-rose-500 to-pink-600 text-white">
+              <CardContent className="p-4">
+                <Utensils className="h-8 w-8 mb-2 opacity-80" />
+                <p className="text-2xl font-bold">{stats.rentalInquiryCount}</p>
+                <p className="text-sm opacity-80">Rentals</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <TrendingUp className="h-5 w-5 text-amber-500" />
+                Customer Value
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-center p-4 bg-gradient-to-br from-amber-50 to-[#FF8C6B]/10 rounded-xl">
+                <p className="text-sm text-stone-500 mb-1">Lifetime Value</p>
+                <p className="text-3xl font-bold text-amber-600">{formatPrice(stats.lifetimeValue)}</p>
               </div>
-
-              {/* Lifetime Value Calculator */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <TrendingUp className="h-5 w-5 text-amber-500" />
-                    Customer Value
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="text-center p-4 bg-gradient-to-br from-amber-50 to-[#FF8C6B]/10 rounded-xl">
-                    <p className="text-sm text-stone-500 mb-1">Lifetime Value</p>
-                    <p className="text-3xl font-bold text-amber-600">{formatPrice(stats.lifetimeValue)}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-stone-500">Avg Order</p>
-                      <p className="font-semibold">{formatPrice(stats.averageOrderValue)}</p>
-                    </div>
-                    <div>
-                      <p className="text-stone-500">Total Spend</p>
-                      <p className="font-semibold">{formatPrice(stats.totalRevenue)}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* Staff/Admin Stats */}
-          {isStaffRole(user.role) && (
-            <>
-              <div className="lg:col-span-2 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
-                  <CardContent className="p-4">
-                    <DollarSign className="h-8 w-8 mb-2 opacity-80" />
-                    <p className="text-2xl font-bold">{formatPrice(stats.salesMade)}</p>
-                    <p className="text-sm opacity-80">Total Sales</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                  <CardContent className="p-4">
-                    <Receipt className="h-8 w-8 mb-2 opacity-80" />
-                    <p className="text-2xl font-bold">{stats.invoicesCreated}</p>
-                    <p className="text-sm opacity-80">Invoices</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gradient-to-br from-[#FF8C6B] to-[#ff7a54] text-white">
-                  <CardContent className="p-4">
-                    <CreditCard className="h-8 w-8 mb-2 opacity-80" />
-                    <p className="text-2xl font-bold">{stats.cashPayments}</p>
-                    <p className="text-sm opacity-80">Cash Payments</p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-gradient-to-br from-rose-500 to-pink-600 text-white">
-                  <CardContent className="p-4">
-                    <Award className="h-8 w-8 mb-2 opacity-80" />
-                    <p className="text-2xl font-bold">{formatPrice(stats.commissionsEarned)}</p>
-                    <p className="text-sm opacity-80">Commissions</p>
-                  </CardContent>
-                </Card>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-stone-500">Avg Order</p>
+                  <p className="font-semibold">{formatPrice(stats.averageOrderValue)}</p>
+                </div>
+                <div>
+                  <p className="text-stone-500">Total Spend</p>
+                  <p className="font-semibold">{formatPrice(stats.totalSpend)}</p>
+                </div>
               </div>
+            </CardContent>
+          </Card>
 
-              {/* Performance Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <BarChart3 className="h-5 w-5 text-amber-500" />
-                    Performance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="text-center p-4 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl">
-                    <p className="text-sm text-stone-500 mb-1">This Month</p>
-                    <p className="text-3xl font-bold text-emerald-600">{formatPrice(12500)}</p>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-stone-500">Target</span>
-                      <span className="font-medium">AED 15,000</span>
-                    </div>
-                    <div className="h-2 bg-stone-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#FF8C6B] to-[#ff7a54] rounded-full" style={{ width: '83%' }} />
-                    </div>
-                    <p className="text-xs text-stone-500 text-right">83% achieved</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-
-          {/* Recent Activity */}
           <div className="lg:col-span-3">
             <Card>
               <CardHeader>
@@ -580,122 +539,138 @@ export default function UserDetailPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {activities.slice(0, 5).map((activity) => (
-                    <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg hover:bg-stone-50">
-                      <div className={`p-2 rounded-xl ${
-                        activity.type === 'order' ? 'bg-amber-100 text-amber-600' :
-                        activity.type === 'booking' ? 'bg-blue-100 text-blue-600' :
-                        activity.type === 'rental' ? 'bg-purple-100 text-purple-600' :
-                        activity.type === 'payment' ? 'bg-green-100 text-green-600' :
-                        'bg-stone-100 text-stone-600'
-                      }`}>
-                        {activity.type === 'order' && <ShoppingBag className="h-4 w-4" />}
-                        {activity.type === 'booking' && <BookOpen className="h-4 w-4" />}
-                        {activity.type === 'rental' && <Utensils className="h-4 w-4" />}
-                        {activity.type === 'payment' && <CreditCard className="h-4 w-4" />}
-                        {activity.type === 'invoice' && <Receipt className="h-4 w-4" />}
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-stone-900">{activity.description}</p>
-                        <p className="text-xs text-stone-500">{formatDate(activity.date)}</p>
-                      </div>
-                      {activity.amount && (
-                        <p className="font-semibold text-stone-900">{formatPrice(activity.amount)}</p>
-                      )}
-                      <Badge variant={activity.status === 'completed' ? 'success' : activity.status === 'pending' ? 'warning' : 'secondary'}>
-                        {activity.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
+                <ActivityRows activities={activities.slice(0, 5)} />
               </CardContent>
             </Card>
           </div>
         </div>
       )}
 
-      {/* Orders Tab */}
-      {activeTab === 'orders' && (
+      {activeTab === "orders" && (
         <Card>
-          <CardHeader>
-            <CardTitle>Order History</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Orders</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-stone-500">
-              <ShoppingBag className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Order history will appear here</p>
-            </div>
+            {orders.length === 0 ? <EmptyState icon={ShoppingBag} message="No product orders found for this customer." /> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="text-left text-stone-500 border-b">
+                    <tr><th className="py-3">Order</th><th>Date</th><th>Items</th><th>Status</th><th className="text-right">Total</th></tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((order) => (
+                      <tr key={order.id} className="border-b last:border-0">
+                        <td className="py-3 font-medium">{order.order_number || order.id}</td>
+                        <td>{formatDateSafe(order.created_at)}</td>
+                        <td>{Array.isArray(order.items) ? order.items.length : 0}</td>
+                        <td><Badge variant={statusVariant(order.status)}>{order.status || order.payment_status || "unknown"}</Badge></td>
+                        <td className="text-right font-semibold">{formatPrice(Number(order.total_amount) || 0)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
 
-      {/* Classes Tab */}
-      {activeTab === 'classes' && (
+      {activeTab === "bookings" && (
         <Card>
-          <CardHeader>
-            <CardTitle>Class Bookings</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle>Bookings</CardTitle></CardHeader>
           <CardContent>
-            <div className="text-center py-8 text-stone-500">
-              <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Class bookings will appear here</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Rentals Tab */}
-      {activeTab === 'rentals' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Kitchen Rentals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-8 text-stone-500">
-              <Utensils className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Rental history will appear here</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Activity Tab */}
-      {activeTab === 'activity' && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Full Activity Log</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {activities.map((activity) => (
-                <div key={activity.id} className="flex items-center gap-4 p-3 rounded-lg border border-stone-100">
-                  <div className={`p-2 rounded-xl ${
-                    activity.type === 'order' ? 'bg-amber-100 text-amber-600' :
-                    activity.type === 'booking' ? 'bg-blue-100 text-blue-600' :
-                    activity.type === 'rental' ? 'bg-purple-100 text-purple-600' :
-                    activity.type === 'payment' ? 'bg-green-100 text-green-600' :
-                    'bg-stone-100 text-stone-600'
-                  }`}>
-                    {activity.type === 'order' && <ShoppingBag className="h-4 w-4" />}
-                    {activity.type === 'booking' && <BookOpen className="h-4 w-4" />}
-                    {activity.type === 'rental' && <Utensils className="h-4 w-4" />}
-                    {activity.type === 'payment' && <CreditCard className="h-4 w-4" />}
-                    {activity.type === 'invoice' && <Receipt className="h-4 w-4" />}
+            {bookings.length === 0 ? <EmptyState icon={BookOpen} message="No class or service bookings found for this customer." /> : (
+              <div className="space-y-3">
+                {bookings.map((booking) => (
+                  <div key={`${booking.booking_kind}-${booking.id}`} className="p-4 border border-stone-100 rounded-lg">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-stone-900">{booking.booking_kind === "class" ? booking.class_title : booking.service_name || booking.package_name}</p>
+                        <p className="text-sm text-stone-500">{booking.booking_number || booking.id}</p>
+                        <p className="text-sm text-stone-500 mt-1">{booking.customer_email || booking.attendee_email}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">{formatPrice(Number(booking.total_amount) || 0)}</p>
+                        <Badge variant={statusVariant(booking.status || booking.payment_status)}>{booking.status || booking.payment_status || "unknown"}</Badge>
+                      </div>
+                    </div>
+                    <div className="grid sm:grid-cols-3 gap-3 mt-4 text-sm text-stone-600">
+                      <p>Booked: {formatDateSafe(booking.created_at)}</p>
+                      <p>Event: {formatDateSafe(booking.event_date)}</p>
+                      <p>Guests: {booking.guest_count || booking.sessions_booked || 1}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-stone-900">{activity.description}</p>
-                    <p className="text-xs text-stone-500">{formatDate(activity.date)}</p>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "vouchers" && (
+        <Card>
+          <CardHeader><CardTitle>Vouchers</CardTitle></CardHeader>
+          <CardContent>
+            {vouchers.length === 0 ? <EmptyState icon={TicketPercent} message="No voucher purchases or redemptions found for this customer." /> : (
+              <div className="space-y-3">
+                {vouchers.map((voucher) => (
+                  <div key={`${voucher.voucher_kind}-${voucher.id}`} className="p-4 border border-stone-100 rounded-lg flex items-start justify-between gap-4">
+                    <div>
+                      <p className="font-semibold text-stone-900">
+                        {voucher.voucher_kind === "purchase" ? "Voucher purchase" : "Voucher redemption"}
+                      </p>
+                      <p className="text-sm text-stone-500">{voucher.voucher_code || voucher.menu_item_name || "No code assigned"}</p>
+                      <p className="text-sm text-stone-500">{formatDateSafe(voucher.redeemed_at || voucher.paid_at || voucher.created_at)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold">{formatPrice(Number(voucher.amount || voucher.menu_item_price) || 0)}</p>
+                      <Badge variant={statusVariant(voucher.status)}>{voucher.status || "unknown"}</Badge>
+                    </div>
                   </div>
-                  {activity.amount && (
-                    <p className="font-semibold text-stone-900">{formatPrice(activity.amount)}</p>
-                  )}
-                  <Badge variant={activity.status === 'completed' ? 'success' : activity.status === 'pending' ? 'warning' : 'secondary'}>
-                    {activity.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "rentals" && (
+        <Card>
+          <CardHeader><CardTitle>Rental Inquiries</CardTitle></CardHeader>
+          <CardContent>
+            {rentals.length === 0 ? <EmptyState icon={Utensils} message="No rental inquiries found for this customer." /> : (
+              <div className="space-y-3">
+                {rentals.map((rental) => (
+                  <div key={rental.id} className="p-4 border border-stone-100 rounded-lg">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-stone-900">{rental.name || rental.company || "Rental inquiry"}</p>
+                        {rental.company && <p className="text-sm text-stone-500">{rental.company}</p>}
+                        <p className="text-sm text-stone-500">{formatDateSafe(rental.created_at)}</p>
+                      </div>
+                      <Badge variant={statusVariant(rental.status)}>{rental.status || "unknown"}</Badge>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-3 mt-4 text-sm text-stone-600">
+                      <p className="flex items-center gap-2"><Mail className="h-4 w-4" />{rental.email || "No email"}</p>
+                      <p className="flex items-center gap-2"><Phone className="h-4 w-4" />{rental.phone || "No phone"}</p>
+                      <p>Rental: {getRentalDetail(rental.notes, "Rental Type") || "Not specified"}</p>
+                      <p>Preferred date: {getRentalDetail(rental.notes, "Preferred Date") || "Not specified"}</p>
+                      <p>Time slot: {getRentalDetail(rental.notes, "Time Slot") || "Not specified"}</p>
+                      <p>Source: {rental.source || "Not specified"}</p>
+                    </div>
+                    {rental.notes && <p className="mt-4 text-sm text-stone-600 whitespace-pre-line">{rental.notes}</p>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "activity" && (
+        <Card>
+          <CardHeader><CardTitle>Activity</CardTitle></CardHeader>
+          <CardContent>
+            <ActivityRows activities={activities} />
           </CardContent>
         </Card>
       )}
