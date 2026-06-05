@@ -189,11 +189,13 @@ export default async function UsersPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-end gap-2">
-                          <Link href={`/admin/users/${user.id}`}>
-                            <Button variant="ghost" size="sm">
-                              View
-                            </Button>
-                          </Link>
+                          {user.role === "customer" && (
+                            <Link href={`/admin/users/${user.id}`}>
+                              <Button variant="ghost" size="sm">
+                                View
+                              </Button>
+                            </Link>
+                          )}
                           {canDeleteUsers && currentUser?.id !== user.id && (
                             <DeleteUserButton
                               userId={user.id}

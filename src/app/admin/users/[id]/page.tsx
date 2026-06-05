@@ -77,6 +77,8 @@ const getRoleColor = (role: string) => {
   return roleOptions.find(r => r.value === role)?.color || 'bg-stone-100 text-stone-700';
 };
 
+const isCustomerRole = (role?: string | null) => role === 'customer';
+
 export default function UserDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -127,6 +129,12 @@ export default function UserDetailPage() {
       const response = await fetch(`/api/admin/users/${userId}`);
       if (response.ok) {
         const data = await response.json();
+
+        if (!isCustomerRole(data.user?.role)) {
+          router.replace('/admin/users');
+          return;
+        }
+
         setUser(data.user);
         setSelectedRole(data.user.role);
       }
@@ -149,6 +157,10 @@ export default function UserDetailPage() {
       if (response.ok) {
         setUser(prev => prev ? { ...prev, role: selectedRole } : null);
         setEditingRole(false);
+
+        if (!isCustomerRole(selectedRole)) {
+          router.replace('/admin/users');
+        }
       }
     } catch (error) {
       console.error('Error updating role:', error);
