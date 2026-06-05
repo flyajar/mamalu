@@ -1,15 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft, ArrowRight, Check, Clock, Calendar, Minus, Plus, Loader2,
-  Gift, Cake, PartyPopper, Utensils, ChefHat, MessageCircle, X, AlertTriangle,
+  Gift, Cake, PartyPopper, Utensils, X,
   Ticket,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -17,6 +15,18 @@ import { BigChefPageContent, defaultBigChefContent } from "@/types/site-content"
 
 interface MenuItem { id: string; name: string; price: number; image: string; dishes: string[]; category: string; scheduled_date?: string | null; allowed_persons?: number | null; }
 interface ExtraItem { id: string; name: string; description: string; price: number; icon: LucideIcon; category: string; image?: string; }
+interface PartyExtraMenuItem {
+  id: string;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  sort_order?: number | null;
+  metadata: {
+    extra_category?: string;
+    icon?: string;
+  } | null;
+}
 interface TimeSlot { start: string; end: string; duration: number; label: string; days?: number[]; }
 interface NannyMenuSchedule { date: string; time: string; allTimeSlots: TimeSlot[]; availableTimeSlots: TimeSlot[]; loading: boolean; }
 interface AppliedVoucher { code: string; amount: number; }
@@ -40,26 +50,23 @@ const getCategoryConfig = (pageContent: BigChefPageContent): Record<CategoryType
   nanny: { label: "Nanny Class", icon: pageContent.categoryIcons?.nanny || "/icons/knives.png", minGuests: 1, maxGuests: 10, description: "Mummy's Fabulous Helpers - Turn your housekeeper into a chef" },
 });
 
+const extraIconMap: Record<string, LucideIcon> = {
+  cake: Cake,
+  drinks: Utensils,
+  gift: Gift,
+  party: PartyPopper,
+  utensils: Utensils,
+};
 
-const corporateExtras: ExtraItem[] = [
-  { id: "custom_apron", name: "Customized Apron", description: "Personalized apron with name", price: 80, icon: Gift, category: "custom", image: "/personalized-items/apron.jpg" },
-  { id: "custom_spatula", name: "Customized Spatula", description: "Personalized spatula", price: 50, icon: Utensils, category: "custom", image: "/personalized-items/spatula.jpg" },
-  { id: "custom_chef_hat", name: "Customized Chef Hat", description: "Personalized chef hat", price: 60, icon: ChefHat, category: "custom", image: "/personalized-items/chef-hat.jpg" },
-  { id: "custom_mug", name: "Customized Mugs", description: "Personalized mug", price: 45, icon: Gift, category: "custom", image: "/personalized-items/mugs.jpg" },
-  { id: "cake_10", name: "Customized Cakes (10 persons)", description: "Custom designed cake", price: 575, icon: Cake, category: "cake" },
-  { id: "cake_20", name: "Customized Cakes (20 persons)", description: "Custom designed cake", price: 700, icon: Cake, category: "cake" },
-  { id: "cake_30", name: "Customized Cakes (30 persons)", description: "Custom designed cake", price: 900, icon: Cake, category: "cake" },
-  { id: "table_10", name: "Table Set Up (10 persons)", description: "Full table setting", price: 300, icon: Utensils, category: "decor" },
-  { id: "table_20", name: "Table Set Up (20 persons)", description: "Full table setting", price: 400, icon: Utensils, category: "decor" },
-  { id: "table_30", name: "Table Set Up (30 persons)", description: "Full table setting", price: 500, icon: Utensils, category: "decor" },
-  { id: "balloons", name: "Balloons (14 pcs)", description: "2 bunches of 7 balloons", price: 260, icon: PartyPopper, category: "decor" },
-  { id: "mini_pizzas", name: "Mini Pizzas (12pcs)", description: "Delicious mini pizzas", price: 50, icon: Utensils, category: "snacks", image: "/snacks-and-drinks/SMILEY PIZZA.jpeg" },
-  { id: "chicken_tenders", name: "Chicken Tenders (12pcs)", description: "Crispy chicken tenders", price: 60, icon: Utensils, category: "snacks", image: "/snacks-and-drinks/CHICKEN TENDERS.jpeg" },
-  { id: "mini_burgers", name: "Mini Burgers (6pcs)", description: "Mini burgers", price: 70, icon: Utensils, category: "snacks", image: "/snacks-and-drinks/mini burgers.jpeg" },
-  { id: "musakhan", name: "Musakhan Rolls", description: "Delicious rolls", price: 50, icon: Utensils, category: "snacks", image: "/snacks-and-drinks/MUSAKHAN ROLLS.jpeg" },
-  { id: "juice", name: "Juices (per pc)", description: "Fresh juice", price: 8, icon: Utensils, category: "snacks" },
-  { id: "soft_drinks", name: "Soft Drinks (per pc)", description: "Soft drink", price: 15, icon: Utensils, category: "snacks" },
-];
+const extraCategoryLabels: Record<string, string> = {
+  custom: "Personalized Items",
+  cake: "Cakes",
+  decor: "Decorations & Setup",
+  snacks: "Snacks",
+  drinks: "Drinks",
+};
+
+const extraCategoryOrder = ["custom", "cake", "decor", "snacks", "drinks"];
 
 function WaiverModal({ isOpen, onClose, onAccept }: { isOpen: boolean; onClose: () => void; onAccept: () => void }) {
   const [hasRead, setHasRead] = useState(false);
@@ -108,6 +115,8 @@ export default function BigChefPage() {
   // Dynamic menu data
   const [menuItemsByCategory, setMenuItemsByCategory] = useState<Record<string, MenuItem[]>>({});
   const [loadingMenus, setLoadingMenus] = useState(true);
+  const [corporateExtras, setCorporateExtras] = useState<ExtraItem[]>([]);
+  const [loadingExtras, setLoadingExtras] = useState(true);
 
   // Capacity tracking for monthly specials
   const [menuCapacities, setMenuCapacities] = useState<Record<string, { allowed: number; booked: number; available: number } | null>>({});
@@ -189,6 +198,36 @@ export default function BigChefPage() {
       }
     }
     fetchMenuData();
+  }, []);
+
+  useEffect(() => {
+    async function fetchCorporateExtras() {
+      setLoadingExtras(true);
+      try {
+        const res = await fetch("/api/admin/menu-items?category=party_extras&active=true");
+        const data = res.ok ? await res.json() : { items: [] };
+        const mappedExtras = (data.items || []).map((item: PartyExtraMenuItem) => {
+          const iconKey = item.metadata?.icon || "gift";
+          const category = item.metadata?.extra_category || "custom";
+          return {
+            id: item.id,
+            name: item.name,
+            description: item.description || "",
+            price: Number(item.price) || 0,
+            icon: extraIconMap[iconKey] || extraIconMap.gift,
+            category,
+            image: item.image_url || undefined,
+          };
+        });
+        setCorporateExtras(mappedExtras);
+      } catch (error) {
+        console.error("Failed to fetch party extras:", error);
+        setCorporateExtras([]);
+      } finally {
+        setLoadingExtras(false);
+      }
+    }
+    fetchCorporateExtras();
   }, []);
 
   const getCurrentMenus = (): MenuItem[] => menuItemsByCategory[activeCategory] || [];
@@ -420,7 +459,6 @@ export default function BigChefPage() {
 
   const handleWaiverAccept = () => { setWaiverAccepted(true); setShowWaiverModal(false); handleSubmit(true); };
   const today = new Date().toISOString().split("T")[0];
-  const stepLabels = hasExtras ? { 1: "Package", 2: "Customize", 3: "Details", 4: "Confirm" } : { 1: "Package", 2: "Details", 3: "Confirm" };
   const detailsStep = hasExtras ? 3 : 2;
   const displayedTimeSlots = isCorporate ? availableTimeSlots : allTimeSlots;
 
@@ -550,12 +588,20 @@ export default function BigChefPage() {
             {hasExtras && step === 2 && (
               <div className="space-y-6">
                 <div><h2 className="text-2xl font-bold text-stone-900">Customize Your Event</h2><p className="text-stone-500 mt-1">Add extras (optional)</p></div>
-                {["custom", "cake", "decor", "snacks"].map(cat => {
+                {loadingExtras ? (
+                  <div className="flex items-center gap-2 py-6 text-stone-500">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading extras...
+                  </div>
+                ) : corporateExtras.length === 0 ? (
+                  <p className="rounded-lg border border-stone-200 bg-stone-50 px-4 py-3 text-sm text-stone-500">
+                    No extras are currently available.
+                  </p>
+                ) : extraCategoryOrder.map(cat => {
                   const catExtras = corporateExtras.filter(e => e.category === cat);
                   if (!catExtras.length) return null;
-                  const labels: Record<string, string> = { custom: "Personalized Items", cake: "Cakes", decor: "Decorations & Setup", snacks: "Snacks & Drinks" };
                   return (
-                    <div key={cat}><h3 className="font-semibold text-stone-900 mb-3">{labels[cat]}</h3>
+                    <div key={cat}><h3 className="font-semibold text-stone-900 mb-3">{extraCategoryLabels[cat] || cat}</h3>
                       <div className="grid sm:grid-cols-2 gap-3">
                         {catExtras.map(extra => {
                           const Icon = extra.icon;
