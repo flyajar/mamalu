@@ -544,6 +544,7 @@ export default function MiniChefPage() {
     }));
 
   const selectedTimeSlotLabel = allTimeSlots.find((slot) => slot.start === eventTime)?.label || eventTime;
+  const displayedTimeSlots = isBirthday ? availableTimeSlots : allTimeSlots;
 
   // Payment calculation - all public Mini Chef bookings are 50% deposit.
   const totalAmount = calculateTotal();
@@ -1328,9 +1329,9 @@ export default function MiniChefPage() {
                               <Loader2 className="h-4 w-4 animate-spin" />
                               Loading available slots...
                             </div>
-                          ) : eventDate && availableTimeSlots.length > 0 ? (
+                          ) : eventDate && displayedTimeSlots.length > 0 ? (
                             <div className="grid grid-cols-2 gap-2">
-                              {availableTimeSlots.map((slot) => {
+                              {displayedTimeSlots.map((slot) => {
                                 return (
                                   <button
                                     key={slot.start}

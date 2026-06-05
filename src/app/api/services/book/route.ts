@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       waiverAccepted,
       userId,
       createdBy,
+      category,
       voucherCode,
     } = body;
 
@@ -94,7 +95,9 @@ export async function POST(request: NextRequest) {
     const paymentStatus = paymentAmount <= 0 ? "paid" : (isDepositPayment ? "deposit_pending" : "pending");
     const bookingStatus = paymentAmount <= 0 ? "confirmed" : "pending";
 
-    if (eventDate && eventTime) {
+    const shouldBlockBookedSlot = category === "birthdays" || category === "corporate";
+
+    if (shouldBlockBookedSlot && eventDate && eventTime) {
       const { data: existingBookings, error: availabilityError } = await supabase
         .from("service_bookings")
         .select("id, booking_number")
