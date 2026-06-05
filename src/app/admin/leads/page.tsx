@@ -102,8 +102,8 @@ export default function LeadsPage() {
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('Rental Type:');
+  const [debouncedSearch, setDebouncedSearch] = useState('Rental Type:');
   const [selectedSource, setSelectedSource] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('list');
@@ -355,6 +355,15 @@ export default function LeadsPage() {
   const getStatusBadge = (statusId: string) => {
     const status = leadStatuses.find(s => s.id === statusId);
     return status ? status.bgLight : 'bg-stone-100 text-stone-700';
+  };
+
+  const getLeadInterestLabel = (lead: Lead) => {
+    if (Array.isArray(lead.interests) && lead.interests.length > 0) {
+      return lead.interests.join(", ");
+    }
+    const rentalType = lead.notes?.match(/Rental Type:\s*(.+)/)?.[1]?.trim();
+    if (rentalType) return `Kitchen Studio Rental - ${rentalType}`;
+    return "-";
   };
 
   return (
@@ -651,7 +660,7 @@ export default function LeadsPage() {
               <tr>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase px-6 py-4">Lead</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase px-6 py-4">Source</th>
-                <th className="text-left text-xs font-semibold text-stone-600 uppercase px-6 py-4">Company</th>
+                <th className="text-left text-xs font-semibold text-stone-600 uppercase px-6 py-4">Interest</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase px-6 py-4">Type</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase px-6 py-4">Status</th>
                 <th className="text-left text-xs font-semibold text-stone-600 uppercase px-6 py-4">Last Contact</th>
@@ -681,7 +690,7 @@ export default function LeadsPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="text-sm text-stone-700 max-w-[200px] truncate">{lead.company || '-'}</p>
+                      <p className="text-sm text-stone-700 max-w-[260px] truncate">{getLeadInterestLabel(lead)}</p>
                     </td>
                     <td className="px-6 py-4">
                       <p className="text-sm text-stone-700">{lead.lead_type || '-'}</p>
@@ -741,9 +750,9 @@ export default function LeadsPage() {
                         <SourceIcon className="h-3.5 w-3.5 shrink-0" />
                         <span className="truncate">{leadSources.find(s => s.id === lead.source)?.name || lead.source}</span>
                       </span>
-                      {lead.company && (
+                      {getLeadInterestLabel(lead) !== "-" && (
                         <span className="max-w-full truncate rounded-lg bg-stone-100 px-2.5 py-1 text-xs text-stone-600">
-                          {lead.company}
+                          {getLeadInterestLabel(lead)}
                         </span>
                       )}
                       {lead.lead_type && (

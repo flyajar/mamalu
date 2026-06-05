@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 import { Resend } from "resend";
 import { getEmailFrom } from "@/lib/email/config";
 
 export async function POST(request: NextRequest) {
   const resend = new Resend(process.env.RESEND_API_KEY);
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     if (!supabase) throw new Error("Failed to create Supabase client");
     
     const body = await request.json();
@@ -30,9 +30,10 @@ export async function POST(request: NextRequest) {
       name,
       email,
       phone,
-      source: "studio_rental",
+      source: "website",
       status: "new",
-      interest: `Kitchen Studio Rental - ${rentalOption}`,
+      lead_type: "renter",
+      interests: [`Kitchen Studio Rental - ${rentalOption}`],
       notes: `
 Rental Type: ${rentalOption}
 Rental Price: AED ${rentalPrice}
@@ -45,7 +46,6 @@ Total Amount: AED ${totalAmount}
 Additional Notes: ${message || "None"}
       `.trim(),
       company: null,
-      budget: totalAmount,
     };
 
     const { data: lead, error: leadError } = await supabase

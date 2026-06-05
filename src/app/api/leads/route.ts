@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     if (!supabase) throw new Error("Failed to create Supabase client");
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
       query = query.eq("source", source);
     }
     if (search) {
-      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,company.ilike.%${search}%`);
+      query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,company.ilike.%${search}%,notes.ilike.%${search}%`);
     }
     if (startDate) {
       query = query.gte("created_at", startDate);
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     if (!supabase) throw new Error("Failed to create Supabase client");
     const body = await request.json();
 
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     if (!supabase) throw new Error("Failed to create Supabase client");
     const body = await request.json();
     const { id, ...updateData } = body;
@@ -141,7 +141,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const supabase = await createClient();
+    const supabase = createServiceClient();
     if (!supabase) throw new Error("Failed to create Supabase client");
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
