@@ -543,6 +543,8 @@ export default function MiniChefPage() {
       total: extra.price * selectedExtras[extra.id],
     }));
 
+  const selectedTimeSlotLabel = allTimeSlots.find((slot) => slot.start === eventTime)?.label || eventTime;
+
   // Payment calculation - all public Mini Chef bookings are 50% deposit.
   const totalAmount = calculateTotal();
   const voucherDiscount = appliedVoucher ? Math.min(totalAmount, Number(appliedVoucher.amount) || 0) : 0;
@@ -651,6 +653,9 @@ export default function MiniChefPage() {
                 session: index + 1,
                 packageId: selectedMenu.id,
                 packageName: selectedMenu.name,
+                event_date: index === 0 ? eventDate || null : null,
+                event_time: index === 0 ? eventTime || null : null,
+                time_label: index === 0 ? selectedTimeSlotLabel || null : null,
               }))
             : [],
           extras: extrasData,

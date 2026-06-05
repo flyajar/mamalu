@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice, formatDate } from "@/lib/utils";
+import { DEFAULT_BOOKING_TIME_SLOTS } from "@/lib/booking-time-slots";
 
 // Mamalu Schedule Time Slots
 const MAMALU_TIME_SLOTS = [
@@ -102,9 +103,24 @@ interface BookingScheduleItem {
   id?: string;
   name?: string;
   session?: number;
+  packageId?: string;
+  packageName?: string;
   event_date?: string | null;
   event_time?: string | null;
   time_label?: string | null;
+}
+
+interface BookingTimeSlot {
+  id?: string;
+  category_id?: string;
+  start_time?: string;
+  end_time?: string;
+  start?: string;
+  end?: string;
+  label?: string;
+  days?: number[];
+  active?: boolean;
+  is_active?: boolean;
 }
 
 interface BookingStats {
@@ -156,6 +172,10 @@ export default function AdminBookingsPage() {
   const [showModal, setShowModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [scheduleItems, setScheduleItems] = useState<BookingScheduleItem[]>([]);
+  const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [packageTimeSlots, setPackageTimeSlots] = useState<BookingTimeSlot[]>([]);
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
@@ -208,6 +228,29 @@ export default function AdminBookingsPage() {
   useEffect(() => {
     fetchBookings();
   }, [statusFilter, paymentFilter, serviceTypeFilter, creatorFilter, startDate, endDate]);
+
+  useEffect(() => {
+    const fetchTimeSlots = async () => {
+      try {
+        const res = await fetch("/api/admin/time-slots");
+        if (!res.ok) return;
+        const data = await res.json();
+        const slots = (data.slots || data.timeSlots || []).filter(
+          (slot: BookingTimeSlot) => slot.category_id === "packages" && slot.active !== false && slot.is_active !== false
+        );
+        setPackageTimeSlots(slots);
+      } catch (error) {
+        console.error("Failed to fetch package time slots:", error);
+      }
+    };
+
+    fetchTimeSlots();
+  }, []);
+
+  useEffect(() => {
+    setScheduleItems(selectedBooking?.items ? selectedBooking.items.map((item) => ({ ...item })) : []);
+    setScheduleError(null);
+  }, [selectedBooking]);
 
   const setQuickDateRange = (range: string) => {
     const today = new Date();
@@ -307,12 +350,83 @@ export default function AdminBookingsPage() {
     return serviceText.includes("nanny") && Array.isArray(booking.items) && booking.items.length > 0;
   };
 
+  const isPackageBooking = (booking: ServiceBooking) => {
+    const serviceText = `${booking.service_name || ""} ${booking.package_name || ""}`.toLowerCase();
+    return (
+      serviceText.includes("package") &&
+      Array.isArray(booking.items) &&
+      booking.items.some((item) => item.name || item.packageName)
+    );
+  };
+
   const getNannyScheduleItems = (booking: ServiceBooking) => {
     if (!isNannyBooking(booking)) return [];
 
     return [...(booking.items || [])]
       .filter((item) => item.name || item.event_date || item.event_time || item.time_label)
       .sort((a, b) => (a.session || 0) - (b.session || 0));
+  };
+
+  const getPackageScheduleItems = (booking: ServiceBooking) => {
+    if (!isPackageBooking(booking)) return [];
+    return [...(booking.items || [])].sort((a, b) => (a.session || 0) - (b.session || 0));
+  };
+
+  const getPackageSlotOptions = () => {
+    const source: BookingTimeSlot[] = packageTimeSlots.length > 0
+      ? packageTimeSlots
+      : DEFAULT_BOOKING_TIME_SLOTS.map((slot) => ({
+          start: slot.start,
+          end: slot.end,
+          label: slot.label,
+          days: [...slot.days],
+        }));
+    return source.map((slot) => {
+      const start = slot.start || slot.start_time || "";
+      const end = slot.end || slot.end_time || "";
+      const label = slot.label || `${start}${end ? ` - ${end}` : ""}`;
+      return { start, label };
+    }).filter((slot) => slot.start);
+  };
+
+  const updateScheduleItem = (index: number, field: "event_date" | "event_time", value: string) => {
+    setScheduleItems((prev) => prev.map((item, idx) => {
+      if (idx !== index) return item;
+      const next = { ...item, [field]: value || null };
+      if (field === "event_time") {
+        next.time_label = getPackageSlotOptions().find((slot) => slot.start === value)?.label || value || null;
+      }
+      return next;
+    }));
+    setScheduleError(null);
+  };
+
+  const savePackageSchedule = async () => {
+    if (!selectedBooking) return;
+
+    setScheduleSaving(true);
+    setScheduleError(null);
+    try {
+      const res = await fetch(`/api/admin/bookings/${selectedBooking.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: scheduleItems }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setScheduleError(data.error || "Failed to save schedule");
+        return;
+      }
+
+      setSelectedBooking(data.booking);
+      setBookings((prev) => prev.map((booking) => booking.id === data.booking.id ? data.booking : booking));
+      await fetchBookings();
+    } catch {
+      setScheduleError("Failed to save schedule");
+    } finally {
+      setScheduleSaving(false);
+    }
   };
 
   const getServiceTypeIcon = (type: string | null) => {
@@ -848,6 +962,7 @@ export default function AdminBookingsPage() {
                   )}
                   {(() => {
                     const nannyScheduleItems = getNannyScheduleItems(selectedBooking);
+                    const packageScheduleItems = getPackageScheduleItems(selectedBooking);
 
                     if (nannyScheduleItems.length > 0) {
                       return (
@@ -872,6 +987,64 @@ export default function AdminBookingsPage() {
                                 </p>
                               </div>
                             ))}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (packageScheduleItems.length > 0) {
+                      const slotOptions = getPackageSlotOptions();
+
+                      return (
+                        <div className="space-y-3">
+                          <p className="text-sm text-stone-500">{selectedBooking.guest_count} guest(s)</p>
+                          <div className="rounded-lg border border-stone-200 overflow-hidden">
+                            {scheduleItems.map((item, idx) => (
+                              <div
+                                key={`${item.id || item.name || "menu"}-${idx}`}
+                                className="grid gap-3 border-b border-stone-100 p-3 last:border-b-0 sm:grid-cols-[1fr_150px_190px]"
+                              >
+                                <div>
+                                  <p className="text-sm font-medium text-stone-900">
+                                    {item.session ? `Menu ${item.session}: ` : ""}{item.name || "Package Menu"}
+                                  </p>
+                                  {item.packageName && (
+                                    <p className="text-xs text-stone-500">{item.packageName}</p>
+                                  )}
+                                </div>
+                                <input
+                                  type="date"
+                                  value={item.event_date || ""}
+                                  onChange={(e) => updateScheduleItem(idx, "event_date", e.target.value)}
+                                  className="h-10 rounded-lg border border-stone-200 px-3 text-sm"
+                                />
+                                <select
+                                  value={item.event_time || ""}
+                                  onChange={(e) => updateScheduleItem(idx, "event_time", e.target.value)}
+                                  className="h-10 rounded-lg border border-stone-200 px-3 text-sm"
+                                >
+                                  <option value="">Select time</option>
+                                  {slotOptions.map((slot) => (
+                                    <option key={slot.start} value={slot.start}>
+                                      {slot.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ))}
+                          </div>
+                          {scheduleError && (
+                            <p className="text-sm text-red-600">{scheduleError}</p>
+                          )}
+                          <div className="flex justify-end">
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={savePackageSchedule}
+                              disabled={scheduleSaving}
+                            >
+                              {scheduleSaving ? "Saving..." : "Save Schedule"}
+                            </Button>
                           </div>
                         </div>
                       );

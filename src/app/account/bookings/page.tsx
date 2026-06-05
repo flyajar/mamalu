@@ -57,10 +57,21 @@ interface Booking {
   start_date: string | null;
   event_date?: string | null;
   event_time?: string | null;
+  items?: BookingScheduleItem[] | null;
   created_at: string;
   notes: string | null;
   reminder_enabled?: boolean;
   stripe_checkout_session_id: string | null;
+}
+
+interface BookingScheduleItem {
+  id?: string;
+  name?: string;
+  session?: number;
+  packageName?: string;
+  event_date?: string | null;
+  event_time?: string | null;
+  time_label?: string | null;
 }
 
 export default function MyBookingsPage() {
@@ -206,6 +217,20 @@ export default function MyBookingsPage() {
     } catch {
       alert("Failed to update reminder");
     }
+  };
+
+  const getPackageScheduleItems = (booking: Booking) => {
+    const serviceText = `${booking.service_name || ""} ${booking.package_name || ""}`.toLowerCase();
+    if (
+      booking.booking_type !== "service" ||
+      !serviceText.includes("package") ||
+      !Array.isArray(booking.items) ||
+      booking.items.length === 0
+    ) {
+      return [];
+    }
+
+    return [...booking.items].sort((a, b) => (a.session || 0) - (b.session || 0));
   };
 
   const getStatusBadge = (booking: Booking) => {
@@ -377,6 +402,43 @@ export default function MyBookingsPage() {
                             Instructor: {booking.instructor_name}
                           </p>
                         )}
+
+                        {(() => {
+                          const packageScheduleItems = getPackageScheduleItems(booking);
+                          if (packageScheduleItems.length === 0) return null;
+
+                          return (
+                            <div className="mt-4 rounded-lg border border-stone-200 p-3">
+                              <p className="text-sm font-semibold text-stone-900 mb-2">Class Schedule</p>
+                              <div className="space-y-2">
+                                {packageScheduleItems.map((item, idx) => {
+                                  const isScheduled = item.event_date && item.event_time;
+
+                                  return (
+                                    <div
+                                      key={`${item.id || item.name || "menu"}-${idx}`}
+                                      className="flex flex-col gap-1 border-b border-stone-100 pb-2 last:border-b-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
+                                    >
+                                      <div>
+                                        <p className="text-sm font-medium text-stone-900">
+                                          {item.session ? `Menu ${item.session}: ` : ""}{item.name || "Package Menu"}
+                                        </p>
+                                        {item.packageName && (
+                                          <p className="text-xs text-stone-500">{item.packageName}</p>
+                                        )}
+                                      </div>
+                                      <p className={isScheduled ? "text-sm text-stone-700" : "text-sm text-amber-700"}>
+                                        {isScheduled
+                                          ? `${formatDate(item.event_date!)} at ${item.time_label || item.event_time}`
+                                          : "Schedule pending"}
+                                      </p>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {booking.booking_type === "service" && booking.is_deposit_payment && (
                           <div className="mt-4 rounded-lg border border-stone-200 bg-stone-50 p-3">
