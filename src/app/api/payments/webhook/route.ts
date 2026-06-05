@@ -5,6 +5,7 @@ import { ensureCustomerAccountAndSendAccess } from "@/lib/account/customer-accou
 import { sendBookingConfirmationEmail } from "@/lib/email/booking-confirmation";
 import { sendServiceBookingConfirmationEmail } from "@/lib/email/service-booking-confirmation";
 import { sendVoucherConfirmationEmail } from "@/lib/email/voucher-confirmation";
+import { findAvailableVoucherForAmount } from "@/lib/vouchers/assign-purchase-voucher";
 import Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -318,38 +319,7 @@ export async function POST(request: NextRequest) {
 
             console.log(`Customer: ${customerName} (${customerEmail}), Amount: ${amount}`);
 
-            // Find an available voucher of this amount (not yet assigned)
-            const { data: availableVouchers, error: voucherFetchError } = await supabase
-              .from("vouchers")
-              .select("id, code")
-              .eq("discount_value", amount)
-              .eq("is_active", true)
-              .limit(10);
-
-            if (voucherFetchError) {
-              console.error("Error fetching vouchers:", voucherFetchError);
-            }
-            console.log(`Found ${availableVouchers?.length || 0} available vouchers for AED ${amount}`);
-
-            // Pick the first voucher not already used in a paid purchase
-            const { data: usedVoucherIds, error: usedError } = await supabase
-              .from("voucher_purchases")
-              .select("voucher_id")
-              .eq("status", "paid")
-              .not("voucher_id", "is", null);
-
-            if (usedError) {
-              console.error("Error fetching used vouchers:", usedError);
-            }
-
-            const usedIds = new Set(
-              ((usedVoucherIds || []) as Array<{ voucher_id: string | null }>)
-                .map((r) => r.voucher_id)
-            );
-            console.log(`${usedIds.size} vouchers already used`);
-            
-            const chosen = ((availableVouchers || []) as Array<{ id: string; code: string }>)
-              .find((v) => !usedIds.has(v.id));
+            const chosen = await findAvailableVoucherForAmount(supabase, amount);
             console.log(`Chosen voucher:`, chosen ? `${chosen.code} (ID: ${chosen.id})` : "NONE AVAILABLE");
 
             // Update the pending purchase record

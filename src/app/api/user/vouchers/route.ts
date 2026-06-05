@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { assignVoucherToPaidPurchase } from "@/lib/vouchers/assign-purchase-voucher";
+
+type VoucherPurchase = {
+  id: string;
+  amount: number;
+  status: string;
+  voucher_code: string | null;
+  paid_at: string | null;
+};
 
 export async function GET() {
   try {
@@ -36,9 +45,34 @@ export async function GET() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ vouchers: vouchers || [] });
+    const normalizedVouchers = await Promise.all(
+      ((vouchers || []) as VoucherPurchase[]).map(async (voucher) => {
+        const isPaid = voucher.status === "paid" || Boolean(voucher.paid_at);
+
+        if (!isPaid || voucher.voucher_code) {
+          return {
+            ...voucher,
+            status: isPaid ? "paid" : voucher.status,
+          };
+        }
+
+        const assigned = await assignVoucherToPaidPurchase(serviceClient, voucher);
+
+        return {
+          ...voucher,
+          status: "paid",
+          voucher_id: assigned?.id || null,
+          voucher_code: assigned?.code || voucher.voucher_code,
+        };
+      })
+    );
+
+    return NextResponse.json({ vouchers: normalizedVouchers });
   } catch (error) {
     console.error("Get user vouchers error:", error);
-    return NextResponse.json({ error: "Failed to fetch vouchers" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to fetch vouchers" },
+      { status: 500 }
+    );
   }
 }
