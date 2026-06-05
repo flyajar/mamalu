@@ -11,11 +11,11 @@
   --c-cream-rgb: 255, 255, 255;
   --c-warm: #faf8f5;
   --c-warm-rgb: 250, 248, 245;
-  --c-black: #1a1a1a;
-  --c-black-rgb: 26, 26, 26;
+  --c-black: #0a0a0a;
+  --c-black-rgb: 10, 10, 10;
   --c-white: #ffffff;
-  --c-gray: #666666;
-  --c-gray-light: #e5e5e5;
+  --c-gray: #2a2a2a;
+  --c-gray-light: #d5d5d5;
   
   /* Accent kept for compatibility */
   --c-accent: #ffeee8;
@@ -599,4 +599,51 @@ a:focus-visible, button:focus-visible {
     padding-right: 0.75rem;
     white-space: nowrap;
   }
+}
+
+/* ===== DARKER STONE COLORS FOR BETTER READABILITY ===== */
+.text-stone-50 { color: #fafaf9 !important; }
+.text-stone-100 { color: #f5f5f4 !important; }
+.text-stone-200 { color: #e7e5e4 !important; }
+.text-stone-300 { color: #78716c !important; }
+.text-stone-400 { color: #57534e !important; }
+.text-stone-500 { color: #44403c !important; }
+.text-stone-600 { color: #292524 !important; }
+.text-stone-700 { color: #1c1917 !important; }
+.text-stone-800 { color: #0c0a09 !important; }
+.text-stone-900 { color: #0a0a0a !important; }
+
+/* ===== DARKER GRAY COLORS FOR BETTER READABILITY ===== */
+.text-gray-50 { color: #fafafa !important; }
+.text-gray-100 { color: #f5f5f5 !important; }
+.text-gray-200 { color: #e5e5e5 !important; }
+.text-gray-300 { color: #737373 !important; }
+.text-gray-400 { color: #525252 !important; }
+.text-gray-500 { color: #404040 !important; }
+.text-gray-600 { color: #262626 !important; }
+.text-gray-700 { color: #171717 !important; }
+.text-gray-800 { color: #0a0a0a !important; }
+.text-gray-900 { color: #000000 !important; }
+
+/* ===== DARKER ZINC COLORS FOR BETTER READABILITY ===== */
+.text-zinc-50 { color: #fafafa !important; }
+.text-zinc-100 { color: #f4f4f5 !important; }
+.text-zinc-200 { color: #e4e4e7 !important; }
+.text-zinc-300 { color: #71717a !important; }
+.text-zinc-400 { color: #52525b !important; }
+.text-zinc-500 { color: #3f3f46 !important; }
+.text-zinc-600 { color: #27272a !important; }
+.text-zinc-700 { color: #18181b !important; }
+.text-zinc-800 { color: #09090b !important; }
+.text-zinc-900 { color: #000000 !important; }
+
+/* ===== INCREASE FONT WEIGHTS FOR BETTER READABILITY ===== */
+.font-medium { font-weight: 600 !important; }
+
+/* ===== DARKER DROPDOWN TEXT ===== */
+select {
+  color: #0a0a0a !important;
+}
+select option {
+  color: #0a0a0a !important;
 }

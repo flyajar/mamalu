@@ -82,7 +82,7 @@ export function AdminSidebar({ userRole, onNavigate }: AdminSidebarProps) {
           <ChefHat className="h-8 w-8 text-amber-500" />
           <div>
             <span className="font-bold text-lg">Mamalu</span>
-            <span className="text-xs text-stone-400 block -mt-1">Admin Portal</span>
+            <span className="text-xs text-stone-200 block -mt-1">Admin Portal</span>
           </div>
         </Link>
       </div>
@@ -105,10 +105,10 @@ export function AdminSidebar({ userRole, onNavigate }: AdminSidebarProps) {
                   className={cn(
                     "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                     isActive
-                      ? isDashboard 
+                      ? isDashboard
                         ? "bg-white text-stone-900 shadow-lg"
                         : "bg-amber-600 text-white"
-                      : "text-stone-300 hover:bg-stone-800 hover:text-white"
+                      : "text-stone-100 hover:bg-stone-800 hover:text-white"
                   )}
                 >
                   <Icon className="h-5 w-5" />
@@ -125,7 +125,7 @@ export function AdminSidebar({ userRole, onNavigate }: AdminSidebarProps) {
                             "block px-3 py-1.5 rounded text-sm transition-colors",
                             pathname === child.href
                               ? "text-amber-400"
-                              : "text-stone-400 hover:text-white"
+                              : "text-stone-200 hover:text-white"
                           )}
                         >
                           {child.name}

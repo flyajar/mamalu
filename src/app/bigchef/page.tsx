@@ -480,7 +480,7 @@ export default function BigChefPage() {
   return (
     <div className="min-h-screen bg-stone-50">
       <WaiverModal isOpen={showWaiverModal} onClose={() => setShowWaiverModal(false)} onAccept={handleWaiverAccept} />
-      <div className="bg-white border-b relative overflow-hidden">
+      <div className="bg-white border-t relative overflow-hidden">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">

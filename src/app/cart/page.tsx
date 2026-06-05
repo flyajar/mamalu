@@ -111,7 +111,7 @@ export default function CartPage() {
               {cartItems.map((item) => (
                 <Card key={item.id}>
                   <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                       <div className="h-20 w-20 rounded-lg flex-shrink-0 overflow-hidden bg-gradient-to-br from-amber-100 to-[#FF8C6B]/20">
                         {item.imageUrl ? (
                           <Image
@@ -127,7 +127,7 @@ export default function CartPage() {
                           </div>
                         )}
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 w-full">
                         <h3 className="font-bold text-stone-900">
                           {item.title}
                         </h3>
@@ -135,7 +135,7 @@ export default function CartPage() {
                           {formatPrice(item.price)}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
                         <button
                           onClick={() => updateQuantity(item.id, -1)}
                           className="p-1 hover:bg-stone-100 rounded"
@@ -152,7 +152,7 @@ export default function CartPage() {
                           <Plus className="h-4 w-4" />
                         </button>
                       </div>
-                      <div className="text-right w-24">
+                      <div className="text-right w-full sm:w-24">
                         <p className="font-bold text-stone-900">
                           {formatPrice(item.price * item.quantity)}
                         </p>
@@ -197,9 +197,9 @@ export default function CartPage() {
                       <span>{formatPrice(total)}</span>
                     </div>
                   </div>
-                  <Button 
-                    className="w-full" 
-                    size="lg" 
+                  <Button
+                    className="w-full"
+                    size="lg"
                     onClick={handleCheckout}
                     disabled={isLoading}
                   >
