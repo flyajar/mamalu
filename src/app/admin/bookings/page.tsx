@@ -167,6 +167,7 @@ export default function AdminBookingsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [paymentFilter, setPaymentFilter] = useState("all");
   const [serviceTypeFilter, setServiceTypeFilter] = useState("all");
+  const [packageFilter, setPackageFilter] = useState("all");
   const [creatorFilter, setCreatorFilter] = useState("all");
   const [selectedBooking, setSelectedBooking] = useState<ServiceBooking | null>(null);
   const [showModal, setShowModal] = useState(false);
@@ -278,7 +279,13 @@ export default function AdminBookingsPage() {
     setEndDate(today.toISOString().split("T")[0]);
   };
 
+  const isPackageBooking = (booking: ServiceBooking) => {
+    const serviceText = `${booking.service_name || ""} ${booking.package_name || ""}`.toLowerCase();
+    return serviceText.includes("package");
+  };
+
   const filteredBookings = bookings.filter((booking) => {
+    if (packageFilter === "with_packages" && !isPackageBooking(booking)) return false;
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -380,15 +387,6 @@ export default function AdminBookingsPage() {
   const isNannyBooking = (booking: ServiceBooking) => {
     const serviceText = `${booking.service_name || ""} ${booking.package_name || ""}`.toLowerCase();
     return serviceText.includes("nanny") && Array.isArray(booking.items) && booking.items.length > 0;
-  };
-
-  const isPackageBooking = (booking: ServiceBooking) => {
-    const serviceText = `${booking.service_name || ""} ${booking.package_name || ""}`.toLowerCase();
-    return (
-      serviceText.includes("package") &&
-      Array.isArray(booking.items) &&
-      booking.items.some((item) => item.name || item.packageName)
-    );
   };
 
   const getNannyScheduleItems = (booking: ServiceBooking) => {
@@ -625,6 +623,14 @@ export default function AdminBookingsPage() {
               <option value="corporate_deck">Corporate</option>
               <option value="nanny_class">Nanny Class</option>
               <option value="voucher">Voucher</option>
+            </select>
+            <select
+              value={packageFilter}
+              onChange={(e) => setPackageFilter(e.target.value)}
+              className="px-4 py-2 border border-stone-200 rounded-lg"
+            >
+              <option value="all">All Packages</option>
+              <option value="with_packages">Package Bookings</option>
             </select>
             <select
               value={creatorFilter}
