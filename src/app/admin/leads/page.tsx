@@ -81,6 +81,16 @@ const leadStatuses = [
   { id: 'lost', name: 'Lost', color: 'bg-stone-500', bgLight: 'bg-stone-100 text-stone-700' },
 ];
 
+const leadTypeLabels: Record<string, string> = {
+  individual: 'Individual',
+  newsletter: 'Newsletter',
+  contact_inquiry: 'Contact Inquiry',
+  renter: 'Renter',
+  student: 'Student',
+  event: 'Event',
+  website: 'Website',
+};
+
 interface Lead {
   id: string;
   name: string;
@@ -106,6 +116,7 @@ export default function LeadsPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedSource, setSelectedSource] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
+  const [selectedType, setSelectedType] = useState('all');
   const [viewMode, setViewMode] = useState<'kanban' | 'list'>('list');
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -115,7 +126,12 @@ export default function LeadsPage() {
   const [matchResult, setMatchResult] = useState<{ matched: number; created: number; errors: string[] | null } | null>(null);
   
   // Stats from API
-  const [stats, setStats] = useState<{ total: number; bySource: Record<string, number>; byStatus: Record<string, number> }>({ total: 0, bySource: {}, byStatus: {} });
+  const [stats, setStats] = useState<{ total: number; bySource: Record<string, number>; byStatus: Record<string, number>; byType: Record<string, number> }>({
+    total: 0,
+    bySource: {},
+    byStatus: {},
+    byType: {},
+  });
   
   // Date filter
   const [startDate, setStartDate] = useState('');
@@ -160,6 +176,7 @@ export default function LeadsPage() {
       params.set('offset', ((currentPage - 1) * pageSize).toString());
       if (selectedStatus !== 'all') params.set('status', selectedStatus);
       if (selectedSource !== 'all') params.set('source', selectedSource);
+      if (selectedType !== 'all') params.set('type', selectedType);
       if (debouncedSearch) params.set('search', debouncedSearch);
       if (startDate) params.set('startDate', startDate);
       if (endDate) params.set('endDate', endDate);
@@ -180,7 +197,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     fetchLeads();
-  }, [currentPage, selectedStatus, selectedSource, debouncedSearch, startDate, endDate]);
+  }, [currentPage, selectedStatus, selectedSource, selectedType, debouncedSearch, startDate, endDate]);
   
   // Create new lead
   const handleCreateLead = async () => {
@@ -250,6 +267,13 @@ export default function LeadsPage() {
     ...source,
     count: stats.bySource[source.id] || 0,
   }));
+
+  const leadTypeOptions = Object.keys(stats.byType)
+    .sort((a, b) => (leadTypeLabels[a] || a).localeCompare(leadTypeLabels[b] || b))
+    .map((type) => ({
+      id: type,
+      name: leadTypeLabels[type] || type.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
+    }));
 
   // Leads are already filtered server-side, just use them directly
   const filteredLeads = leads;
@@ -595,6 +619,17 @@ export default function LeadsPage() {
             <option value="all">All Statuses</option>
             {leadStatuses.map(status => (
               <option key={status.id} value={status.id}>{status.name}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedType}
+            onChange={(e) => { setSelectedType(e.target.value); setCurrentPage(1); }}
+            className="w-full px-4 py-2.5 bg-stone-50 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 sm:w-auto"
+          >
+            <option value="all">All Types</option>
+            {leadTypeOptions.map(type => (
+              <option key={type.id} value={type.id}>{type.name}</option>
             ))}
           </select>
 

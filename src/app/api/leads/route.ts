@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const source = searchParams.get("source");
+    const type = searchParams.get("type");
     const search = searchParams.get("search");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
@@ -27,6 +28,9 @@ export async function GET(request: NextRequest) {
     if (source && source !== "all") {
       query = query.eq("source", source);
     }
+    if (type && type !== "all") {
+      query = query.eq("lead_type", type);
+    }
     if (search) {
       query = query.or(`name.ilike.%${search}%,email.ilike.%${search}%,phone.ilike.%${search}%,company.ilike.%${search}%,notes.ilike.%${search}%`);
     }
@@ -42,11 +46,11 @@ export async function GET(request: NextRequest) {
 
     // Build stats query with same date filter but no pagination/status/source filter
     // Paginate to handle >1000 leads (Supabase default row limit)
-    let allLeadsForStats: { source: string; status: string }[] = [];
+    let allLeadsForStats: { source: string; status: string; lead_type: string | null }[] = [];
     let statsOffset = 0;
     const statsPageSize = 1000;
     while (true) {
-      let statsQuery = supabase.from("leads").select("source, status")
+      let statsQuery = supabase.from("leads").select("source, status, lead_type")
         .range(statsOffset, statsOffset + statsPageSize - 1);
       if (startDate) {
         statsQuery = statsQuery.gte("created_at", startDate);
@@ -66,11 +70,15 @@ export async function GET(request: NextRequest) {
       total: allLeadsForStats.length,
       bySource: {} as Record<string, number>,
       byStatus: {} as Record<string, number>,
+      byType: {} as Record<string, number>,
     };
     
     allLeadsForStats.forEach(lead => {
       stats.bySource[lead.source] = (stats.bySource[lead.source] || 0) + 1;
       stats.byStatus[lead.status] = (stats.byStatus[lead.status] || 0) + 1;
+      if (lead.lead_type) {
+        stats.byType[lead.lead_type] = (stats.byType[lead.lead_type] || 0) + 1;
+      }
     });
 
     return NextResponse.json({ 
