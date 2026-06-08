@@ -85,6 +85,63 @@ export async function GET(request: NextRequest) {
       .from("menu_items")
       .select("id, name, categories");
 
+    const isPackageBookingItem = (
+      item: unknown,
+      booking: { package_name?: unknown }
+    ) => {
+      if (!item || typeof item !== "object") return false;
+
+      const value = item as {
+        packageId?: unknown;
+        packageName?: unknown;
+        session?: unknown;
+      };
+
+      return Boolean(
+        value.packageId ||
+        value.packageName ||
+        (typeof value.session === "number" && booking.package_name)
+      );
+    };
+
+    const getPackageBookingItems = (booking: { items?: unknown; package_name?: unknown }) => {
+      const items = Array.isArray(booking.items) ? booking.items : [];
+      return items.filter((item) => isPackageBookingItem(item, booking));
+    };
+
+    const getServiceSaleItems = (booking: {
+      items?: unknown;
+      package_name?: unknown;
+      service_name?: unknown;
+      total_amount?: unknown;
+    }) => {
+      const packageItems = getPackageBookingItems(booking);
+
+      if (packageItems.length > 0) {
+        const itemRevenue = (Number(booking.total_amount) || 0) / packageItems.length;
+
+        return packageItems.map((item) => {
+          const value = item as { name?: unknown };
+          return {
+            name: typeof value.name === "string" && value.name.trim() ? value.name : "Package Item",
+            count: 1,
+            revenue: itemRevenue,
+          };
+        });
+      }
+
+      return [{
+        name: String(booking.package_name || booking.service_name || "Other"),
+        count: 1,
+        revenue: Number(booking.total_amount) || 0,
+      }];
+    };
+
+    const getServiceBookingCount = (booking: { items?: unknown; package_name?: unknown }) => {
+      const packageItemCount = getPackageBookingItems(booking).length;
+      return packageItemCount > 0 ? packageItemCount : 1;
+    };
+
     // Calculate service sales by type
     const serviceSales: Record<string, { 
       count: number; 
@@ -100,17 +157,18 @@ export async function GET(request: NextRequest) {
       }
       
       if (booking.status === "confirmed" || booking.status === "completed") {
-        serviceSales[type].count++;
+        serviceSales[type].count += getServiceBookingCount(booking);
         serviceSales[type].revenue += booking.total_amount || 0;
         serviceSales[type].guests += booking.guest_count || 1;
 
-        // Track package/service name
-        const itemName = booking.package_name || booking.service_name || "Other";
-        if (!serviceSales[type].items[itemName]) {
-          serviceSales[type].items[itemName] = { count: 0, revenue: 0 };
-        }
-        serviceSales[type].items[itemName].count++;
-        serviceSales[type].items[itemName].revenue += booking.total_amount || 0;
+        // Track individual selected package items instead of the package wrapper.
+        getServiceSaleItems(booking).forEach((item) => {
+          if (!serviceSales[type].items[item.name]) {
+            serviceSales[type].items[item.name] = { count: 0, revenue: 0 };
+          }
+          serviceSales[type].items[item.name].count += item.count;
+          serviceSales[type].items[item.name].revenue += item.revenue;
+        });
       }
     });
 
@@ -260,7 +318,7 @@ export async function GET(request: NextRequest) {
       const date = new Date(booking.paid_at || booking.created_at).toISOString().split("T")[0];
       if (dailyRevenue[date]) {
         dailyRevenue[date].revenue += booking.total_amount || 0;
-        dailyRevenue[date].bookings++;
+        dailyRevenue[date].bookings += getServiceBookingCount(booking);
       }
     });
 
