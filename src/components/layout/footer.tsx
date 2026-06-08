@@ -48,7 +48,7 @@ export function Footer() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-12">
             {/* Brand */}
             <div className="col-span-2 md:col-span-3 lg:col-span-2">
-              <Link href="/" className="inline-block group">
+              <Link href="/" className="block w-fit mx-auto md:mx-0 group">
                 <Image 
                   src="/graphics/mamalu-logo-transparent.png" 
                   alt="Mamalu Kitchen" 
@@ -80,7 +80,7 @@ export function Footer() {
                   <div className="w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center">
                     <MapPin className="h-4 w-4" />
                   </div>
-                  Depachika Food Hall, Palm Jumeirah Mall, Palm Jumeirah, Dubai
+                  Depachika Food Hall, Palm Jumeirah Mall, Palm Jumeirah, Dubai, UAE
                 </div>
               </div>
 
