@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import {
   Plus,
   Edit3,
-  Trash2,
   Save,
   X,
   Upload,
@@ -181,16 +180,6 @@ export default function AdminMenuItemsPage() {
       alert("Failed to save menu item");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this menu item?")) return;
-    try {
-      const res = await fetch(`/api/admin/menu-items/${id}`, { method: "DELETE" });
-      if (res.ok) setItems(items.filter((i) => i.id !== id));
-    } catch {
-      alert("Failed to delete item");
     }
   };
 
@@ -641,12 +630,6 @@ export default function AdminMenuItemsPage() {
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="p-1.5 rounded-lg hover:bg-red-50 text-stone-400 hover:text-red-600 transition-colors"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -736,13 +719,6 @@ export default function AdminMenuItemsPage() {
                       title="Edit"
                     >
                       <Edit3 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      className="rounded-lg p-2 text-stone-500 transition-colors hover:bg-red-50 hover:text-red-600"
-                      title="Delete"
-                    >
-                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 </div>
