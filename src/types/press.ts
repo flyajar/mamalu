@@ -3,7 +3,7 @@ export interface PressArticle {
   title: string;
   date: string;
   description: string;
-  mediaType?: "article" | "video";
+  mediaType?: "article" | "video" | "photo";
   videoSource?: "youtube" | "upload";
   videoUrl?: string | null;
   url: string | null;

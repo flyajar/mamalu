@@ -113,7 +113,7 @@ export default async function PressPage() {
                     >
                       {article.description}
                     </p>
-                    {article.url && article.mediaType !== "video" && !article.isVideo && (
+                    {article.url && article.mediaType === "article" && !article.isVideo && (
                       <div className="flex justify-center md:justify-start">
                       <Link
                         href={article.url}

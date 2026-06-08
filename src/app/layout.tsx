@@ -65,12 +65,13 @@ export default async function RootLayout({
   const isAdminOrStudio = pathname.startsWith("/admin") || pathname.startsWith("/studio");
 
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body
+        suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} ${mossy.variable} ${poppins.variable} ${springtimeBlues.variable} antialiased min-h-screen flex flex-col`}
       >
         {!isAdminOrStudio && <LoadingScreen />}

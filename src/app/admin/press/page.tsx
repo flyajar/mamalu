@@ -322,14 +322,16 @@ export default function AdminPressPage() {
                     onChange={(event) =>
                       setEditingArticle({
                         ...editingArticle,
-                        mediaType: event.target.value as "article" | "video",
+                        mediaType: event.target.value as "article" | "video" | "photo",
                         videoSource: event.target.value === "video" ? editingArticle.videoSource || "youtube" : editingArticle.videoSource,
+                        url: event.target.value === "photo" ? null : editingArticle.url,
                       })
                     }
                     className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100"
                   >
                     <option value="article">Article</option>
                     <option value="video">Video</option>
+                    <option value="photo">Photo only</option>
                   </select>
                 </label>
                 <label className="space-y-1">
@@ -358,7 +360,7 @@ export default function AdminPressPage() {
                     className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100"
                   />
                 </label>
-                {editingArticle.mediaType !== "video" ? (
+                {editingArticle.mediaType === "article" ? (
                   <label className="space-y-1">
                     <span className="text-sm font-medium text-stone-700">Article URL</span>
                     <input
@@ -368,7 +370,7 @@ export default function AdminPressPage() {
                       className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-100"
                     />
                   </label>
-                ) : (
+                ) : editingArticle.mediaType === "video" ? (
                   <div className="space-y-2">
                     <label className="space-y-1">
                       <span className="text-sm font-medium text-stone-700">Video Source</span>
@@ -412,6 +414,10 @@ export default function AdminPressPage() {
                         disabled={videoUploading}
                       />
                     </label>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-600">
+                    Photo-only items show the image with the title, date, and description. No article link is displayed.
                   </div>
                 )}
                 <div className="space-y-2">
@@ -510,6 +516,9 @@ export default function AdminPressPage() {
                     </span>
                     {(article.mediaType === "video" || article.isVideo) && (
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">Video</span>
+                    )}
+                    {article.mediaType === "photo" && (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700">Photo only</span>
                     )}
                     {article.isActive === false && (
                       <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-700">Hidden</span>
