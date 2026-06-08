@@ -25,6 +25,7 @@ import {
   Palette,
   PartyPopper,
   Newspaper,
+  BookOpen,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -61,6 +62,7 @@ const navigation = [
   ]},
   { name: "Sales Report", href: "/admin/sales", icon: TrendingUp },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+  { name: "Blogs", href: "/admin/blogs", icon: BookOpen },
   { name: "Press", href: "/admin/press", icon: Newspaper },
   { name: "Site Content", href: "/admin/site-content", icon: Palette },
 ];

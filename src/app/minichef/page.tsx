@@ -746,6 +746,13 @@ export default function MiniChefPage() {
     return true;
   };
 
+  const goToStep = (nextStep: number) => {
+    setStep(nextStep);
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "auto" });
+    });
+  };
+
   return (
     <div className="min-h-screen bg-stone-50">
       {/* Waiver Modal */}
@@ -986,7 +993,7 @@ export default function MiniChefPage() {
                     <div className="hidden lg:flex justify-end items-center pt-4 border-t">
                       <Button
                         className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
-                        onClick={() => setStep(step + 1)}
+                        onClick={() => goToStep(step + 1)}
                         disabled={!canProceed()}
                       >
                         Continue
@@ -1199,7 +1206,7 @@ export default function MiniChefPage() {
                 <div className="hidden lg:flex justify-between items-center pt-6 border-t">
                   <Button
                     variant="outline"
-                    onClick={() => setStep(step - 1)}
+                    onClick={() => goToStep(step - 1)}
                     className="px-6 font-bold"
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1207,7 +1214,7 @@ export default function MiniChefPage() {
                   </Button>
                   <Button
                     className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
-                    onClick={() => setStep(step + 1)}
+                    onClick={() => goToStep(step + 1)}
                   >
                     Continue
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -1377,7 +1384,7 @@ export default function MiniChefPage() {
                 <div className="hidden lg:flex justify-between items-center pt-6 border-t">
                   <Button
                     variant="outline"
-                    onClick={() => setStep(step - 1)}
+                    onClick={() => goToStep(step - 1)}
                     className="px-6 font-bold"
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1385,7 +1392,7 @@ export default function MiniChefPage() {
                   </Button>
                   <Button
                     className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
-                    onClick={() => setStep(step + 1)}
+                    onClick={() => goToStep(step + 1)}
                     disabled={!canProceed()}
                   >
                     Continue
@@ -1565,7 +1572,7 @@ export default function MiniChefPage() {
                 <div className="hidden lg:flex justify-between items-center pt-6 border-t">
                   <Button
                     variant="outline"
-                    onClick={() => setStep(step - 1)}
+                    onClick={() => goToStep(step - 1)}
                     className="px-6 font-bold"
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" />
@@ -1609,7 +1616,7 @@ export default function MiniChefPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setStep(step - 1)}
+                    onClick={() => goToStep(step - 1)}
                     className="px-3 font-bold"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -1619,7 +1626,7 @@ export default function MiniChefPage() {
                 {step < maxStep ? (
                   <Button
                     className={PRIMARY_BUTTON_CLASS}
-                    onClick={() => setStep(step + 1)}
+                    onClick={() => goToStep(step + 1)}
                     disabled={!canProceed()}
                   >
                     Continue
