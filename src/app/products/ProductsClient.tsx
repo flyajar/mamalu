@@ -366,16 +366,17 @@ export default function ProductsClient({
           {/* Main Content */}
           <div className="flex-1">
             {/* Search and Mobile Filter Toggle */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex flex-row gap-3 sm:gap-4 mb-6">
               {/* Search */}
-              <div className="relative flex-1">
+              <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-[#ff7f5c]" />
                 <Input
                   type="text"
                   placeholder="Search products..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-12 pr-12 h-14 glass border-0 rounded-full focus:ring-2 focus:ring-[#ff7f5c]/30 text-base"
+                  className="pl-12 pr-12 h-14 glass rounded-full focus-visible:ring-0 focus-visible:ring-offset-0 text-base"
+                  style={{ borderColor: "rgba(255, 127, 92, 0.7)" }}
                 />
                 {searchQuery && (
                   <button
@@ -390,7 +391,7 @@ export default function ProductsClient({
               {/* Mobile Filter Button */}
               <Button
                 variant="outline"
-                className="lg:hidden flex items-center gap-2 glass border-0 rounded-full h-14 px-6"
+                className="lg:hidden shrink-0 flex items-center gap-2 glass border-0 rounded-full h-14 px-5"
                 onClick={() => setShowMobileFilters(true)}
               >
                 <SlidersHorizontal className="h-5 w-5" />
