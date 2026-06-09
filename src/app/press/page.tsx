@@ -6,6 +6,8 @@ import { createClient } from "@/lib/supabase/server";
 import { defaultPressContent, PressArticle, PressContent } from "@/types/press";
 import { PressMediaPreview } from "@/components/press/PressMediaPreview";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Press | Mamalu Kitchen",
   description:
