@@ -134,7 +134,7 @@ export default function BigChefPage() {
   const [eventTime, setEventTime] = useState("");
   const [monthlyAvailableDates, setMonthlyAvailableDates] = useState<string[]>([]);
   const [loadingMonthlyDates, setLoadingMonthlyDates] = useState(false);
-  const [allTimeSlots, setAllTimeSlots] = useState<TimeSlot[]>([]);
+  const [, setAllTimeSlots] = useState<TimeSlot[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
   const [nannySchedules, setNannySchedules] = useState<Record<string, NannyMenuSchedule>>({});
   const [loadingSlots, setLoadingSlots] = useState(false);
@@ -381,7 +381,8 @@ export default function BigChefPage() {
 
   const nannyScheduleItems = selectedNannyMenus.map((menu, index) => {
     const schedule = getNannySchedule(menu.id);
-    const slot = schedule.allTimeSlots.find(s => s.start === schedule.time);
+    const slot = schedule.availableTimeSlots.find(s => s.start === schedule.time)
+      || schedule.allTimeSlots.find(s => s.start === schedule.time);
     return {
       id: menu.id,
       name: menu.name,
@@ -471,7 +472,7 @@ export default function BigChefPage() {
   const handleWaiverAccept = () => { setWaiverAccepted(true); setShowWaiverModal(false); handleSubmit(true); };
   const today = new Date().toISOString().split("T")[0];
   const detailsStep = hasExtras ? 3 : 2;
-  const displayedTimeSlots = isCorporate ? availableTimeSlots : allTimeSlots;
+  const displayedTimeSlots = availableTimeSlots;
 
   const canProceed = () => {
     if (step === 1) return isNanny ? selectedNannyMenus.length === 4 : selectedMenu !== null;
@@ -717,9 +718,9 @@ export default function BigChefPage() {
                                       <Loader2 className="h-4 w-4 animate-spin" />
                                       Loading...
                                     </div>
-                                  ) : schedule.date && schedule.allTimeSlots.length > 0 ? (
+                                  ) : schedule.date && schedule.availableTimeSlots.length > 0 ? (
                                     <div className="grid grid-cols-2 gap-2">
-                                      {schedule.allTimeSlots.map((slot) => {
+                                      {schedule.availableTimeSlots.map((slot) => {
                                         return (
                                           <button
                                             key={slot.start}

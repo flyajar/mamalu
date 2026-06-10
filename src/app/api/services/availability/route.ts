@@ -7,10 +7,16 @@ const BUFFER_MINUTES = 60;
 const MIN_BOOKING_NOTICE_MINUTES = 120;
 const BUSINESS_TIME_ZONE = "Asia/Dubai";
 const MONTHLY_CATEGORY_IDS = new Set(["monthly_mini", "monthly_big"]);
+const BOOKED_SLOT_STATUSES = ["confirmed", "pending", "deposit_paid", "completed"];
 
 interface BookedSlot {
   event_time: string;
   duration_minutes?: number;
+}
+
+interface BookingScheduleItem {
+  event_date?: string | null;
+  event_time?: string | null;
 }
 
 interface TimeSlotInfo {
@@ -213,9 +219,9 @@ export async function GET(request: NextRequest) {
     try {
       const { data: bookings, error } = await supabase
         .from("service_bookings")
-        .select("event_time")
+        .select("event_time, items")
         .eq("event_date", date)
-        .in("status", ["confirmed", "pending", "deposit_paid"]);
+        .in("status", BOOKED_SLOT_STATUSES);
 
       if (error) {
         console.error("Error fetching bookings:", error);
@@ -233,9 +239,19 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      bookedSlots = (bookings || []).map((b) => ({
-        event_time: b.event_time || "",
-      }));
+      bookedSlots = (bookings || []).flatMap((booking) => {
+        const slots: BookedSlot[] = booking.event_time ? [{ event_time: booking.event_time }] : [];
+        const items = Array.isArray(booking.items) ? booking.items as BookingScheduleItem[] : [];
+
+        for (const item of items) {
+          if (item.event_date && item.event_date !== date) continue;
+          if (item.event_time) {
+            slots.push({ event_time: item.event_time });
+          }
+        }
+
+        return slots;
+      });
     } catch (dbError) {
       console.error("Database error:", dbError);
       // On error, still return all slots as available

@@ -555,7 +555,7 @@ export default function MiniChefPage() {
     }));
 
   const selectedTimeSlotLabel = allTimeSlots.find((slot) => slot.start === eventTime)?.label || eventTime;
-  const displayedTimeSlots = isBirthday ? availableTimeSlots : allTimeSlots;
+  const displayedTimeSlots = availableTimeSlots;
 
   // Payment calculation - Mini Chef packages are paid in full.
   const totalAmount = calculateTotal();

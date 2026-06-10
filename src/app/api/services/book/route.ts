@@ -6,13 +6,13 @@ import { sendServiceBookingConfirmationEmail } from "@/lib/email/service-booking
 import { createSourceInvoice, markSourceInvoicePaid, updateSourceInvoiceCheckout } from "@/lib/invoices/source-invoices";
 import { consumeVoucherUse, getRedeemableVoucherByCode } from "@/lib/vouchers/voucher-usage";
 
-const BOOKED_SLOT_STATUSES = ["confirmed", "pending", "deposit_paid"];
+const BOOKED_SLOT_STATUSES = ["confirmed", "pending", "deposit_paid", "completed"];
 const MIN_BOOKING_NOTICE_MINUTES = 120;
 const BUSINESS_TIME_ZONE = "Asia/Dubai";
 const MONTHLY_SLOT_CATEGORY_IDS = new Set(["monthly_mini", "monthly_big"]);
 
 function normalizeTimeForQuery(time: string) {
-  return time.length === 5 ? `${time}:00` : time;
+  return time.slice(0, 5);
 }
 
 function parseTime(time: string) {
@@ -85,7 +85,6 @@ export async function POST(request: NextRequest) {
       waiverAccepted,
       userId,
       createdBy,
-      category,
       bookingSlotCategory,
       voucherCode,
     } = body;
@@ -160,23 +159,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const shouldBlockBookedSlot = category === "birthdays" || category === "corporate";
-
-    if (shouldBlockBookedSlot && eventDate && eventTime) {
+    if (eventDate && eventTime) {
       const { data: existingBookings, error: availabilityError } = await supabase
         .from("service_bookings")
-        .select("id, booking_number")
+        .select("id, booking_number, event_time, items")
         .eq("event_date", eventDate)
-        .eq("event_time", normalizeTimeForQuery(eventTime))
         .in("status", BOOKED_SLOT_STATUSES)
-        .limit(1);
+        .limit(100);
 
       if (availabilityError) {
         console.error("Slot availability check error:", availabilityError);
         return NextResponse.json({ error: "Could not verify slot availability" }, { status: 500 });
       }
 
-      if (existingBookings && existingBookings.length > 0) {
+      const requestedTime = normalizeTimeForQuery(eventTime);
+      const hasConflict = (existingBookings || []).some((booking) => {
+        if (booking.event_time && normalizeTimeForQuery(booking.event_time) === requestedTime) {
+          return true;
+        }
+
+        const bookingItems = Array.isArray(booking.items)
+          ? booking.items as Array<{ event_date?: string | null; event_time?: string | null }>
+          : [];
+
+        return bookingItems.some((item) =>
+          (!item.event_date || item.event_date === eventDate) &&
+          item.event_time && normalizeTimeForQuery(item.event_time) === requestedTime
+        );
+      });
+
+      if (hasConflict) {
         return NextResponse.json(
           { error: "The selected time slot is already booked. Please choose another time." },
           { status: 409 }
