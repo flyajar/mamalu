@@ -730,8 +730,8 @@ export default function MiniChefPage() {
   const canProceed = () => {
     if (step === 1) {
       if (!selectedMenu) return false;
-      if (isPackage) return isPackageSelectionComplete(selectedMenu, selectedPackageMenuItems);
-      return true;
+      if (isPackage && !isPackageSelectionComplete(selectedMenu, selectedPackageMenuItems)) return false;
+      return Boolean(eventDate && eventTime);
     }
     if (hasExtras && step === 2) return true; // Extras are optional
     const detailsStep = hasExtras ? 3 : 2;
@@ -751,6 +751,16 @@ export default function MiniChefPage() {
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "auto" });
     });
+  };
+
+  const selectMenu = (menu: MenuItem) => {
+    setSelectedMenu(menu);
+    setSelectedPackageMenuItems([]);
+
+    const requiresManualContinue = isPackage;
+    if (!requiresManualContinue && eventDate && eventTime) {
+      goToStep(step + 1);
+    }
   };
 
   return (
@@ -984,6 +994,48 @@ export default function MiniChefPage() {
                         (Min: {currentConfig.minGuests}, Max: {currentConfig.maxGuests})
                       </span>
                     </div>
+                    <div className="grid sm:grid-cols-2 gap-4 pb-4 lg:pb-6">
+                      <div>
+                        <label className="block text-base font-bold text-stone-700 mb-1">
+                          <Calendar className="inline h-4 w-4 mr-1" />
+                          Event Date *
+                        </label>
+                        {isMonthly ? (
+                          loadingMonthlyDates ? (
+                            <div className="flex items-center gap-2 rounded-lg border border-stone-300 px-4 py-3 text-stone-500">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading dates...
+                            </div>
+                          ) : (
+                            <MonthlyAvailableDatePicker availableDates={monthlyAvailableDates} value={eventDate} onChange={setEventDate} today={today} />
+                          )
+                        ) : (
+                          <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} restrictToAvailableDates={false} />
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-base font-bold text-stone-700 mb-1">
+                          <Clock className="inline h-4 w-4 mr-1" />
+                          Time Slot *
+                        </label>
+                        {loadingSlots ? (
+                          <div className="flex items-center gap-2 py-2 text-stone-500">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Loading available slots...
+                          </div>
+                        ) : eventDate && displayedTimeSlots.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            {displayedTimeSlots.map((slot) => (
+                              <button key={slot.start} type="button" onClick={() => setEventTime(slot.start)} className={`px-3 py-2 text-sm rounded-lg border transition-all ${eventTime === slot.start ? "bg-[#FF8C6B] text-white border-[#FF8C6B]" : "border-stone-300 hover:border-[#FF8C6B]"}`}>
+                                {slot.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-stone-500 py-2">{eventDate ? "No slots available for this date" : "Select a date first"}</p>
+                        )}
+                      </div>
+                    </div>
                     {isMommyAndMe && selectedMenu && (
                       <div className="mb-4 rounded-lg border border-[#FF8C6B]/25 bg-[#FF8C6B]/10 px-4 py-3 text-sm text-stone-900">
                         <span className="font-bold">{selectedMenu.name} total:</span> AED {getMenuPrice().toLocaleString()}
@@ -1026,8 +1078,7 @@ export default function MiniChefPage() {
                           setPendingPackageMenuItems(selectedMenu?.id === menu.id ? selectedPackageMenuItems : []);
                           setShowPackageModal(true);
                         } else {
-                          setSelectedMenu(menu);
-                          setSelectedPackageMenuItems([]);
+                          selectMenu(menu);
                         }
                       }}
                     >
@@ -1301,7 +1352,7 @@ export default function MiniChefPage() {
                       </div>
                     </div>
 
-                      <div className="grid sm:grid-cols-2 gap-4">
+                      {false && <div className="grid sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-base font-bold text-stone-700 mb-1">
                             <Calendar className="inline h-4 w-4 mr-1" />
@@ -1365,7 +1416,7 @@ export default function MiniChefPage() {
                             <p className="text-sm text-stone-500 py-2">Select a date first</p>
                           )}
                         </div>
-                      </div>
+                      </div>}
 
                     <div>
                       <label className="block text-base font-bold text-stone-700 mb-1">Special Requests</label>

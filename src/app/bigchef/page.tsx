@@ -475,7 +475,7 @@ export default function BigChefPage() {
   const displayedTimeSlots = availableTimeSlots;
 
   const canProceed = () => {
-    if (step === 1) return isNanny ? selectedNannyMenus.length === 4 : selectedMenu !== null;
+    if (step === 1) return isNanny ? selectedNannyMenus.length === 4 : selectedMenu !== null && Boolean(eventDate && eventTime);
     if (hasExtras && step === 2) return true;
     if (step === detailsStep) {
       if (isNanny) return Boolean(customerName && customerEmail && nannySchedulesComplete);
@@ -487,6 +487,18 @@ export default function BigChefPage() {
       return true;
     }
     return true;
+  };
+
+  const selectMenu = (menu: MenuItem) => {
+    setSelectedMenu(menu);
+
+    const requiresManualContinue = activeCategory === "teenagers";
+    if (!requiresManualContinue && eventDate && eventTime) {
+      setStep(step + 1);
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "auto" });
+      });
+    }
   };
 
   return (
@@ -532,6 +544,45 @@ export default function BigChefPage() {
                       <Button variant="outline" size="icon" onClick={() => setGuestCount(Math.min(currentConfig.maxGuests, guestCount + 1))} disabled={guestCount >= currentConfig.maxGuests}><Plus className="h-4 w-4" /></Button>
                       <span className="text-base font-bold text-stone-600">(Min: {currentConfig.minGuests}, Max: {currentConfig.maxGuests})</span>
                     </div>
+                    <div className="grid sm:grid-cols-2 gap-4 pb-4 lg:pb-6">
+                      <div>
+                        <label className="block text-base font-bold text-stone-700 mb-1">
+                          <Calendar className="inline h-4 w-4 mr-1" />
+                          Event Date *
+                        </label>
+                        {isMonthly ? (
+                          loadingMonthlyDates ? (
+                            <div className="flex items-center gap-2 rounded-lg border border-stone-300 px-4 py-3 text-stone-500">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading dates...
+                            </div>
+                          ) : (
+                            <MonthlyAvailableDatePicker availableDates={monthlyAvailableDates} value={eventDate} onChange={setEventDate} today={today} />
+                          )
+                        ) : (
+                          <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} restrictToAvailableDates={false} />
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-base font-bold text-stone-700 mb-1">
+                          <Clock className="inline h-4 w-4 mr-1" />
+                          Time Slot *
+                        </label>
+                        {loadingSlots ? (
+                          <div className="flex items-center gap-2 py-2 text-stone-500"><Loader2 className="h-4 w-4 animate-spin" />Loading...</div>
+                        ) : eventDate && displayedTimeSlots.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-2">
+                            {displayedTimeSlots.map((slot) => (
+                              <button key={slot.start} type="button" onClick={() => setEventTime(slot.start)} className={`px-3 py-2 text-sm rounded-lg border ${eventTime === slot.start ? "bg-[#FF8C6B] text-white border border-[#FF8C6B]" : "border-stone-300 hover:border-[#FF8C6B]"}`}>
+                                {slot.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-stone-500 py-2">{eventDate ? "No slots available" : "Select a date first"}</p>
+                        )}
+                      </div>
+                    </div>
                     {/* Desktop Continue Button - Inside Card */}
                     <div className="hidden lg:flex justify-end items-center pt-4 border-t">
                       <Button className={`px-8 ${PRIMARY_BUTTON_CLASS}`} onClick={() => setStep(step + 1)} disabled={!canProceed()}>Continue<ArrowRight className="ml-2 h-4 w-4" /></Button>
@@ -567,7 +618,7 @@ export default function BigChefPage() {
                     const cap = activeCategory === "monthly" ? menuCapacities[menu.id] : undefined;
                     const isFull = cap !== undefined && cap !== null && cap.available <= 0;
                     return (
-                      <Card key={menu.id} className={`cursor-pointer transition-all ${isSelected ? "ring-2 ring-[#FF8C6B] shadow-lg" : isDisabled ? "opacity-50" : "hover:shadow-md"}`} onClick={() => { if (isDisabled) return; if (isNanny) toggleNannyMenu(menu); else setSelectedMenu(menu); }}>
+                      <Card key={menu.id} className={`cursor-pointer transition-all ${isSelected ? "ring-2 ring-[#FF8C6B] shadow-lg" : isDisabled ? "opacity-50" : "hover:shadow-md"}`} onClick={() => { if (isDisabled) return; if (isNanny) toggleNannyMenu(menu); else selectMenu(menu); }}>
                         <CardContent className="p-0 overflow-hidden flex flex-col h-full">
                           <div className="relative h-64 w-full bg-stone-200"><Image src={menu.image} alt={menu.name} fill className="object-cover" />{cap && !isFull && <div className="absolute top-2 left-2"><span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FF8C6B]/15 text-[#FF8C6B]">{cap.available} spot{cap.available === 1 ? "" : "s"} left</span></div>}{isSelected && <div className="absolute top-2 right-2 bg-[#FF8C6B] text-white p-1 rounded-full"><Check className="h-4 w-4" /></div>}</div>
                           <div className="p-4 flex-1 flex flex-col">
@@ -747,7 +798,8 @@ export default function BigChefPage() {
                         })}
                       </div>
                     </div>
-                  ) : (
+                  ) : null}
+                  {false && (
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
                         <label className="block text-base font-bold text-stone-700 mb-1">
