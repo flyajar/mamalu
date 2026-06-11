@@ -365,7 +365,7 @@ export async function POST(request: NextRequest) {
                 voucher_code: chosen?.code || null,
               })
               .eq("stripe_session_id", session.id)
-              .select("id")
+              .select("id, customer_mobile, is_gift, recipient_name, recipient_mobile, recipient_email")
               .single();
 
             if (!updateError && purchase) {
@@ -378,12 +378,16 @@ export async function POST(request: NextRequest) {
               console.log("✅ Voucher purchase record updated");
             }
 
-            // Send email with the code
-            if (chosen && customerEmail) {
-              console.log(`📧 Sending voucher email to ${customerEmail}`);
+            const deliveryName = purchase?.is_gift ? purchase.recipient_name : customerName;
+            const deliveryEmail = purchase?.is_gift ? purchase.recipient_email : customerEmail;
+            const deliveryMobile = purchase?.is_gift ? purchase.recipient_mobile : purchase?.customer_mobile;
+
+            // Send the voucher and account access to the owner of the voucher.
+            if (chosen && deliveryEmail) {
+              console.log(`📧 Sending voucher email to ${deliveryEmail}`);
               const { success } = await sendVoucherConfirmationEmail({
-                customerName,
-                customerEmail,
+                customerName: deliveryName || "Customer",
+                customerEmail: deliveryEmail,
                 amount,
                 voucherCode: chosen.code,
               });
@@ -399,13 +403,14 @@ export async function POST(request: NextRequest) {
 
               const accountResult = await ensureCustomerAccountAndSendAccess({
                 supabase,
-                email: customerEmail,
-                name: customerName,
+                email: deliveryEmail,
+                name: deliveryName,
+                phone: deliveryMobile,
                 reason: "voucher",
               });
 
               if (accountResult.created && !accountResult.emailSent) {
-                console.error(`Customer account email failed for voucher purchase ${customerEmail}: ${accountResult.error}`);
+                console.error(`Customer account email failed for voucher purchase ${deliveryEmail}: ${accountResult.error}`);
               }
             } else {
               console.warn("⚠️ Cannot send email - missing voucher or customer email");

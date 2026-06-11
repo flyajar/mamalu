@@ -6,10 +6,19 @@ import { countAvailableVouchersForAmount } from "@/lib/vouchers/assign-purchase-
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, amount } = await request.json();
+    const { name, email, mobile, amount, isGift = false, recipient } = await request.json();
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    const normalizedMobile = typeof mobile === "string" ? mobile.trim() : "";
+    const recipientName = typeof recipient?.name === "string" ? recipient.name.trim() : "";
+    const recipientEmail = typeof recipient?.email === "string" ? recipient.email.trim().toLowerCase() : "";
+    const recipientMobile = typeof recipient?.mobile === "string" ? recipient.mobile.trim() : "";
 
-    if (!name || !email || !amount) {
-      return NextResponse.json({ error: "name, email, and amount are required" }, { status: 400 });
+    if (!name?.trim() || !normalizedEmail || !normalizedMobile || !amount) {
+      return NextResponse.json({ error: "Name, email, mobile number, and amount are required" }, { status: 400 });
+    }
+
+    if (isGift && (!recipientName || !recipientEmail || !recipientMobile)) {
+      return NextResponse.json({ error: "Recipient name, email, and mobile number are required" }, { status: 400 });
     }
 
     const supabase = createAdminClient();
@@ -25,7 +34,7 @@ export async function POST(request: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      customer_email: email,
+      customer_email: normalizedEmail,
       line_items: [
         {
           price_data: {
@@ -41,18 +50,23 @@ export async function POST(request: NextRequest) {
       ],
       metadata: {
         type: "voucher_purchase",
-        customer_name: name,
-        customer_email: email,
+        customer_name: name.trim(),
+        customer_email: normalizedEmail,
         amount: String(amount),
       },
-      success_url: `${siteUrl}/vouchers/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${siteUrl}/vouchers/success?session_id={CHECKOUT_SESSION_ID}${isGift ? "&gift=1" : ""}`,
       cancel_url: `${siteUrl}/vouchers`,
     });
 
     // Create a pending purchase record
     const { data: purchase, error: purchaseError } = await supabase.from("voucher_purchases").insert({
-      customer_name: name,
-      customer_email: email,
+      customer_name: name.trim(),
+      customer_email: normalizedEmail,
+      customer_mobile: normalizedMobile,
+      is_gift: Boolean(isGift),
+      recipient_name: isGift ? recipientName : null,
+      recipient_email: isGift ? recipientEmail : null,
+      recipient_mobile: isGift ? recipientMobile : null,
       amount: Number(amount),
       stripe_session_id: session.id,
       status: "pending",
@@ -65,8 +79,8 @@ export async function POST(request: NextRequest) {
     await createSourceInvoice(supabase, {
       sourceType: "voucher_purchase",
       voucherPurchaseId: purchase.id,
-      customerName: name,
-      customerEmail: email,
+      customerName: name.trim(),
+      customerEmail: normalizedEmail,
       amount: Number(amount),
       baseAmount: Number(amount),
       description: "Gift Voucher",

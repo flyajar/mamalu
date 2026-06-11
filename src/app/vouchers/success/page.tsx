@@ -9,6 +9,7 @@ import { openAccountWithAutoLogin } from "@/lib/account/auto-login-client";
 export default function VoucherSuccessPage() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
+  const isGift = searchParams.get("gift") === "1";
   const [status, setStatus] = useState<"loading" | "success" | "error">(sessionId ? "loading" : "error");
   const [openingAccount, setOpeningAccount] = useState(false);
 
@@ -40,26 +41,30 @@ export default function VoucherSuccessPage() {
             </h1>
             <div className="flex items-center justify-center gap-2 mb-4">
               <Gift className="h-5 w-5 text-[#ff7f5c]" />
-              <p className="text-stone-600 font-medium">Your gift card is on its way</p>
+              <p className="text-stone-600 font-medium">
+                {isGift ? "The gift card is on its way" : "Your gift card is on its way"}
+              </p>
             </div>
             <p className="text-stone-500 text-sm mb-8">
-              We&apos;ve sent your gift card code to your email. It may take a few minutes to arrive — please also check your spam folder.
+              We&apos;ve sent the gift card code to {isGift ? "the recipient's" : "your"} email. It may take a few minutes to arrive — please also check the spam folder.
             </p>
             <div className="space-y-3">
-              <button
-                type="button"
-                disabled={openingAccount}
-                onClick={async () => {
-                  setOpeningAccount(true);
-                  await openAccountWithAutoLogin({
-                    sessionId,
-                    destination: "/account/vouchers",
-                  });
-                }}
-                className="inline-block w-full py-3 rounded-2xl bg-[#ff7f5c] text-white font-bold hover:bg-[#ff6a42] transition-colors disabled:opacity-60"
-              >
-                {openingAccount ? "Opening..." : "View My Vouchers"}
-              </button>
+              {!isGift && (
+                <button
+                  type="button"
+                  disabled={openingAccount}
+                  onClick={async () => {
+                    setOpeningAccount(true);
+                    await openAccountWithAutoLogin({
+                      sessionId,
+                      destination: "/account/vouchers",
+                    });
+                  }}
+                  className="inline-block w-full py-3 rounded-2xl bg-[#ff7f5c] text-white font-bold hover:bg-[#ff6a42] transition-colors disabled:opacity-60"
+                >
+                  {openingAccount ? "Opening..." : "View My Vouchers"}
+                </button>
+              )}
               <Link
                 href="/"
                 className="inline-block w-full py-3 rounded-2xl border border-stone-200 text-stone-700 font-bold hover:bg-stone-50 transition-colors"

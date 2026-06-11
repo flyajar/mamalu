@@ -41,7 +41,7 @@ export async function GET() {
     const { data: vouchers, error } = await serviceClient
       .from("voucher_purchases")
       .select("*")
-      .eq("customer_email", email)
+      .or(`and(is_gift.eq.false,customer_email.ilike.${email}),and(is_gift.eq.true,recipient_email.ilike.${email})`)
       .order("created_at", { ascending: false });
 
     if (error) {

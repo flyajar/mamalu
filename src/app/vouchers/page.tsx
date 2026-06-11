@@ -12,13 +12,28 @@ interface VoucherGroup {
 interface BuyForm {
   name: string;
   email: string;
+  mobile: string;
+  isGift: boolean;
+  recipientName: string;
+  recipientMobile: string;
+  recipientEmail: string;
 }
+
+const emptyBuyForm: BuyForm = {
+  name: "",
+  email: "",
+  mobile: "",
+  isGift: false,
+  recipientName: "",
+  recipientMobile: "",
+  recipientEmail: "",
+};
 
 export default function VouchersPage() {
   const [groups, setGroups] = useState<VoucherGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<VoucherGroup | null>(null);
-  const [form, setForm] = useState<BuyForm>({ name: "", email: "" });
+  const [form, setForm] = useState<BuyForm>(emptyBuyForm);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -32,7 +47,7 @@ export default function VouchersPage() {
 
   const openModal = (g: VoucherGroup) => {
     setSelected(g);
-    setForm({ name: "", email: "" });
+    setForm(emptyBuyForm);
     setError("");
   };
 
@@ -52,7 +67,20 @@ export default function VouchersPage() {
       const res = await fetch("/api/vouchers/purchase", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: form.name, email: form.email, amount: selected.amount }),
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          mobile: form.mobile,
+          amount: selected.amount,
+          isGift: form.isGift,
+          recipient: form.isGift
+            ? {
+                name: form.recipientName,
+                mobile: form.recipientMobile,
+                email: form.recipientEmail,
+              }
+            : undefined,
+        }),
       });
 
       const data = await res.json();
@@ -157,7 +185,7 @@ export default function VouchersPage() {
 
       {selected && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b">
               <div>
                 <h2 className="text-lg font-bold text-stone-900">Buy Gift Card</h2>
@@ -195,10 +223,86 @@ export default function VouchersPage() {
                   placeholder="you@example.com"
                   className="w-full px-3 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c]"
                 />
-                <p className="text-xs text-stone-400 mt-1">
-                  Your gift card code will be sent to this email and is valid for 6 months from purchase.
-                </p>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">
+                  Mobile Number <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={form.mobile}
+                  onChange={(e) => setForm((f) => ({ ...f, mobile: e.target.value }))}
+                  placeholder="+971 50 123 4567"
+                  className="w-full px-3 py-2.5 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c]"
+                />
+              </div>
+
+              <label className="flex items-start gap-3 rounded-xl border border-stone-200 p-3 cursor-pointer hover:bg-stone-50">
+                <input
+                  type="checkbox"
+                  checked={form.isGift}
+                  onChange={(e) => setForm((f) => ({ ...f, isGift: e.target.checked }))}
+                  className="mt-1 h-4 w-4 accent-[#ff7f5c]"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-stone-700">Send this as a gift</span>
+                  <span className="block text-xs text-stone-400">
+                    We will email the voucher directly to the recipient after payment.
+                  </span>
+                </span>
+              </label>
+
+              {form.isGift && (
+                <fieldset className="space-y-4 rounded-xl bg-[#fff5eb] p-4">
+                  <legend className="px-1 text-sm font-semibold text-stone-800">Recipient details</legend>
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">
+                      Recipient Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={form.recipientName}
+                      onChange={(e) => setForm((f) => ({ ...f, recipientName: e.target.value }))}
+                      placeholder="Recipient's full name"
+                      className="w-full px-3 py-2.5 border border-stone-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">
+                      Recipient Mobile <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={form.recipientMobile}
+                      onChange={(e) => setForm((f) => ({ ...f, recipientMobile: e.target.value }))}
+                      placeholder="+971 50 123 4567"
+                      className="w-full px-3 py-2.5 border border-stone-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-stone-700 mb-1">
+                      Recipient Email <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={form.recipientEmail}
+                      onChange={(e) => setForm((f) => ({ ...f, recipientEmail: e.target.value }))}
+                      placeholder="recipient@example.com"
+                      className="w-full px-3 py-2.5 border border-stone-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-[#ff7f5c]/40 focus:border-[#ff7f5c]"
+                    />
+                  </div>
+                </fieldset>
+              )}
+
+              <p className="text-xs text-stone-400">
+                The gift card code will be sent to {form.isGift ? "the recipient's" : "your"} email
+                and is valid for 6 months from purchase.
+              </p>
 
               {error && (
                 <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{error}</p>

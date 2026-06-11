@@ -14,6 +14,9 @@ interface VoucherPurchase {
   voucher_code: string | null;
   paid_at: string | null;
   created_at: string;
+  is_gift: boolean;
+  customer_name: string;
+  customer_email: string;
 }
 
 export default function AccountVouchersPage() {
@@ -80,7 +83,22 @@ export default function AccountVouchersPage() {
                           <Gift className="h-5 w-5 text-amber-600" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-stone-900">{formatPrice(voucher.amount)} Gift Card</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold text-stone-900">{formatPrice(voucher.amount)} Gift Card</h3>
+                            {voucher.is_gift && (
+                              <Badge className="bg-[#ff7f5c]/10 text-[#d95634] hover:bg-[#ff7f5c]/10">
+                                Received as gift
+                              </Badge>
+                            )}
+                          </div>
+                          {voucher.is_gift && voucher.customer_name && (
+                            <div className="mt-1 text-sm text-stone-700">
+                              <p className="font-medium">Sent by {voucher.customer_name}</p>
+                              {voucher.customer_email && (
+                                <p className="text-stone-500">{voucher.customer_email}</p>
+                              )}
+                            </div>
+                          )}
                           <p className="text-sm text-stone-500">
                             Purchased {formatDate(voucher.paid_at || voucher.created_at)}
                           </p>
