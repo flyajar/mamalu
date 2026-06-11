@@ -677,12 +677,6 @@ export default function MiniChefPage() {
       setAvailableTimeSlots([]);
       return;
     }
-    if (isSummerCamp) {
-      setAllTimeSlots([]);
-      setAvailableTimeSlots([]);
-      setEventTime("");
-      return;
-    }
     setLoadingSlots(true);
     setEventTime("");
     fetch(`/api/services/availability?date=${eventDate}&category=${AVAILABILITY_CATEGORY_BY_TAB[activeCategory]}`)
@@ -693,7 +687,7 @@ export default function MiniChefPage() {
       })
       .catch(err => console.error("Failed to fetch availability:", err))
       .finally(() => setLoadingSlots(false));
-  }, [eventDate, activeCategory, isSummerCamp]);
+  }, [eventDate, activeCategory]);
 
   // Calculate totals
   const getMenuPrice = (menu = selectedMenu) => {
@@ -834,7 +828,7 @@ export default function MiniChefPage() {
           customerEmail,
           customerPhone,
           eventDate: eventDate || null,
-          eventTime: isSummerCamp ? null : eventTime || null,
+          eventTime: eventTime || null,
           guestCount,
           items: isMommyAndMe
             ? [{
@@ -866,8 +860,8 @@ export default function MiniChefPage() {
                 session: index + 1,
                 event_date: eventDate || null,
                 camp_dates: summerCampSelectedDates,
-                event_time: null,
-                time_label: null,
+                event_time: eventTime || null,
+                time_label: selectedTimeSlotLabel || null,
               }))
             : [],
           extras: extrasData,
@@ -934,13 +928,15 @@ export default function MiniChefPage() {
       if (!selectedMenu) return false;
       if (isPackage && !isPackageSelectionComplete(selectedMenu, selectedPackageMenuItems)) return false;
       if (isSummerCamp && selectedSummerCampMenus.length !== SUMMER_CAMP_SELECTION_COUNT) return false;
-      if (isSummerCamp) return summerCampSelectedDates.length === summerCampRequiredDateCount;
+      if (isSummerCamp) {
+        return summerCampSelectedDates.length === summerCampRequiredDateCount && Boolean(eventTime);
+      }
       return Boolean(eventDate && eventTime);
     }
     if (hasExtras && step === 2) return true; // Extras are optional
     const detailsStep = hasExtras ? 3 : 2;
     if (step === detailsStep) {
-      if (!customerName || !customerEmail || !eventDate || (!isSummerCamp && !eventTime)) return false;
+      if (!customerName || !customerEmail || !eventDate || !eventTime) return false;
       if (isSummerCamp && summerCampSelectedDates.length !== summerCampRequiredDateCount) return false;
       if (activeCategory === "monthly" && selectedMenu) {
         const cap = menuCapacities[selectedMenu.id];
@@ -1265,7 +1261,7 @@ export default function MiniChefPage() {
                           <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} restrictToAvailableDates={false} />
                         )}
                       </div>
-                      {!isSummerCamp && <div>
+                      <div>
                         <label className="block text-base font-bold text-stone-700 mb-1">
                           <Clock className="inline h-4 w-4 mr-1" />
                           Time Slot *
@@ -1286,7 +1282,7 @@ export default function MiniChefPage() {
                         ) : (
                           <p className="text-sm text-stone-500 py-2">{eventDate ? "No slots available for this date" : "Select a date first"}</p>
                         )}
-                      </div>}
+                      </div>
                     </div>
                     {isMommyAndMe && selectedMenu && (
                       <div className="mb-4 rounded-lg border border-[#FF8C6B]/25 bg-[#FF8C6B]/10 px-4 py-3 text-sm text-stone-900">
@@ -1816,10 +1812,10 @@ export default function MiniChefPage() {
                           {isSummerCamp ? summerCampSelectedDates.join(", ") : eventDate}
                         </span>
                       </div>
-                      {!isSummerCamp && <div>
+                      <div>
                         <span className="font-bold text-stone-700">Time:</span>
-                        <span className="ml-2 font-bold text-stone-900">{eventTime}</span>
-                      </div>}
+                        <span className="ml-2 font-bold text-stone-900">{selectedTimeSlotLabel}</span>
+                      </div>
                       <div>
                         <span className="font-bold text-stone-700">Name:</span>
                         <span className="ml-2 font-bold text-stone-900">{customerName}</span>

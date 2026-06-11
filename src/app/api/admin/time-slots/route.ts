@@ -145,7 +145,7 @@ export async function PUT(request: NextRequest) {
       .filter((id): id is string => Boolean(id));
 
     const rows = slots.map((slot, index) => ({
-      ...(slot.id ? { id: slot.id } : {}),
+      id: slot.id || crypto.randomUUID(),
       category_id: slot.category_id,
       label: slot.label.trim() || `${slot.start} - ${slot.end}`,
       start_time: slot.start,
