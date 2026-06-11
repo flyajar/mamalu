@@ -58,6 +58,12 @@ type MonthlyTargetBooking = {
   amountCollected: number;
 };
 
+type AnalyticsRanking = {
+  name: string;
+  count: number;
+  revenue: number;
+};
+
 function dubaiDateString(date: Date) {
   return new Date(date.getTime() + DUBAI_OFFSET_MS).toISOString().slice(0, 10);
 }
@@ -653,7 +659,7 @@ export async function GET(request: NextRequest) {
         products: (Array.isArray(order.items) ? order.items : []).map((item: unknown) => {
           const value = item && typeof item === "object" ? item as Record<string, unknown> : {};
           return {
-            name: String(value.name || value.product_name || "Product"),
+            name: String(value.title || value.name || value.product_name || "Product"),
             quantity: Number(value.quantity) || 1,
           };
         }),
@@ -764,6 +770,92 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    const completedAnalyticsBookings = dailyBookings.filter((booking) => booking.status === "completed");
+    const completedBookingRevenue = completedAnalyticsBookings.reduce((sum, booking) => sum + booking.allocatedAmount, 0);
+    const projectedBookingRevenue = dailyBookings
+      .filter((booking) => booking.status === "confirmed")
+      .reduce((sum, booking) => sum + booking.allocatedAmount, 0);
+    const productRevenue = dailyProductOrders.reduce((sum, order) => sum + order.totalPaid, 0);
+    const grossSales = completedBookingRevenue + productRevenue;
+    const totalTransactions = completedAnalyticsBookings.length + dailyProductOrders.length;
+    const totalUnitsSold = dailyProductOrders.reduce(
+      (sum, order) => sum + order.products.reduce((itemSum, item) => itemSum + item.quantity, 0),
+      0
+    );
+    const customerTransactions = new Map<string, number>();
+    [...completedAnalyticsBookings.map((booking) => booking.customerEmail), ...dailyProductOrders.map((order) => order.customerEmail)]
+      .filter(Boolean)
+      .forEach((email) => customerTransactions.set(email.toLowerCase(), (customerTransactions.get(email.toLowerCase()) || 0) + 1));
+    const repeatCustomers = Array.from(customerTransactions.values()).filter((count) => count > 1).length;
+
+    const topServiceMap = new Map<string, AnalyticsRanking>();
+    completedAnalyticsBookings.forEach((booking) => {
+      const current = topServiceMap.get(booking.serviceType) || { name: booking.serviceType, count: 0, revenue: 0 };
+      current.count += 1;
+      current.revenue += booking.allocatedAmount;
+      topServiceMap.set(booking.serviceType, current);
+    });
+
+    const topProductMap = new Map<string, AnalyticsRanking>();
+    dailyProductOrders.forEach((order) => {
+      const orderUnits = order.products.reduce((sum, product) => sum + product.quantity, 0) || 1;
+      order.products.forEach((product) => {
+        const current = topProductMap.get(product.name) || { name: product.name, count: 0, revenue: 0 };
+        current.count += product.quantity;
+        current.revenue += order.totalPaid * (product.quantity / orderUnits);
+        topProductMap.set(product.name, current);
+      });
+    });
+
+    const fulfillmentMap = new Map<string, number>();
+    dailyProductOrders.forEach((order) => {
+      fulfillmentMap.set(order.fulfillmentStatus, (fulfillmentMap.get(order.fulfillmentStatus) || 0) + 1);
+    });
+
+    const analytics = {
+      summary: {
+        grossSales,
+        completedBookingRevenue,
+        projectedBookingRevenue,
+        productRevenue,
+        amountCollected: dailyBookings.reduce((sum, booking) => sum + booking.amountCollected, 0) + productRevenue,
+        outstandingBalance: dailyBookings.reduce((sum, booking) => sum + booking.outstandingBalance, 0),
+        averageTransactionValue: totalTransactions > 0 ? grossSales / totalTransactions : 0,
+        averageBookingValue: completedAnalyticsBookings.length > 0 ? completedBookingRevenue / completedAnalyticsBookings.length : 0,
+        averageProductOrderValue: dailyProductOrders.length > 0 ? productRevenue / dailyProductOrders.length : 0,
+        completedBookings: completedAnalyticsBookings.length,
+        confirmedBookings: dailyBookings.filter((booking) => booking.status === "confirmed").length,
+        productOrders: dailyProductOrders.length,
+        totalGuests: completedAnalyticsBookings.reduce((sum, booking) => sum + booking.guests, 0),
+        averageGuestsPerBooking: completedAnalyticsBookings.length > 0
+          ? completedAnalyticsBookings.reduce((sum, booking) => sum + booking.guests, 0) / completedAnalyticsBookings.length
+          : 0,
+        unitsSold: totalUnitsSold,
+        uniqueCustomers: customerTransactions.size,
+        repeatCustomerRate: customerTransactions.size > 0 ? (repeatCustomers / customerTransactions.size) * 100 : 0,
+        bookingCompletionRate: dailyBookings.length > 0 ? (completedAnalyticsBookings.length / dailyBookings.length) * 100 : 0,
+        shippingRevenue: dailyProductOrders.reduce((sum, order) => sum + order.shipping, 0),
+      },
+      revenueMix: [
+        { name: "Completed Bookings", value: completedBookingRevenue },
+        { name: "Product Orders", value: productRevenue },
+      ],
+      bookingMix: [
+        { name: "Service Bookings", value: completedAnalyticsBookings.filter((booking) => booking.bookingType === "service").length },
+        { name: "Class Bookings", value: completedAnalyticsBookings.filter((booking) => booking.bookingType === "class").length },
+      ],
+      fulfillment: Array.from(fulfillmentMap.entries()).map(([name, value]) => ({ name, value })),
+      topServices: Array.from(topServiceMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 10),
+      topProducts: Array.from(topProductMap.values()).sort((a, b) => b.count - a.count).slice(0, 10),
+      trend: dailyTotals.map((day) => ({
+        date: day.date,
+        sales: day.combinedActualSales,
+        bookingRevenue: day.actualBookingRevenue,
+        productRevenue: day.productRevenue,
+        transactions: day.bookings + day.orders,
+      })),
+    };
+
     return NextResponse.json({
       period: { from: fromISO, to: toISO },
       summary: {
@@ -807,6 +899,7 @@ export async function GET(request: NextRequest) {
         productOrders: dailyProductOrders,
         monthlyTotals,
       },
+      analytics,
     });
   } catch (error: any) {
     console.error("Sales report error:", error);
