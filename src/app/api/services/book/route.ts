@@ -6,6 +6,7 @@ import { sendServiceBookingConfirmationEmail } from "@/lib/email/service-booking
 import { createSourceInvoice, markSourceInvoicePaid, updateSourceInvoiceCheckout } from "@/lib/invoices/source-invoices";
 import { consumeVoucherUse, getRedeemableVoucherByCode } from "@/lib/vouchers/voucher-usage";
 import { dateAllowsDeposit } from "@/lib/payments/deposit-policy";
+import { sendAdminNotification } from "@/lib/email/admin-notification";
 
 const BOOKED_SLOT_STATUSES = ["confirmed", "pending", "deposit_paid", "completed"];
 const MIN_BOOKING_NOTICE_MINUTES = 120;
@@ -301,6 +302,26 @@ export async function POST(request: NextRequest) {
       paidAt: paymentAmount <= 0 ? new Date().toISOString() : null,
       notes: voucher ? `Voucher applied: ${voucher.code} (AED ${discountAmount})` : null,
       createdBy,
+    });
+
+    await sendAdminNotification(supabase, {
+      eventType: isRentalBooking ? "rental_booking" : "service_booking",
+      sourceId: booking.id,
+      reference: booking.booking_number,
+      customerName: booking.customer_name,
+      customerEmail: booking.customer_email,
+      customerPhone: booking.customer_phone,
+      title: [booking.service_name, booking.package_name || booking.menu_name].filter(Boolean).join(" - "),
+      amount: Number(booking.total_amount || discountedTotalAmount),
+      eventDate: booking.event_date,
+      eventTime: booking.event_time,
+      guestCount: booking.guest_count || guestCount || 1,
+      items: Array.isArray(booking.items)
+        ? booking.items.map((item: { name?: string; title?: string; quantity?: number | string }) => ({
+            name: item.name || item.title || "Booked item",
+            quantity: item.quantity,
+          }))
+        : undefined,
     });
 
     if (paymentAmount <= 0) {

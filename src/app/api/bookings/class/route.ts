@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createSourceInvoice } from "@/lib/invoices/source-invoices";
 import { sanityClient } from "@/lib/sanity/client";
-
-function generateBookingNumber(): string {
-  const prefix = 'CLS';
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
-  return `${prefix}-${timestamp}-${random}`;
-}
+import { sendAdminNotification } from "@/lib/email/admin-notification";
 
 export async function POST(request: NextRequest) {
   try {
@@ -163,6 +157,19 @@ export async function POST(request: NextRequest) {
       eventDate: booking.start_date,
       guestCount: booking.number_of_guests || numberOfGuests,
       status: "pending",
+    });
+
+    await sendAdminNotification(supabase, {
+      eventType: "class_booking",
+      sourceId: booking.id,
+      reference: booking.booking_number,
+      customerName: booking.attendee_name,
+      customerEmail: booking.attendee_email,
+      customerPhone: booking.attendee_phone,
+      title: booking.class_title,
+      amount: Number(booking.total_amount || totalAmount),
+      eventDate: booking.start_date,
+      guestCount: booking.number_of_guests || numberOfGuests,
     });
 
     // Update spots in Sanity (decrement spotsAvailable by number of guests)

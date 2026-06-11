@@ -10,6 +10,7 @@ import { findAvailableVoucherForAmount } from "@/lib/vouchers/assign-purchase-vo
 import { consumeVoucherUse } from "@/lib/vouchers/voucher-usage";
 import { createSanityAdminClient } from "@/lib/sanity/admin";
 import Stripe from "stripe";
+import { sendAdminNotification } from "@/lib/email/admin-notification";
 
 type ProductCheckoutItem = {
   id?: string;
@@ -518,6 +519,20 @@ export async function POST(request: NextRequest) {
               serviceType: "product_order",
               status: "paid",
               paidAt: order.paid_at,
+            });
+
+            await sendAdminNotification(supabase, {
+              eventType: "product_order",
+              sourceId: order.id,
+              reference: order.order_number,
+              customerName: orderCustomerName,
+              customerEmail: orderCustomerEmail,
+              customerPhone: orderCustomerPhone,
+              title: productLineItems.map((item) => item.name).join(", ") || "Product order",
+              amount: Number(order.total_amount || 0),
+              items: productLineItems
+                .filter((item) => item.name !== "Shipping")
+                .map((item) => ({ name: item.name, quantity: item.quantity })),
             });
 
             if (orderCustomerEmail) {

@@ -26,6 +26,7 @@ import {
   PartyPopper,
   Newspaper,
   BookOpen,
+  BellRing,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -44,6 +45,7 @@ const navigation = [
   { name: "Payment Links", href: "/admin/payment-links", icon: LinkIcon },
   { name: "Payment Tracking", href: "/admin/payment-tracking", icon: Clock },
   { name: "WhatsApp Monitor", href: "/admin/whatsapp", icon: Phone, superAdminOnly: true },
+  { name: "Notifications", href: "/admin/notifications", icon: BellRing },
   { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Menu Items", href: "/admin/menu-items", icon: UtensilsCrossed },
