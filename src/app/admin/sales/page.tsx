@@ -214,7 +214,7 @@ export default function AdminSalesPage() {
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("week");
-  const [activeTab, setActiveTab] = useState<"overview" | "management" | "monthly-target" | "depachika">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "management" | "monthly-target" | "depachika">("management");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentFilter, setPaymentFilter] = useState<"all" | "completed" | "deposit_paid" | "pending">("all");
@@ -297,7 +297,7 @@ export default function AdminSalesPage() {
     const wb = XLSX.utils.book_new();
     const report = salesData.dailyReport;
     const summaryData = [
-      ["MAMALU KITCHEN - SALES DAILY REPORT"],
+      ["MAMALU KITCHEN - MANAGEMENT DAILY REPORT"],
       [`Dubai business dates: ${report.period.from} to ${report.period.to}`],
       [],
       ["Metric", "Value"],
@@ -344,7 +344,7 @@ export default function AdminSalesPage() {
     ];
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(totalsData), "Daily Totals");
 
-    XLSX.writeFile(wb, `Sales-Daily-Report-${report.period.from}-to-${report.period.to}.xlsx`);
+    XLSX.writeFile(wb, `Management-Daily-Report-${report.period.from}-to-${report.period.to}.xlsx`);
   };
 
   const exportDepachikaReport = () => {
@@ -538,17 +538,6 @@ export default function AdminSalesPage() {
       {/* Tabs */}
       <div className="flex items-center gap-1 p-1 bg-stone-100 rounded-lg w-fit">
         <button
-          onClick={() => setActiveTab("overview")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "overview"
-              ? "bg-white text-stone-900 shadow-sm"
-              : "text-stone-600 hover:text-stone-900"
-          }`}
-        >
-          <BarChart3 className="h-4 w-4 inline mr-2" />
-          Overview
-        </button>
-        <button
           onClick={() => setActiveTab("management")}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeTab === "management"
@@ -557,7 +546,7 @@ export default function AdminSalesPage() {
           }`}
         >
           <ClipboardList className="h-4 w-4 inline mr-2" />
-          Sales Daily Report
+          Management Daily Report
         </button>
         <button
           onClick={() => setActiveTab("monthly-target")}
@@ -570,25 +559,14 @@ export default function AdminSalesPage() {
           <TrendingUp className="h-4 w-4 inline mr-2" />
           Monthly Target Report
         </button>
-        <button
-          onClick={() => setActiveTab("depachika")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "depachika"
-              ? "bg-white text-stone-900 shadow-sm"
-              : "text-stone-600 hover:text-stone-900"
-          }`}
-        >
-          <FileSpreadsheet className="h-4 w-4 inline mr-2" />
-          Depachika Report
-        </button>
       </div>
 
-      {/* Sales Daily Report Tab */}
+      {/* Management Daily Report Tab */}
       {activeTab === "management" && (
         <div className="space-y-6">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-stone-900">Sales Daily Report</h2>
+              <h2 className="text-xl font-semibold text-stone-900">Management Daily Report</h2>
               <p className="text-sm text-stone-500">Dubai business dates. Completed bookings are actual; confirmed bookings are projected.</p>
             </div>
             <Button onClick={exportManagementReport} className="bg-green-600 hover:bg-green-700" disabled={!salesData?.dailyReport}>
