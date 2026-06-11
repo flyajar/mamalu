@@ -127,6 +127,7 @@ export async function POST(request: NextRequest) {
       waiverAccepted,
       userId,
       createdBy,
+      category,
       bookingSlotCategory,
       voucherCode,
     } = body;
@@ -161,14 +162,17 @@ export async function POST(request: NextRequest) {
     const isRentalBooking =
       serviceType === "rental" ||
       String(serviceName).toLowerCase().includes("rental");
-    const isBirthdayBooking = serviceType === "birthday_deck";
+    const isMiniChefBooking = serviceType === "birthday_deck";
+    const isBigChefBooking = serviceType === "corporate_deck";
+    const isBirthdayBooking = isMiniChefBooking && category === "birthdays";
     const isCorporatePrivateBooking =
-      serviceType === "corporate_deck" &&
-      String(serviceName).toLowerCase().includes("corporate / private");
+      isBigChefBooking && category === "corporate";
     const usesDateBasedDeposit = isRentalBooking || isBirthdayBooking || isCorporatePrivateBooking;
     const isDepositPayment = usesDateBasedDeposit && eventDate
       ? dateAllowsDeposit(eventDate, getBusinessDateParts().date)
-      : Boolean(requestedDepositPayment);
+      : isMiniChefBooking || isBigChefBooking
+        ? false
+        : Boolean(requestedDepositPayment);
     const discountedTotalAmount = Math.max(0, Number(totalAmount) - discountAmount);
     const adjustedDepositAmount = isDepositPayment ? Math.ceil(discountedTotalAmount * 0.5) : null;
     const adjustedBalanceAmount = isDepositPayment

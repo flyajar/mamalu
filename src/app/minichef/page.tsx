@@ -738,11 +738,11 @@ export default function MiniChefPage() {
   const selectedTimeSlotLabel = allTimeSlots.find((slot) => slot.start === eventTime)?.label || eventTime;
   const displayedTimeSlots = availableTimeSlots;
 
-  // Birthday bookings allow a 50% deposit when booked more than two days ahead.
+  // Only birthday bookings allow a 50% deposit when booked more than two days ahead.
   const totalAmount = calculateTotal();
   const voucherDiscount = appliedVoucher ? Math.min(totalAmount, Number(appliedVoucher.amount) || 0) : 0;
   const discountedTotalAmount = Math.max(0, totalAmount - voucherDiscount);
-  const requiresDeposit = dateAllowsDeposit(eventDate, getDubaiDate());
+  const requiresDeposit = isBirthday && dateAllowsDeposit(eventDate, getDubaiDate());
   const depositAmount = requiresDeposit ? Math.ceil(discountedTotalAmount * 0.5) : discountedTotalAmount;
   const balanceAmount = requiresDeposit ? discountedTotalAmount - depositAmount : 0;
 
