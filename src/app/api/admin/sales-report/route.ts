@@ -789,11 +789,32 @@ export async function GET(request: NextRequest) {
     const repeatCustomers = Array.from(customerTransactions.values()).filter((count) => count > 1).length;
 
     const topServiceMap = new Map<string, AnalyticsRanking>();
-    completedAnalyticsBookings.forEach((booking) => {
+    dailyBookings.forEach((booking) => {
       const current = topServiceMap.get(booking.serviceType) || { name: booking.serviceType, count: 0, revenue: 0 };
       current.count += 1;
       current.revenue += booking.allocatedAmount;
       topServiceMap.set(booking.serviceType, current);
+    });
+
+    const topBookingItemMap = new Map<string, AnalyticsRanking>();
+    dailyBookings.forEach((booking) => {
+      const totalQuantity = booking.bookedItems.reduce((sum, item) => sum + item.quantity, 0) || 1;
+      booking.bookedItems.forEach((item) => {
+        const current = topBookingItemMap.get(item.name) || { name: item.name, count: 0, revenue: 0 };
+        current.count += item.quantity;
+        current.revenue += booking.allocatedAmount * (item.quantity / totalQuantity);
+        topBookingItemMap.set(item.name, current);
+      });
+    });
+
+    const timeSlotMap = new Map<string, AnalyticsRanking>();
+    dailyBookings.forEach((booking) => {
+      if (!booking.time) return;
+      const timeSlot = booking.time.slice(0, 5);
+      const current = timeSlotMap.get(timeSlot) || { name: timeSlot, count: 0, revenue: 0 };
+      current.count += 1;
+      current.revenue += booking.allocatedAmount;
+      timeSlotMap.set(timeSlot, current);
     });
 
     const topProductMap = new Map<string, AnalyticsRanking>();
@@ -840,12 +861,10 @@ export async function GET(request: NextRequest) {
         { name: "Completed Bookings", value: completedBookingRevenue },
         { name: "Product Orders", value: productRevenue },
       ],
-      bookingMix: [
-        { name: "Service Bookings", value: completedAnalyticsBookings.filter((booking) => booking.bookingType === "service").length },
-        { name: "Class Bookings", value: completedAnalyticsBookings.filter((booking) => booking.bookingType === "class").length },
-      ],
       fulfillment: Array.from(fulfillmentMap.entries()).map(([name, value]) => ({ name, value })),
       topServices: Array.from(topServiceMap.values()).sort((a, b) => b.revenue - a.revenue).slice(0, 10),
+      topBookingItems: Array.from(topBookingItemMap.values()).sort((a, b) => b.count - a.count).slice(0, 10),
+      topTimeSlots: Array.from(timeSlotMap.values()).sort((a, b) => b.count - a.count || a.name.localeCompare(b.name)).slice(0, 10),
       topProducts: Array.from(topProductMap.values()).sort((a, b) => b.count - a.count).slice(0, 10),
       trend: dailyTotals.map((day) => ({
         date: day.date,

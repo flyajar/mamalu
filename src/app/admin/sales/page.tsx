@@ -20,7 +20,6 @@ import {
   ArrowDown,
   Download,
   FileSpreadsheet,
-  BarChart3,
   ClipboardList,
   Gift,
   UtensilsCrossed,
@@ -675,17 +674,6 @@ export default function AdminSalesPage() {
         >
           <TrendingUp className="h-4 w-4 inline mr-2" />
           Monthly Target Report
-        </button>
-        <button
-          onClick={() => setActiveTab("analytics")}
-          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-            activeTab === "analytics"
-              ? "bg-white text-stone-900 shadow-sm"
-              : "text-stone-600 hover:text-stone-900"
-          }`}
-        >
-          <BarChart3 className="h-4 w-4 inline mr-2" />
-          Analytics
         </button>
       </div>
 
