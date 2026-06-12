@@ -9,6 +9,11 @@ interface VoucherEmailDetails {
   customerEmail: string;
   amount: number;
   voucherCode: string;
+  purchaser?: {
+    name: string;
+    email: string;
+    mobile?: string | null;
+  };
 }
 
 interface VoucherFollowUpEmailDetails {
@@ -60,8 +65,35 @@ export async function sendVoucherFollowUpEmail(details: VoucherFollowUpEmailDeta
   return { success: true };
 }
 
-function generateEmailHtml({ customerName, amount, voucherCode }: VoucherEmailDetails): string {
+function escapeHtml(value: string): string {
+  return value.replace(
+    /[&<>"']/g,
+    (character) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      })[character] || character
+  );
+}
+
+function generateEmailHtml({ customerName, amount, voucherCode, purchaser }: VoucherEmailDetails): string {
   const baseUrl = getPublicSiteUrl();
+  const purchaserDetails = purchaser
+    ? `
+    <tr>
+      <td style="padding:0 30px 40px;text-align:center;">
+        <div style="max-width:420px;margin:0 auto;padding:22px;background-color:#fff4ef;border:1px solid #ffd8ca;">
+          <p style="color:#666666;margin:0 0 12px;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Gifted By</p>
+          <p style="color:#000000;margin:0 0 6px;font-size:16px;font-weight:600;">${escapeHtml(purchaser.name)}</p>
+          <p style="color:#666666;margin:0 0 4px;font-size:13px;">${escapeHtml(purchaser.email)}</p>
+          ${purchaser.mobile ? `<p style="color:#666666;margin:0;font-size:13px;">${escapeHtml(purchaser.mobile)}</p>` : ""}
+        </div>
+      </td>
+    </tr>`
+    : "";
 
   return `
 <!DOCTYPE html>
@@ -77,7 +109,7 @@ function generateEmailHtml({ customerName, amount, voucherCode }: VoucherEmailDe
     <tr>
       <td style="padding:50px 30px 30px;text-align:center;">
         <h1 style="color:#000000;margin:0 0 10px;font-size:24px;font-weight:600;letter-spacing:-0.5px;">Gift Card</h1>
-        <p style="color:#666666;margin:0 0 30px;font-size:15px;">Hi ${customerName}, your gift card is ready!</p>
+        <p style="color:#666666;margin:0 0 30px;font-size:15px;">Hi ${escapeHtml(customerName)}, your gift card is ready!</p>
         <p style="color:#000000;font-size:48px;font-weight:700;margin:0;letter-spacing:-1px;">AED ${amount.toFixed(2)}</p>
       </td>
     </tr>
@@ -85,11 +117,12 @@ function generateEmailHtml({ customerName, amount, voucherCode }: VoucherEmailDe
       <td style="padding:20px 30px 40px;text-align:center;">
         <p style="color:#666666;margin:0 0 20px;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;font-weight:500;">Your Code</p>
         <div style="display:inline-block;border:2px solid #000000;padding:20px 40px;margin:0 0 20px;">
-          <span style="color:#000000;font-size:32px;font-weight:700;letter-spacing:4px;font-family:monospace;">${voucherCode}</span>
+          <span style="color:#000000;font-size:32px;font-weight:700;letter-spacing:4px;font-family:monospace;">${escapeHtml(voucherCode)}</span>
         </div>
         <p style="color:#666666;margin:0;font-size:13px;line-height:1.6;">This code is valid for 6 months from purchase and can be used on any<br/>Mamalu Kitchen experience.</p>
       </td>
     </tr>
+    ${purchaserDetails}
     <tr>
       <td style="padding:30px;border-top:1px solid #e5e5e5;">
         <p style="color:#666666;margin:0 0 15px;font-size:14px;line-height:1.6;">

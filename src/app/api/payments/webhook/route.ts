@@ -461,6 +461,13 @@ export async function POST(request: NextRequest) {
                 customerEmail: deliveryEmail,
                 amount,
                 voucherCode: chosen.code,
+                purchaser: purchase?.is_gift
+                  ? {
+                      name: customerName || "Customer",
+                      email: customerEmail,
+                      mobile: purchase.customer_mobile,
+                    }
+                  : undefined,
               });
               
               console.log(`Email send result: ${success ? "✅ SUCCESS" : "❌ FAILED"}`);
