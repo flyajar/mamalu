@@ -79,7 +79,6 @@ export default function MyBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [uploadingReceipt, setUploadingReceipt] = useState<string | null>(null);
-  const [payingBalance, setPayingBalance] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBookings();
@@ -155,28 +154,6 @@ export default function MyBookingsPage() {
       }
     } catch {
       alert("Failed to open payment link");
-    }
-  };
-
-  const handlePayBalance = async (bookingId: string) => {
-    setPayingBalance(bookingId);
-    try {
-      const res = await fetch("/api/user/bookings/pay-balance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bookingId }),
-      });
-
-      const data = await res.json();
-      if (res.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        alert(data.error || "Failed to create balance payment session");
-      }
-    } catch {
-      alert("Failed to create balance payment session");
-    } finally {
-      setPayingBalance(null);
     }
   };
 
@@ -592,31 +569,6 @@ export default function MyBookingsPage() {
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
                           Open Payment Link
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {booking.booking_type === "service" && booking.is_deposit_payment && booking.deposit_paid && !booking.balance_paid && (booking.balance_amount || 0) > 0 && (
-                    <div className="bg-amber-50 border-t border-amber-100 px-6 py-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="text-sm">
-                          <span className="text-stone-600">Balance Due: </span>
-                          <span className="font-semibold text-amber-700">
-                            {formatPrice(booking.balance_amount || 0)}
-                          </span>
-                        </div>
-                        <Button
-                          size="sm"
-                          onClick={() => handlePayBalance(booking.id)}
-                          disabled={payingBalance === booking.id}
-                        >
-                          {payingBalance === booking.id ? (
-                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <CreditCard className="h-4 w-4 mr-2" />
-                          )}
-                          Pay Balance
                         </Button>
                       </div>
                     </div>

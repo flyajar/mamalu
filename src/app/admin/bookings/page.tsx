@@ -97,6 +97,8 @@ interface ServiceBooking {
   created_at: string;
   created_by: string | null;
   payment_link_id: string | null;
+  balance_payment_link: string | null;
+  balance_due_date: string | null;
   creator: {
     id: string;
     full_name: string | null;
@@ -232,6 +234,8 @@ export default function AdminBookingsPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [bookingInvoices, setBookingInvoices] = useState<BookingInvoice[]>([]);
   const [bookingInvoicesLoading, setBookingInvoicesLoading] = useState(false);
+  const [generatingBalanceLink, setGeneratingBalanceLink] = useState(false);
+  const [sendingBalanceLink, setSendingBalanceLink] = useState(false);
   
   // View mode: list or calendar
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
@@ -529,6 +533,64 @@ export default function AdminBookingsPage() {
     return (serviceText.includes("nanny") || serviceText.includes("teenager"))
       && Array.isArray(booking.items)
       && booking.items.length > 0;
+  };
+
+  const generateBalancePaymentLink = async (sendEmail = false) => {
+    if (!selectedBooking) return;
+
+    if (sendEmail) {
+      setSendingBalanceLink(true);
+    } else {
+      setGeneratingBalanceLink(true);
+    }
+    try {
+      const res = await fetch("/api/admin/payment-tracking/generate-balance-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: selectedBooking.id, sendEmail }),
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.paymentLink) {
+        alert(data.error || "Failed to generate balance payment link");
+        return;
+      }
+
+      const updateBooking = (booking: ServiceBooking) =>
+        booking.id === selectedBooking.id
+          ? {
+              ...booking,
+              balance_payment_link: data.paymentLink,
+              payment_status: "balance_pending",
+            }
+          : booking;
+
+      setBookings((current) => current.map(updateBooking));
+      setSelectedBooking((current) => current ? updateBooking(current) : current);
+      if (data.invoice) {
+        setBookingInvoices((current) => {
+          const withoutInvoice = current.filter((invoice) => invoice.id !== data.invoice.id);
+          return [data.invoice, ...withoutInvoice];
+        });
+      }
+
+      if (sendEmail) {
+        if (!data.emailSent) {
+          alert(data.emailError || "Payment link was created, but the email could not be sent");
+          return;
+        }
+        alert(`Payment link sent to ${selectedBooking.customer_email}`);
+      } else {
+        await navigator.clipboard.writeText(data.paymentLink);
+        setCopiedLink(selectedBooking.id);
+      }
+    } catch (error) {
+      console.error("Failed to generate balance payment link:", error);
+      alert("Failed to generate balance payment link");
+    } finally {
+      setGeneratingBalanceLink(false);
+      setSendingBalanceLink(false);
+    }
   };
 
   const getCourseScheduleItems = (booking: ServiceBooking) => {
@@ -1405,6 +1467,77 @@ export default function AdminBookingsPage() {
                       </div>
                     </div>
                   )}
+                  {selectedBooking.is_deposit_payment &&
+                    selectedBooking.deposit_paid &&
+                    !selectedBooking.balance_paid &&
+                    (selectedBooking.balance_amount || 0) > 0 && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                        {selectedBooking.balance_payment_link ? (
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <p className="text-sm font-medium text-stone-900">Balance payment link ready</p>
+                              <p className="text-xs text-stone-500">
+                                {formatPrice(selectedBooking.balance_amount || 0)} balance due
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <a
+                                href={selectedBooking.balance_payment_link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                              >
+                                <Button size="sm" variant="outline">
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  Open
+                                </Button>
+                              </a>
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  copyPaymentLink(selectedBooking.balance_payment_link!, selectedBooking.id)
+                                }
+                              >
+                                <Copy className="mr-2 h-4 w-4" />
+                                {copiedLink === selectedBooking.id ? "Copied" : "Copy Link"}
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => generateBalancePaymentLink(true)}
+                                disabled={sendingBalanceLink || !selectedBooking.customer_email}
+                              >
+                                {sendingBalanceLink ? (
+                                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Mail className="mr-2 h-4 w-4" />
+                                )}
+                                {sendingBalanceLink ? "Sending..." : "Send via Email"}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-medium text-stone-900">Collect remaining balance</p>
+                              <p className="text-xs text-stone-500">
+                                Generate a {formatPrice(selectedBooking.balance_amount || 0)} payment link.
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              onClick={() => generateBalancePaymentLink(false)}
+                              disabled={generatingBalanceLink}
+                            >
+                              {generatingBalanceLink ? (
+                                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <LinkIcon className="mr-2 h-4 w-4" />
+                              )}
+                              {generatingBalanceLink ? "Generating..." : "Generate Payment Link"}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   {selectedBooking.payment_link?.stripe_payment_link_url && (
                     <div className="flex items-center gap-2">
                       <LinkIcon className="h-4 w-4 text-stone-400" />

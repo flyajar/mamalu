@@ -8,37 +8,67 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { openAccountWithAutoLogin } from "@/lib/account/auto-login-client";
 
+interface BalanceBookingDetails {
+  booking_number: string;
+  service_name: string;
+  package_name: string | null;
+  menu_name: string | null;
+  event_date: string | null;
+  event_time: string | null;
+  time_label: string | null;
+  guest_count: number;
+  total_amount: number;
+  deposit_amount: number | null;
+  balance_amount: number | null;
+  balance_paid_at: string | null;
+}
+
 function SuccessContent() {
   const searchParams = useSearchParams();
   const sessionId = searchParams.get("session_id");
   const bookingNumber = searchParams.get("booking");
+  const isBalancePayment = searchParams.get("payment") === "balance";
   const [loading, setLoading] = useState(true);
   const [openingAccount, setOpeningAccount] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [bookingDetails] = useState<{
-    bookingNumber: string;
-    className: string;
-    amount: string;
-  } | null>(null);
+  const [error] = useState<string | null>(null);
+  const [bookingDetails, setBookingDetails] = useState<BalanceBookingDetails | null>(null);
 
   useEffect(() => {
     async function verifyPayment() {
-      if (!sessionId) {
+      if (!isBalancePayment || !bookingNumber) {
         setLoading(false);
         return;
       }
 
       try {
-        // Payment is already verified by webhook, just show success
+        const res = await fetch(`/api/bookings/success-details?booking=${encodeURIComponent(bookingNumber)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setBookingDetails(data.booking);
+        }
         setLoading(false);
       } catch {
-        setError("Failed to verify payment");
         setLoading(false);
       }
     }
 
     verifyPayment();
-  }, [sessionId]);
+  }, [bookingNumber, isBalancePayment, sessionId]);
+
+  const formatAmount = (amount: number | null) =>
+    new Intl.NumberFormat("en-AE", {
+      style: "currency",
+      currency: "AED",
+    }).format(amount || 0);
+
+  const formatEventDate = (date: string | null) =>
+    date
+      ? new Date(`${date}T00:00:00`).toLocaleDateString("en-GB", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })
+      : "Date pending";
 
   if (loading) {
     return (
@@ -87,26 +117,69 @@ function SuccessContent() {
               <CheckCircle className="h-12 w-12 text-green-500" />
             </div>
             <h1 className="text-3xl font-bold text-stone-900 mb-2">
-              Payment Successful!
+              {isBalancePayment ? "Booking Balance Paid!" : "Payment Successful!"}
             </h1>
             <p className="text-lg text-stone-600 mb-6">
-              Thank you for your booking. Your payment has been processed successfully.
+              {isBalancePayment
+                ? "Thank you. The remaining balance for this booking has been paid in full."
+                : "Thank you for your booking. Your payment has been processed successfully."}
             </p>
 
-            {bookingDetails && (
-              <div className="bg-stone-50 rounded-lg p-4 mb-6 text-left">
-                <h3 className="font-semibold text-stone-900 mb-2">Booking Details</h3>
-                <div className="space-y-1 text-sm">
-                  <p><span className="text-stone-500">Booking #:</span> {bookingDetails.bookingNumber}</p>
-                  <p><span className="text-stone-500">Class:</span> {bookingDetails.className}</p>
-                  <p><span className="text-stone-500">Amount:</span> {bookingDetails.amount}</p>
+            {isBalancePayment && bookingDetails && (
+              <div className="mb-6 rounded-lg border border-stone-200 bg-stone-50 p-5 text-left">
+                <h3 className="mb-4 font-semibold text-stone-900">Booking Details</h3>
+                <div className="grid gap-3 text-sm sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs text-stone-500">Booking Number</p>
+                    <p className="font-medium text-stone-900">{bookingDetails.booking_number}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">Status</p>
+                    <p className="font-medium text-green-700">Fully Paid</p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <p className="text-xs text-stone-500">Booking</p>
+                    <p className="font-medium text-stone-900">
+                      {[bookingDetails.service_name, bookingDetails.package_name || bookingDetails.menu_name]
+                        .filter(Boolean)
+                        .join(" - ")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">Event Schedule</p>
+                    <p className="font-medium text-stone-900">
+                      {formatEventDate(bookingDetails.event_date)}
+                      {(bookingDetails.time_label || bookingDetails.event_time) &&
+                        ` at ${bookingDetails.time_label || bookingDetails.event_time}`}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stone-500">Guests</p>
+                    <p className="font-medium text-stone-900">{bookingDetails.guest_count || 1}</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-2 border-t border-stone-200 pt-4 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-stone-500">Total booking amount</span>
+                    <span className="font-medium">{formatAmount(bookingDetails.total_amount)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-stone-500">Deposit paid</span>
+                    <span className="font-medium">{formatAmount(bookingDetails.deposit_amount)}</span>
+                  </div>
+                  <div className="flex justify-between text-green-700">
+                    <span>Balance paid</span>
+                    <span className="font-semibold">{formatAmount(bookingDetails.balance_amount)}</span>
+                  </div>
                 </div>
               </div>
             )}
 
             <div className="bg-amber-50 rounded-lg p-4 mb-6">
               <p className="text-sm text-amber-800">
-                A confirmation email has been sent to your email address with all the details.
+                {isBalancePayment
+                  ? "Your booking is now fully paid. You can review it anytime from My Bookings."
+                  : "A confirmation email has been sent to your email address with all the details."}
               </p>
             </div>
 

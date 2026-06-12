@@ -99,10 +99,26 @@ export async function POST(request: NextRequest) {
         console.log("Session metadata:", JSON.stringify(session.metadata, null, 2));
         console.log("Session ID:", session.id);
         
-        const bookingId = session.metadata?.booking_id;
-        const isServiceBooking = session.metadata?.type === "service_booking";
-        const isServiceBookingBalance = session.metadata?.type === "service_booking_balance";
-        const isCustomPaymentLink = session.metadata?.type === "custom_payment_link";
+        let paymentLinkMetadata: Stripe.Metadata = {};
+        if (typeof session.payment_link === "string") {
+          try {
+            const paymentLink = await stripe.paymentLinks.retrieve(session.payment_link);
+            paymentLinkMetadata = paymentLink.metadata;
+          } catch (error) {
+            console.error(`Failed to retrieve Stripe payment link ${session.payment_link}:`, error);
+          }
+        }
+
+        const checkoutMetadata = {
+          ...paymentLinkMetadata,
+          ...session.metadata,
+        };
+        const bookingId = checkoutMetadata.booking_id;
+        const isServiceBooking = checkoutMetadata.type === "service_booking";
+        const isServiceBookingBalance =
+          checkoutMetadata.type === "service_booking_balance" ||
+          checkoutMetadata.payment_type === "balance";
+        const isCustomPaymentLink = checkoutMetadata.type === "custom_payment_link";
 
         if (bookingId && isServiceBookingBalance) {
           const paidAmount = (session.amount_total || 0) / 100;
@@ -145,11 +161,20 @@ export async function POST(request: NextRequest) {
               if (updateError) {
                 console.error("Service booking balance update failed:", updateError);
               } else {
-                await markSourceInvoicePaid(
-                  supabase,
-                  { serviceBookingId: bookingId, stripeCheckoutSessionId: session.id },
-                  now
-                );
+                const { error: invoiceUpdateError } = await supabase
+                  .from("invoices")
+                  .update({
+                    status: "paid",
+                    paid_at: now,
+                    stripe_checkout_session_id: session.id,
+                  })
+                  .eq("service_booking_id", bookingId)
+                  .ilike("description", "%balance payment%")
+                  .neq("status", "cancelled");
+
+                if (invoiceUpdateError) {
+                  console.error("Balance invoice update failed:", invoiceUpdateError);
+                }
 
                 await supabase.from("payment_transactions").insert({
                   transaction_type: "payment",
