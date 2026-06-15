@@ -31,76 +31,76 @@ const client = createClient({
 
 // Eazy Freezy Products scraped from mamalukitchen.com
 const eazyFreezyProducts = [
-  { title: "Truffle Sauce", price: 78.00, category: "italian" },
-  { title: "Rigatoni Pasta", price: 10.00, category: "italian" },
-  { title: "Gnocchi Potato", price: 30.00, category: "italian" },
-  { title: "Orecchiete Pasta", price: 25.00, category: "italian" },
-  { title: "Spinach Fatayer", price: 29.00, category: "arabic" },
+  { title: "Truffle Sauce", price: 78.00, categories: ["italian"] },
+  { title: "Rigatoni Pasta", price: 10.00, categories: ["italian"] },
+  { title: "Gnocchi Potato", price: 30.00, categories: ["italian"] },
+  { title: "Orecchiete Pasta", price: 25.00, categories: ["italian"] },
+  { title: "Spinach Fatayer", price: 29.00, categories: ["arabic"] },
   {
     title: "Cheese Rolls",
     price: 38.10,
-    category: "arabic",
+    categories: ["arabic", "kids"],
     description: "Crispy cheese rolls that can be baked or air fried. Perfect for lunch boxes and snacks. Ingredients: Spring Roll Wrappers, Akawi Cheese, Mozzarella Cheese, Flour, Eggs, Feta Cheese, Black Sesame Seeds, Parsley. Weight: 450g (18pcs)",
   },
-  { title: "Mini Cheese Rolls", price: 39.00, category: "arabic" },
+  { title: "Mini Cheese Rolls", price: 39.00, categories: ["arabic"] },
   {
     title: "Musakhan Rolls",
     price: 60.00,
-    category: "arabic",
+    categories: ["arabic", "dinner-party"],
     description: "Crispy, flaky baked wraps filled with hormone-free chicken and sumac. Lunch box and dinner party friendly as well. Ingredients: Markook Bread, Chicken Breast, Lemon Powder, Onion, Sumac Powder, Himalayan Pink Salt, Black Pepper, Olive Oil, Pomegranate Molasses. Weight: 594g",
   },
-  { title: "Churros", price: 28.00, category: "dinner-party" },
-  { title: "Vegetable Gyoza", price: 28.00, category: "asian" },
-  { title: "Prawn Gyoza", price: 28.00, category: "asian" },
-  { title: "Kid Lunch Box Bundle", price: 165.00, category: "kids" },
-  { title: "Cheese Sambousek", price: 26.00, category: "arabic" },
-  { title: "Falafel", price: 25.00, category: "arabic" },
-  { title: "Stuffed Zucchini", price: 39.00, category: "arabic" },
-  { title: "Stuffed Cabbage Rolls", price: 60.00, category: "arabic" },
+  { title: "Churros", price: 28.00, categories: ["dinner-party"] },
+  { title: "Vegetable Gyoza", price: 28.00, categories: ["asian"] },
+  { title: "Prawn Gyoza", price: 28.00, categories: ["asian"] },
+  { title: "Kid Lunch Box Bundle", price: 165.00, categories: [] },
+  { title: "Cheese Sambousek", price: 26.00, categories: ["arabic"] },
+  { title: "Falafel", price: 25.00, categories: ["arabic"] },
+  { title: "Stuffed Zucchini", price: 39.00, categories: ["arabic"] },
+  { title: "Stuffed Cabbage Rolls", price: 60.00, categories: ["arabic"] },
   {
     title: "Beef Sambousek",
     price: 34.53,
-    category: "arabic",
+    categories: ["arabic", "dinner-party"],
     description: "Hormone-free beef sambousek made with flour, red onion, water, corn flour, labneh, pine seeds, oil, pomegranate molasses, salt, white pepper, black pepper, sweet pepper, cinnamon powder, seven spices, and nutmeg. Weight: 490g (14pcs)",
   },
   {
     title: "Mini Cheese Croissant",
     price: 35.00,
-    category: "dinner-party",
+    categories: ["dinner-party", "kids"],
     description: "Mini cheese croissants made with wheat flour, butter, honey, water, salt, and halloumi cheese. Weight: 300g (10pcs)",
   },
   {
     title: "Mini Zataar Croissant",
     price: 36.00,
-    category: "arabic",
+    categories: ["arabic", "kids"],
     description: "Mini zataar croissants made with wheat flour, butter, honey, water, salt, and zataar (sumac, thyme, sesame seeds, olive oil). Weight: 300g (10pcs)",
   },
-  { title: "Bolognese Sauce With Hidden Vegetables", price: 60.00, category: "italian" },
-  { title: "Manti (Spinach Filling)", price: 30.00, category: "arabic" },
+  { title: "Bolognese Sauce With Hidden Vegetables", price: 60.00, categories: ["italian"] },
+  { title: "Manti (Spinach Filling)", price: 30.00, categories: ["arabic"] },
   {
     title: "Mini Meat Kibbe",
     price: 43.35,
-    category: "arabic",
+    categories: ["arabic", "dinner-party"],
     description: "Mini meat kibbe that can be boiled, fried, or baked. Can also be cooked and served with hot natural yoghurt. Ingredients: Minced Beef, Burghul, Himalayan Pink Salt, Onion, Black Pepper, Seven Spices, Coconut Oil, Pinenuts. Weight: 360g (24pcs)",
   },
-  { title: "Mini Pumpkin Kibbe", price: 40.00, category: "arabic" },
-  { title: "Ouzi", price: 50.00, category: "arabic" },
+  { title: "Mini Pumpkin Kibbe", price: 40.00, categories: ["arabic"] },
+  { title: "Ouzi", price: 50.00, categories: ["arabic", "dinner-party"] },
   {
     title: "Quinoa Crusted Chicken Tenders",
     price: 43.34,
-    category: "kids",
+    categories: ["kids"],
     description: "A kids favourite, crunchy baked chicken tenders made with hormone-free chicken breast and quinoa crust. Ingredients: Chicken Breast, Himalayan Pink Salt, Garlic Powder, Black Pepper, Quinoa, Bread Crumbs, Egg White, Olive Oil. Weight: 500g (12pcs)",
   },
   {
     title: "Shish Barak (Meat dumplings)",
     price: 38.10,
-    category: "arabic",
+    categories: ["arabic", "dinner-party"],
     description: "Mini meat dumplings that are cooked in a yoghurt sauce. Ingredients: Flour, Himalayan Pink Salt, Minced Beef, Olive Oil, Onion, Black Pepper, Seven Spices. Weight: 360g (60pcs)",
   },
   {
     title: "Smiley Face Pizza",
     price: 34.53,
-    category: "kids",
+    categories: ["kids"],
     description: "Wholewheat smiley face pizzas perfect for lunch boxes and snacks on the go. Ingredients: Yeast, Flour, Honey, Olive Oil, Himalayan Pink Salt, Tomato Sauce, Garlic, Dry Oregano, Dry Basil, Mozzarella, Black Olives, Red Capsicum, White Button Mushroom. Weight: 360g (18pcs)",
   },
 ];
@@ -159,7 +159,11 @@ async function seedProducts() {
       { slug }
     );
 
-    const categoryRef = categoryRefs[product.category];
+    const productCategoryRefs = (product.categories || []).map((categorySlug) => ({
+      _type: "reference",
+      _ref: categoryRefs[categorySlug],
+      _key: categorySlug,
+    })).filter((categoryRef) => Boolean(categoryRef._ref));
 
     if (existingProduct) {
       const description =
@@ -170,7 +174,7 @@ async function seedProducts() {
         title: product.title,
         price: product.price,
         description,
-        categories: categoryRef ? [{ _type: "reference", _ref: categoryRef }] : [],
+        categories: productCategoryRefs,
       }).commit();
 
       console.log(`  ✓ Updated "${product.title}" - AED ${product.price}`);
@@ -189,7 +193,7 @@ async function seedProducts() {
       price: product.price,
       inStock: true,
       featured: product.price > 50,
-      categories: categoryRef ? [{ _type: "reference", _ref: categoryRef }] : [],
+      categories: productCategoryRefs,
     });
     
     console.log(`  ✓ Created "${product.title}" - AED ${product.price}`);

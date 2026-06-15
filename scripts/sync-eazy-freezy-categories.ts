@@ -43,34 +43,34 @@ const staleCategorySlugs = [
   "savory",
 ];
 
-const productCategories: Record<string, string> = {
-  "truffle-sauce": "italian",
-  "rigatoni-pasta": "italian",
-  "gnocchi-potato": "italian",
-  "orecchiete-pasta": "italian",
-  "bolognese-sauce-with-hidden-vegetables": "italian",
-  "spinach-fatayer": "arabic",
-  "cheese-rolls": "arabic",
-  "mini-cheese-rolls": "arabic",
-  "musakhan-rolls": "arabic",
-  "cheese-sambousek": "arabic",
-  "falafel": "arabic",
-  "stuffed-zucchini": "arabic",
-  "stuffed-cabbage-rolls": "arabic",
-  "beef-sambousek": "arabic",
-  "mini-zataar-croissant": "arabic",
-  "manti-spinach-filling": "arabic",
-  "mini-meat-kibbe": "arabic",
-  "mini-pumpkin-kibbe": "arabic",
-  "ouzi": "arabic",
-  "shish-barak-meat-dumplings": "arabic",
-  "kid-lunch-box-bundle": "kids",
-  "quinoa-crusted-chicken-tenders": "kids",
-  "smiley-face-pizza": "kids",
-  "churros": "dinner-party",
-  "mini-cheese-croissant": "dinner-party",
-  "vegetable-gyoza": "asian",
-  "prawn-gyoza": "asian",
+const productCategories: Record<string, string[]> = {
+  "truffle-sauce": ["italian"],
+  "rigatoni-pasta": ["italian"],
+  "gnocchi-potato": ["italian"],
+  "orecchiete-pasta": ["italian"],
+  "bolognese-sauce-with-hidden-vegetables": ["italian"],
+  "spinach-fatayer": ["arabic"],
+  "cheese-rolls": ["arabic", "kids"],
+  "mini-cheese-rolls": ["arabic"],
+  "musakhan-rolls": ["arabic", "dinner-party"],
+  "cheese-sambousek": ["arabic"],
+  "falafel": ["arabic"],
+  "stuffed-zucchini": ["arabic"],
+  "stuffed-cabbage-rolls": ["arabic"],
+  "beef-sambousek": ["arabic", "dinner-party"],
+  "mini-zataar-croissant": ["arabic", "kids"],
+  "manti-spinach-filling": ["arabic"],
+  "mini-meat-kibbe": ["arabic", "dinner-party"],
+  "mini-pumpkin-kibbe": ["arabic"],
+  "ouzi": ["arabic", "dinner-party"],
+  "shish-barak-meat-dumplings": ["arabic", "dinner-party"],
+  "kid-lunch-box-bundle": [],
+  "quinoa-crusted-chicken-tenders": ["kids"],
+  "smiley-face-pizza": ["kids"],
+  "churros": ["dinner-party"],
+  "mini-cheese-croissant": ["dinner-party", "kids"],
+  "vegetable-gyoza": ["asian"],
+  "prawn-gyoza": ["asian"],
 };
 
 async function syncCategories() {
@@ -104,7 +104,7 @@ async function syncCategories() {
   let patched = 0;
   const missing: string[] = [];
 
-  for (const [productSlug, categorySlug] of Object.entries(productCategories)) {
+  for (const [productSlug, categorySlugs] of Object.entries(productCategories)) {
     const product = await client.fetch(
       `*[_type == "product" && slug.current == $slug][0]{_id, title}`,
       { slug: productSlug },
@@ -117,13 +117,11 @@ async function syncCategories() {
 
     transaction.patch(product._id, {
       set: {
-        categories: [
-          {
+        categories: categorySlugs.map((categorySlug) => ({
             _type: "reference",
             _ref: categoryRefs[categorySlug],
             _key: categorySlug,
-          },
-        ],
+          })),
       },
     });
     patched += 1;
