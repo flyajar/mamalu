@@ -13,7 +13,6 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { PressArticle, PressContent, defaultPressContent } from "@/types/press";
 
 const emptyArticle: PressArticle = {
@@ -169,25 +168,22 @@ export default function AdminPressPage() {
 
     setImageUploading(true);
     try {
-      const supabase = createClient();
-      if (!supabase) throw new Error("Supabase not configured");
-
       const uploadedUrls: string[] = [];
       for (const file of files) {
-        const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
-        const fileName = `press/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("bucket", "images");
+        formData.append("userId", "press");
 
-        const { error } = await supabase.storage
-          .from("images")
-          .upload(fileName, file, {
-            cacheControl: "3600",
-            upsert: false,
-          });
+        const res = await fetch("/api/admin/upload", {
+          method: "POST",
+          body: formData,
+        });
 
-        if (error) throw error;
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Upload failed");
 
-        const { data } = supabase.storage.from("images").getPublicUrl(fileName);
-        uploadedUrls.push(data.publicUrl);
+        uploadedUrls.push(data.url);
       }
 
       const nextImages =
@@ -197,7 +193,7 @@ export default function AdminPressPage() {
       setEditingArticle({ ...editingArticle, image: nextImages[0] || "", images: nextImages });
     } catch (error) {
       console.error("Error uploading press image:", error);
-      alert("Failed to upload image. Please try again.");
+      alert(error instanceof Error ? error.message : "Failed to upload image. Please try again.");
     } finally {
       setImageUploading(false);
     }
