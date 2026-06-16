@@ -24,9 +24,36 @@ interface CartItem {
   imageUrl?: string;
 }
 
+interface CheckoutDetails {
+  firstName: string;
+  lastName: string;
+  email: string;
+  countryCode: string;
+  phone: string;
+  streetAddress: string;
+  area: string;
+  city: string;
+  country: string;
+}
+
+const SHIPPING_FEE = 15;
+const FREE_SHIPPING_THRESHOLD = 200;
+const MINIMUM_ORDER_VALUE = 100;
+
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [checkoutDetails, setCheckoutDetails] = useState<CheckoutDetails>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    countryCode: "+971",
+    phone: "",
+    streetAddress: "",
+    area: "",
+    city: "Dubai",
+    country: "United Arab Emirates",
+  });
   const initialized = useRef(false);
 
   // Load cart from localStorage on mount
@@ -66,18 +93,37 @@ export default function CartPage() {
     (sum, item) => sum + item.price * item.quantity,
     0
   );
-  const shipping = subtotal > 200 ? 0 : 25;
+  const shipping = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
   const total = subtotal + shipping;
+  const minimumOrderRemaining = Math.max(0, MINIMUM_ORDER_VALUE - subtotal);
+  const canCheckout = cartItems.length > 0 && subtotal >= MINIMUM_ORDER_VALUE;
+
+  const handleDetailsChange = (field: keyof CheckoutDetails, value: string) => {
+    setCheckoutDetails((details) => ({ ...details, [field]: value }));
+  };
 
   const handleCheckout = async () => {
     if (cartItems.length === 0) return;
+    if (subtotal < MINIMUM_ORDER_VALUE) {
+      alert(`Minimum order value is ${formatPrice(MINIMUM_ORDER_VALUE)}.`);
+      return;
+    }
+    const missingField = Object.entries(checkoutDetails).find(([, value]) => !value.trim());
+    if (missingField) {
+      alert("Please complete the billing information before checkout.");
+      return;
+    }
     
     setIsLoading(true);
     try {
       const response = await fetch("/api/payments/checkout-products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: cartItems }),
+        body: JSON.stringify({
+          items: cartItems,
+          customerEmail: checkoutDetails.email,
+          customerDetails: checkoutDetails,
+        }),
       });
 
       const data = await response.json();
@@ -87,7 +133,7 @@ export default function CartPage() {
         localStorage.setItem("mamalu_cart", JSON.stringify([]));
         window.location.href = data.url;
       } else {
-        alert("Failed to create checkout session");
+        alert(data.error || "Failed to create checkout session");
       }
     } catch (error) {
       console.error("Checkout error:", error);
@@ -167,6 +213,118 @@ export default function CartPage() {
                   </CardContent>
                 </Card>
               ))}
+
+              <Card>
+                <CardContent className="p-0">
+                  <div className="rounded-t-md bg-[#FF8C6B] px-6 py-4">
+                    <h2 className="text-xl font-bold text-white">
+                      Billing Information
+                    </h2>
+                  </div>
+                  <div className="grid gap-5 p-6 sm:grid-cols-2">
+                    <label className="space-y-2 text-sm font-bold text-stone-800">
+                      <span>First Name <span className="text-[#FF8C6B]">*</span></span>
+                      <input
+                        required
+                        value={checkoutDetails.firstName}
+                        onChange={(event) => handleDetailsChange("firstName", event.target.value)}
+                        className="h-11 w-full rounded-md border border-stone-100 bg-stone-50 px-3 outline-none focus:border-[#FF8C6B] focus:ring-2 focus:ring-[#FF8C6B]/20"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm font-bold text-stone-800">
+                      <span>Last Name <span className="text-[#FF8C6B]">*</span></span>
+                      <input
+                        required
+                        value={checkoutDetails.lastName}
+                        onChange={(event) => handleDetailsChange("lastName", event.target.value)}
+                        className="h-11 w-full rounded-md border border-stone-100 bg-stone-50 px-3 outline-none focus:border-[#FF8C6B] focus:ring-2 focus:ring-[#FF8C6B]/20"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm font-bold text-stone-800 sm:col-span-2">
+                      <span>Email <span className="text-[#FF8C6B]">*</span></span>
+                      <input
+                        required
+                        type="email"
+                        value={checkoutDetails.email}
+                        onChange={(event) => handleDetailsChange("email", event.target.value)}
+                        className="h-11 w-full rounded-md border border-stone-100 bg-stone-50 px-3 outline-none focus:border-[#FF8C6B] focus:ring-2 focus:ring-[#FF8C6B]/20"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm font-bold text-stone-800">
+                      <span>Country Code <span className="text-[#FF8C6B]">*</span></span>
+                      <select
+                        required
+                        value={checkoutDetails.countryCode}
+                        onChange={(event) => handleDetailsChange("countryCode", event.target.value)}
+                        className="h-11 w-full rounded-md border border-stone-100 bg-stone-50 px-3 outline-none focus:border-[#FF8C6B] focus:ring-2 focus:ring-[#FF8C6B]/20"
+                      >
+                        <option value="+971">+971 UAE</option>
+                        <option value="+966">+966 KSA</option>
+                        <option value="+965">+965 Kuwait</option>
+                        <option value="+973">+973 Bahrain</option>
+                        <option value="+974">+974 Qatar</option>
+                        <option value="+968">+968 Oman</option>
+                      </select>
+                    </label>
+                    <label className="space-y-2 text-sm font-bold text-stone-800">
+                      <span>Phone / Mobile <span className="text-[#FF8C6B]">*</span></span>
+                      <input
+                        required
+                        type="tel"
+                        value={checkoutDetails.phone}
+                        onChange={(event) => handleDetailsChange("phone", event.target.value)}
+                        className="h-11 w-full rounded-md border border-stone-100 bg-stone-50 px-3 outline-none focus:border-[#FF8C6B] focus:ring-2 focus:ring-[#FF8C6B]/20"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm font-bold text-stone-800 sm:col-span-2">
+                      <span>Street Address <span className="text-[#FF8C6B]">*</span></span>
+                      <input
+                        required
+                        value={checkoutDetails.streetAddress}
+                        onChange={(event) => handleDetailsChange("streetAddress", event.target.value)}
+                        className="h-11 w-full rounded-md border border-stone-100 bg-stone-50 px-3 outline-none focus:border-[#FF8C6B] focus:ring-2 focus:ring-[#FF8C6B]/20"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm font-bold text-stone-800">
+                      <span>Area <span className="text-[#FF8C6B]">*</span></span>
+                      <input
+                        required
+                        value={checkoutDetails.area}
+                        onChange={(event) => handleDetailsChange("area", event.target.value)}
+                        className="h-11 w-full rounded-md border border-stone-100 bg-stone-50 px-3 outline-none focus:border-[#FF8C6B] focus:ring-2 focus:ring-[#FF8C6B]/20"
+                      />
+                    </label>
+                    <label className="space-y-2 text-sm font-bold text-stone-800">
+                      <span>City <span className="text-[#FF8C6B]">*</span></span>
+                      <select
+                        required
+                        value={checkoutDetails.city}
+                        onChange={(event) => handleDetailsChange("city", event.target.value)}
+                        className="h-11 w-full rounded-md border border-stone-100 bg-stone-50 px-3 outline-none focus:border-[#FF8C6B] focus:ring-2 focus:ring-[#FF8C6B]/20"
+                      >
+                        <option>Dubai</option>
+                        <option>Abu Dhabi</option>
+                        <option>Sharjah</option>
+                        <option>Ajman</option>
+                        <option>Ras Al Khaimah</option>
+                        <option>Fujairah</option>
+                        <option>Umm Al Quwain</option>
+                      </select>
+                    </label>
+                    <label className="space-y-2 text-sm font-bold text-stone-800 sm:col-span-2">
+                      <span>Country <span className="text-[#FF8C6B]">*</span></span>
+                      <select
+                        required
+                        value={checkoutDetails.country}
+                        onChange={(event) => handleDetailsChange("country", event.target.value)}
+                        className="h-11 w-full rounded-md border border-stone-100 bg-stone-50 px-3 outline-none focus:border-[#FF8C6B] focus:ring-2 focus:ring-[#FF8C6B]/20"
+                      >
+                        <option>United Arab Emirates</option>
+                      </select>
+                    </label>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {/* Order Summary */}
@@ -189,7 +347,12 @@ export default function CartPage() {
                     </div>
                     {shipping > 0 && (
                       <p className="text-xs text-stone-500">
-                        Free shipping on orders over {formatPrice(200)}
+                        Free shipping on orders over {formatPrice(FREE_SHIPPING_THRESHOLD)}
+                      </p>
+                    )}
+                    {minimumOrderRemaining > 0 && (
+                      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+                        Add {formatPrice(minimumOrderRemaining)} more to reach the {formatPrice(MINIMUM_ORDER_VALUE)} minimum order value.
                       </p>
                     )}
                     <div className="border-t pt-3 flex justify-between font-bold text-stone-900">
@@ -201,7 +364,7 @@ export default function CartPage() {
                     className="w-full"
                     size="lg"
                     onClick={handleCheckout}
-                    disabled={isLoading}
+                    disabled={isLoading || !canCheckout}
                   >
                     {isLoading ? (
                       <>

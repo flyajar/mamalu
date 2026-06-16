@@ -519,9 +519,28 @@ export async function POST(request: NextRequest) {
             };
             const shippingDetails = sessionWithShipping.shipping_details;
             const customerDetails = session.customer_details;
-            const orderCustomerName = shippingDetails?.name || customerDetails?.name || "Customer";
-            const orderCustomerEmail = customerDetails?.email || session.customer_email || "";
-            const orderCustomerPhone = customerDetails?.phone || "";
+            const metadata = session.metadata || {};
+            const metadataName = [metadata.customer_first_name, metadata.customer_last_name]
+              .filter(Boolean)
+              .join(" ")
+              .trim();
+            const metadataPhone = [metadata.customer_country_code, metadata.customer_phone]
+              .filter(Boolean)
+              .join("")
+              .trim();
+            const metadataAddress = {
+              line1: metadata.customer_street_address || undefined,
+              line2: metadata.customer_area || undefined,
+              city: metadata.customer_city || undefined,
+              country: metadata.customer_country || undefined,
+            };
+            const hasMetadataAddress = Object.values(metadataAddress).some(Boolean);
+            const shippingAddress = hasMetadataAddress
+              ? metadataAddress
+              : shippingDetails?.address || null;
+            const orderCustomerName = metadataName || shippingDetails?.name || customerDetails?.name || "Customer";
+            const orderCustomerEmail = metadata.customer_email || customerDetails?.email || session.customer_email || "";
+            const orderCustomerPhone = metadataPhone || customerDetails?.phone || "";
 
             const { data: existingOrder } = await supabase
               .from("product_orders")
@@ -539,9 +558,9 @@ export async function POST(request: NextRequest) {
               customer_name: orderCustomerName,
               customer_email: orderCustomerEmail,
               customer_phone: orderCustomerPhone,
-              shipping_address: shippingDetails?.address || null,
-              shipping_city: shippingDetails?.address?.city || "",
-              shipping_country: shippingDetails?.address?.country || "AE",
+              shipping_address: shippingAddress,
+              shipping_city: shippingAddress?.city || "",
+              shipping_country: shippingAddress?.country || "AE",
               items: items,
               subtotal: subtotal,
               shipping_cost: shippingCost,

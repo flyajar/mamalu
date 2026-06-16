@@ -20,14 +20,48 @@ type SanityCheckoutProduct = {
   imageUrl?: string;
 };
 
+const SHIPPING_FEE = 15;
+const FREE_SHIPPING_THRESHOLD = 200;
+const MINIMUM_ORDER_VALUE = 100;
+
+function metadataValue(value: unknown) {
+  return String(value || "").slice(0, 500);
+}
+
+function customerValue(value: unknown) {
+  return String(value || "").trim();
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { items, customerEmail, successUrl, cancelUrl } = body;
+    const { items, customerDetails, successUrl, cancelUrl } = body;
 
     if (!items || items.length === 0) {
       return NextResponse.json(
         { error: "Cart is empty" },
+        { status: 400 }
+      );
+    }
+
+    const requiredCustomerFields = [
+      "firstName",
+      "lastName",
+      "email",
+      "countryCode",
+      "phone",
+      "streetAddress",
+      "area",
+      "city",
+      "country",
+    ];
+    const hasCustomerDetails =
+      customerDetails &&
+      requiredCustomerFields.every((field) => String(customerDetails[field] || "").trim());
+
+    if (!hasCustomerDetails) {
+      return NextResponse.json(
+        { error: "Billing information is required" },
         { status: 400 }
       );
     }
@@ -92,9 +126,16 @@ export async function POST(request: NextRequest) {
       quantity: item.quantity,
     }));
 
-    // Calculate if free shipping applies (orders over 200 AED)
+    // Calculate if free shipping applies.
     const subtotal = validatedItems.reduce((sum: number, item) => sum + item.price * item.quantity, 0);
-    const shippingCost = subtotal > 200 ? 0 : 25;
+    if (subtotal < MINIMUM_ORDER_VALUE) {
+      return NextResponse.json(
+        { error: `Minimum order value is AED ${MINIMUM_ORDER_VALUE}.00` },
+        { status: 400 }
+      );
+    }
+
+    const shippingCost = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
 
     // Add shipping as a line item if applicable
     if (shippingCost > 0) {
@@ -110,11 +151,43 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const customerName = `${customerValue(customerDetails.firstName)} ${customerValue(customerDetails.lastName)}`.trim();
+    const customerPhone = `${customerValue(customerDetails.countryCode)}${customerValue(customerDetails.phone)}`.trim();
+    const checkoutCustomer = await stripe.customers.create({
+      email: customerValue(customerDetails.email),
+      name: customerName,
+      phone: customerPhone,
+      address: {
+        line1: customerValue(customerDetails.streetAddress),
+        line2: customerValue(customerDetails.area),
+        city: customerValue(customerDetails.city),
+        country: "AE",
+      },
+      shipping: {
+        name: customerName,
+        phone: customerPhone,
+        address: {
+          line1: customerValue(customerDetails.streetAddress),
+          line2: customerValue(customerDetails.area),
+          city: customerValue(customerDetails.city),
+          country: "AE",
+        },
+      },
+      metadata: {
+        source: "mamalu_product_checkout",
+      },
+    });
+
     // Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
-      ...(customerEmail && { customer_email: customerEmail }),
+      customer: checkoutCustomer.id,
+      customer_update: {
+        address: "auto",
+        name: "auto",
+        shipping: "auto",
+      },
       line_items: lineItems,
       metadata: {
         order_type: "product_purchase",
@@ -127,6 +200,15 @@ export async function POST(request: NextRequest) {
         }))),
         subtotal: subtotal.toString(),
         shipping_cost: shippingCost.toString(),
+        customer_first_name: metadataValue(customerDetails.firstName),
+        customer_last_name: metadataValue(customerDetails.lastName),
+        customer_email: metadataValue(customerDetails.email),
+        customer_country_code: metadataValue(customerDetails.countryCode),
+        customer_phone: metadataValue(customerDetails.phone),
+        customer_street_address: metadataValue(customerDetails.streetAddress),
+        customer_area: metadataValue(customerDetails.area),
+        customer_city: metadataValue(customerDetails.city),
+        customer_country: metadataValue(customerDetails.country),
       },
       success_url: finalSuccessUrl,
       cancel_url: finalCancelUrl,
