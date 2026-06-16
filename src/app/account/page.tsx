@@ -23,26 +23,6 @@ interface Profile {
 
 const CUSTOMER_ONLY_MESSAGE = "This account is not registered as a customer.";
 
-function isLocalOrigin(value: string) {
-  try {
-    const hostname = new URL(value).hostname;
-    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-  } catch {
-    return false;
-  }
-}
-
-function getAccountRedirectUrl() {
-  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
-  const browserOrigin = window.location.origin;
-  const shouldUseConfiguredUrl =
-    configuredSiteUrl &&
-    (!isLocalOrigin(configuredSiteUrl) || isLocalOrigin(browserOrigin));
-  const origin = shouldUseConfiguredUrl ? configuredSiteUrl : browserOrigin;
-
-  return `${origin}/account`;
-}
-
 export default function AccountPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
@@ -138,11 +118,16 @@ export default function AccountPage() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: getAccountRedirectUrl(),
+      const response = await fetch("/api/account/password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
 
-      if (error) throw error;
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Unable to send password reset email");
+      }
 
       setSuccess("If an account exists for this email, a password reset link has been sent.");
     } catch (err: unknown) {
