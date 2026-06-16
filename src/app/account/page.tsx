@@ -23,6 +23,13 @@ interface Profile {
 
 const CUSTOMER_ONLY_MESSAGE = "This account is not registered as a customer.";
 
+function getAccountRedirectUrl() {
+  const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
+  const origin = configuredSiteUrl || window.location.origin;
+
+  return `${origin}/account`;
+}
+
 export default function AccountPage() {
   const [mode, setMode] = useState<AuthMode>("login");
   const [loading, setLoading] = useState(false);
@@ -119,7 +126,7 @@ export default function AccountPage() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/account`,
+        redirectTo: getAccountRedirectUrl(),
       });
 
       if (error) throw error;
