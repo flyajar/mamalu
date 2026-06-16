@@ -921,6 +921,9 @@ export default function AdminInvoicesPage() {
                   <p className="text-sm text-stone-500">
                     Date: {new Date(selectedInvoice.created_at).toLocaleDateString()}
                   </p>
+                  <p className="text-sm text-stone-500">
+                    TRN: 100465610200001
+                  </p>
                   {selectedInvoice.due_date && (
                     <p className="text-sm text-stone-500">
                       Due: {new Date(selectedInvoice.due_date).toLocaleDateString()}
