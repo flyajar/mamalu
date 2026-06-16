@@ -136,6 +136,7 @@ export default function BigChefPage() {
   const [eventTime, setEventTime] = useState("");
   const [monthlyAvailableDates, setMonthlyAvailableDates] = useState<string[]>([]);
   const [loadingMonthlyDates, setLoadingMonthlyDates] = useState(false);
+  const [blockedRentalDates, setBlockedRentalDates] = useState<string[]>([]);
   const [, setAllTimeSlots] = useState<TimeSlot[]>([]);
   const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
   const [nannySchedules, setNannySchedules] = useState<Record<string, NannyMenuSchedule>>({});
@@ -162,6 +163,35 @@ export default function BigChefPage() {
   const isMonthly = activeCategory === "monthly";
   const hasExtras = isCorporate;
   const maxStep = hasExtras ? 4 : 3;
+
+  useEffect(() => {
+    fetch("/api/rentals/availability", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : { blockedDates: [] }))
+      .then((data) => {
+        const dates = Array.isArray(data.blockedDates) ? data.blockedDates : [];
+        setBlockedRentalDates(dates);
+        if (eventDate && dates.includes(eventDate)) {
+          setEventDate("");
+          setEventTime("");
+        }
+        setNannySchedules((current) => {
+          let changed = false;
+          const next = Object.fromEntries(
+            Object.entries(current).map(([menuId, schedule]) => {
+              if (!schedule.date || !dates.includes(schedule.date)) return [menuId, schedule];
+              changed = true;
+              return [menuId, { ...schedule, date: "", time: "", allTimeSlots: [], availableTimeSlots: [] }];
+            })
+          );
+          return changed ? next : current;
+        });
+      })
+      .catch((error) => {
+        console.error("Failed to fetch rental blocked dates:", error);
+        setBlockedRentalDates([]);
+      });
+  }, [eventDate]);
+
   // Fetch menu items from DB on mount
   useEffect(() => {
     async function fetchMenuData() {
@@ -590,10 +620,10 @@ export default function BigChefPage() {
                               Loading dates...
                             </div>
                           ) : (
-                            <MonthlyAvailableDatePicker availableDates={monthlyAvailableDates} value={eventDate} onChange={setEventDate} today={today} />
+                            <MonthlyAvailableDatePicker availableDates={monthlyAvailableDates} unavailableDates={blockedRentalDates} value={eventDate} onChange={setEventDate} today={today} />
                           )
                         ) : (
-                          <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} restrictToAvailableDates={false} />
+                          <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} unavailableDates={blockedRentalDates} restrictToAvailableDates={false} />
                         )}
                       </div>
                       <div>
@@ -791,6 +821,7 @@ export default function BigChefPage() {
                                     value={schedule.date}
                                     onChange={(date) => updateCourseScheduleDate(menu.id, date)}
                                     today={today}
+                                    unavailableDates={blockedRentalDates}
                                     restrictToAvailableDates={false}
                                   />
                                 </div>
@@ -848,20 +879,22 @@ export default function BigChefPage() {
                               Loading dates...
                             </div>
                           ) : (
+                              <MonthlyAvailableDatePicker
+                                availableDates={monthlyAvailableDates}
+                                unavailableDates={blockedRentalDates}
+                                value={eventDate}
+                                onChange={setEventDate}
+                                today={today}
+                              />
+                          )
+                        ) : (
                             <MonthlyAvailableDatePicker
-                              availableDates={monthlyAvailableDates}
                               value={eventDate}
                               onChange={setEventDate}
                               today={today}
+                              unavailableDates={blockedRentalDates}
+                              restrictToAvailableDates={false}
                             />
-                          )
-                        ) : (
-                          <MonthlyAvailableDatePicker
-                            value={eventDate}
-                            onChange={setEventDate}
-                            today={today}
-                            restrictToAvailableDates={false}
-                          />
                         )}
                       </div>
                       <div><label className="block text-base font-bold text-stone-700 mb-1"><Clock className="inline h-4 w-4 mr-1" />Time Slot *</label>

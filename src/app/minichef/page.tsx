@@ -291,6 +291,7 @@ export default function MiniChefPage() {
   const [eventTime, setEventTime] = useState("");
   const [monthlyAvailableDates, setMonthlyAvailableDates] = useState<string[]>([]);
   const [loadingMonthlyDates, setLoadingMonthlyDates] = useState(false);
+  const [blockedRentalDates, setBlockedRentalDates] = useState<string[]>([]);
   const [summerCampAvailableDates, setSummerCampAvailableDates] = useState<string[]>([]);
   const [summerCampBatches, setSummerCampBatches] = useState<SummerCampApiBatch[]>([]);
   const [loadingSummerCampDates, setLoadingSummerCampDates] = useState(false);
@@ -339,6 +340,23 @@ export default function MiniChefPage() {
       .then((data) => setPageContent(data))
       .catch(() => setPageContent(defaultMiniChefContent));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/rentals/availability", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : { blockedDates: [] }))
+      .then((data) => {
+        const dates = Array.isArray(data.blockedDates) ? data.blockedDates : [];
+        setBlockedRentalDates(dates);
+        if (eventDate && dates.includes(eventDate)) {
+          setEventDate("");
+          setEventTime("");
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to fetch rental blocked dates:", error);
+        setBlockedRentalDates([]);
+      });
+  }, [eventDate]);
 
   useEffect(() => {
     async function fetchBirthdayExtras() {
@@ -1202,7 +1220,7 @@ export default function MiniChefPage() {
                               Loading dates...
                             </div>
                           ) : (
-                            <MonthlyAvailableDatePicker availableDates={monthlyAvailableDates} value={eventDate} onChange={setEventDate} today={today} />
+                            <MonthlyAvailableDatePicker availableDates={monthlyAvailableDates} unavailableDates={blockedRentalDates} value={eventDate} onChange={setEventDate} today={today} />
                           )
                         ) : isSummerCamp ? (
                           loadingSummerCampDates ? (
@@ -1242,6 +1260,7 @@ export default function MiniChefPage() {
                           ) : (
                             <MonthlyAvailableDatePicker
                               availableDates={summerCampAvailableDates}
+                              unavailableDates={blockedRentalDates}
                               value={eventDate}
                               values={summerCampSelectedDates}
                               onChange={(date) => {
@@ -1258,7 +1277,7 @@ export default function MiniChefPage() {
                             />
                           )
                         ) : (
-                          <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} restrictToAvailableDates={false} />
+                            <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} unavailableDates={blockedRentalDates} restrictToAvailableDates={false} />
                         )}
                       </div>
                       <div>
@@ -1667,6 +1686,7 @@ export default function MiniChefPage() {
                             ) : (
                               <MonthlyAvailableDatePicker
                                 availableDates={monthlyAvailableDates}
+                                unavailableDates={blockedRentalDates}
                                 value={eventDate}
                                 onChange={setEventDate}
                                 today={today}
@@ -1677,6 +1697,7 @@ export default function MiniChefPage() {
                               value={eventDate}
                               onChange={setEventDate}
                               today={today}
+                              unavailableDates={blockedRentalDates}
                               restrictToAvailableDates={false}
                             />
                           )}

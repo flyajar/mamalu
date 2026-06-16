@@ -274,6 +274,31 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (!isRentalBooking && eventDate) {
+      const { data: rentalBookings, error: rentalAvailabilityError } = await supabase
+        .from("service_bookings")
+        .select("id, package_name")
+        .eq("event_date", eventDate)
+        .in("status", BOOKED_SLOT_STATUSES)
+        .ilike("service_name", "%rental%");
+
+      if (rentalAvailabilityError) {
+        console.error("Rental availability check error:", rentalAvailabilityError);
+        return NextResponse.json({ error: "Could not verify rental availability" }, { status: 500 });
+      }
+
+      const hasFullDayBooking = (rentalBookings || []).some(
+        (booking) => String(booking.package_name || "").trim().toLowerCase() === FULL_DAY_RENTAL_PACKAGE
+      );
+
+      if (hasFullDayBooking) {
+        return NextResponse.json(
+          { error: "The selected date is already booked for a full day kitchen rental. Please choose another date." },
+          { status: 409 }
+        );
+      }
+    }
+
     if (isRentalBooking && eventDate) {
       const { data: rentalBookings, error: rentalAvailabilityError } = await supabase
         .from("service_bookings")

@@ -8,6 +8,7 @@ const MIN_BOOKING_NOTICE_MINUTES = 120;
 const BUSINESS_TIME_ZONE = "Asia/Dubai";
 const MONTHLY_CATEGORY_IDS = new Set(["monthly_mini", "monthly_big"]);
 const BOOKED_SLOT_STATUSES = ["confirmed", "pending", "deposit_paid", "completed"];
+const FULL_DAY_RENTAL_PACKAGE = "full day rental";
 
 interface BookedSlot {
   event_time: string;
@@ -22,6 +23,7 @@ interface BookingScheduleItem {
 interface BookingConflictInfo {
   guest_count?: number | null;
   service_name?: string | null;
+  package_name?: string | null;
 }
 
 interface TimeSlotInfo {
@@ -112,6 +114,11 @@ function blocksEntireTimeSlot(booking: BookingConflictInfo): boolean {
     || serviceName.includes("corporate/private");
 
   return isPrivateCategory || Number(booking.guest_count || 0) >= 6;
+}
+
+function isFullDayRentalBooking(booking: BookingConflictInfo): boolean {
+  return (booking.service_name || "").toLowerCase().includes("rental")
+    && String(booking.package_name || "").trim().toLowerCase() === FULL_DAY_RENTAL_PACKAGE;
 }
 
 function toTimeSlotInfo(slot: typeof DEFAULT_BOOKING_TIME_SLOTS[number] | TimeSlotRow): TimeSlotInfo {
@@ -234,7 +241,7 @@ export async function GET(request: NextRequest) {
     try {
       const { data: bookings, error } = await supabase
         .from("service_bookings")
-        .select("id, event_time, items, guest_count, service_name")
+        .select("id, event_time, items, guest_count, service_name, package_name")
         .eq("event_date", date)
         .in("status", BOOKED_SLOT_STATUSES);
 
@@ -251,6 +258,19 @@ export async function GET(request: NextRequest) {
           bufferMinutes: BUFFER_MINUTES,
           minBookingNoticeMinutes: MIN_BOOKING_NOTICE_MINUTES,
           warning: "Could not check existing bookings",
+        });
+      }
+
+      if ((bookings || []).some(isFullDayRentalBooking)) {
+        return NextResponse.json({
+          date,
+          dayOfWeek,
+          category,
+          allSlots: slotsForDay,
+          availableSlots: [],
+          blockedSlots: slotsForDay,
+          bufferMinutes: BUFFER_MINUTES,
+          minBookingNoticeMinutes: MIN_BOOKING_NOTICE_MINUTES,
         });
       }
 
