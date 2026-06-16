@@ -90,11 +90,13 @@ export default function AccountPage() {
   }, [checkUser]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !supabase) return;
 
     const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ""));
     const queryParams = new URLSearchParams(window.location.search);
     const authType = hashParams.get("type") || queryParams.get("type");
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
 
     if (authType === "recovery") {
       setMode("reset-password");
@@ -103,8 +105,19 @@ export default function AccountPage() {
       setError("");
       setSuccess("");
       setCheckingAuth(false);
+
+      if (accessToken && refreshToken) {
+        supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: refreshToken,
+        }).then(({ error }) => {
+          if (error) {
+            setError(error.message);
+          }
+        });
+      }
     }
-  }, []);
+  }, [supabase]);
 
   useEffect(() => {
     if (!supabase) return;
