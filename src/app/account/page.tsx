@@ -23,9 +23,22 @@ interface Profile {
 
 const CUSTOMER_ONLY_MESSAGE = "This account is not registered as a customer.";
 
+function isLocalOrigin(value: string) {
+  try {
+    const hostname = new URL(value).hostname;
+    return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
+  } catch {
+    return false;
+  }
+}
+
 function getAccountRedirectUrl() {
   const configuredSiteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/+$/, "");
-  const origin = configuredSiteUrl || window.location.origin;
+  const browserOrigin = window.location.origin;
+  const shouldUseConfiguredUrl =
+    configuredSiteUrl &&
+    (!isLocalOrigin(configuredSiteUrl) || isLocalOrigin(browserOrigin));
+  const origin = shouldUseConfiguredUrl ? configuredSiteUrl : browserOrigin;
 
   return `${origin}/account`;
 }
