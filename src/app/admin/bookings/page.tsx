@@ -162,10 +162,31 @@ const normalizeBookingTime = (value?: string | null) => {
   return `${match[1].padStart(2, "0")}:${match[2]}`;
 };
 
-const formatBookingTimeRange = (eventTime?: string | null, timeLabel?: string | null) => {
+const formatSlotTime = (time?: string | null) => {
+  const normalized = normalizeBookingTime(time);
+  if (!normalized) return "";
+
+  const [hours, minutes] = normalized.split(":").map(Number);
+  return new Date(2000, 0, 1, hours || 0, minutes || 0).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+};
+
+const formatBookingTimeRange = (
+  eventTime?: string | null,
+  timeLabel?: string | null,
+  slots: BookingTimeSlot[] = []
+) => {
   if (timeLabel) return timeLabel;
 
   const normalizedTime = normalizeBookingTime(eventTime);
+  const dynamicSlot = slots.find((item) => normalizeBookingTime(item.start_time || item.start) === normalizedTime);
+  if (dynamicSlot?.label) return dynamicSlot.label;
+  if (dynamicSlot?.end_time || dynamicSlot?.end) {
+    return `${formatSlotTime(dynamicSlot.start_time || dynamicSlot.start)} - ${formatSlotTime(dynamicSlot.end_time || dynamicSlot.end)}`;
+  }
+
   const slot = DEFAULT_BOOKING_TIME_SLOTS.find((item) => item.start === normalizedTime);
 
   return slot?.label || eventTime || "Time pending";
@@ -1294,7 +1315,7 @@ export default function AdminBookingsPage() {
                                   )}
                                 </div>
                                 <p className="text-sm text-stone-700">
-                                  {formatBookingTimeRange(item.event_time, item.time_label)}
+                                  {formatBookingTimeRange(item.event_time, item.time_label, packageTimeSlots)}
                                 </p>
                               </div>
                             ))}
@@ -1379,7 +1400,7 @@ export default function AdminBookingsPage() {
                       <p className="text-sm text-stone-500">
                         {selectedBooking.guest_count} guest(s)
                         {selectedBooking.event_date && ` • ${formatDate(selectedBooking.event_date)}`}
-                        {selectedBooking.event_time && ` at ${formatBookingTimeRange(selectedBooking.event_time, selectedBooking.time_label)}`}
+                        {selectedBooking.event_time && ` at ${formatBookingTimeRange(selectedBooking.event_time, selectedBooking.time_label, [...rescheduleSlots, ...packageTimeSlots])}`}
                       </p>
                     );
                   })()}
@@ -2299,6 +2320,10 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
     end: string | null;
     label: string;
   };
+  type PositionedCalendarEvent = CalendarEvent & {
+    column: number;
+    columnCount: number;
+  };
 
   const normalizeTime = (value?: string | null) => {
     return normalizeBookingTime(value);
@@ -2402,21 +2427,73 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
     return (hours || 0) * 60 + (minutes || 0);
   };
 
+  const getPositionedEventsForDate = (d: Date): PositionedCalendarEvent[] => {
+    const events = getEventsForDate(d).sort((a, b) => {
+      const startDiff = timeToMinutes(a.start) - timeToMinutes(b.start);
+      if (startDiff !== 0) return startDiff;
+      return timeToMinutes(a.end || a.start) - timeToMinutes(b.end || b.start);
+    });
+
+    const positionedEvents: PositionedCalendarEvent[] = [];
+    let activeCluster: CalendarEvent[] = [];
+    let activeClusterEnd = -1;
+
+    const positionCluster = (cluster: CalendarEvent[]) => {
+      const columnEnds: number[] = [];
+      const positionedCluster = cluster.map((event) => {
+        const start = timeToMinutes(event.start);
+        const end = Math.max(timeToMinutes(event.end || event.start), start + 30);
+        const column = columnEnds.findIndex((columnEnd) => columnEnd <= start);
+        const targetColumn = column === -1 ? columnEnds.length : column;
+        columnEnds[targetColumn] = end;
+        return { ...event, column: targetColumn, columnCount: 1 };
+      });
+      const columnCount = Math.max(columnEnds.length, 1);
+      positionedCluster.forEach((event) => {
+        positionedEvents.push({ ...event, columnCount });
+      });
+    };
+
+    events.forEach((event) => {
+      const start = timeToMinutes(event.start);
+      const end = Math.max(timeToMinutes(event.end || event.start), start + 30);
+
+      if (activeCluster.length > 0 && start >= activeClusterEnd) {
+        positionCluster(activeCluster);
+        activeCluster = [];
+        activeClusterEnd = -1;
+      }
+
+      activeCluster.push(event);
+      activeClusterEnd = Math.max(activeClusterEnd, end);
+    });
+
+    if (activeCluster.length > 0) {
+      positionCluster(activeCluster);
+    }
+
+    return positionedEvents;
+  };
+
   const calendarStartMinutes = timeToMinutes(timeSlots[0]?.start || "09:00");
   const calendarEndMinutes = timeToMinutes(timeSlots[timeSlots.length - 1]?.end || "22:00");
   const rowHeight = 72;
   const pixelsPerMinute = rowHeight / 60;
   const calendarBodyHeight = ((calendarEndMinutes - calendarStartMinutes) / 60) * rowHeight;
 
-  const getTimedEventStyle = (event: CalendarEvent) => {
+  const getTimedEventStyle = (event: PositionedCalendarEvent) => {
     const startMinutes = timeToMinutes(event.start);
     const endMinutes = event.end ? timeToMinutes(event.end) : startMinutes + 60;
     const clampedStart = Math.max(startMinutes, calendarStartMinutes);
     const clampedEnd = Math.min(Math.max(endMinutes, clampedStart + 30), calendarEndMinutes);
+    const gap = 4;
+    const width = `calc(${100 / event.columnCount}% - ${gap}px)`;
 
     return {
       top: `${(clampedStart - calendarStartMinutes) * pixelsPerMinute + 4}px`,
       height: `${Math.max((clampedEnd - clampedStart) * pixelsPerMinute - 8, 32)}px`,
+      left: `calc(${(100 / event.columnCount) * event.column}% + ${gap / 2}px)`,
+      width,
     };
   };
 
@@ -2435,7 +2512,7 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
 
   // Day View
   if (view === "day") {
-    const dayEvents = getEventsForDate(date);
+    const dayEvents = getPositionedEventsForDate(date);
     return (
       <div className="border rounded-lg overflow-hidden">
         <div className={`p-3 text-center font-medium ${isToday(date) ? "bg-amber-50" : "bg-stone-50"}`}>
@@ -2464,7 +2541,7 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
               <div
                 key={event.id}
                 onClick={() => onSelectBooking(event.booking)}
-                className={`absolute left-2 right-0 z-10 p-2 rounded border cursor-pointer hover:shadow-md transition-shadow pointer-events-auto overflow-hidden ${getServiceColor(event.booking.service_type)}`}
+                className={`absolute z-10 p-2 rounded border cursor-pointer hover:shadow-md transition-shadow pointer-events-auto overflow-hidden ${getServiceColor(event.booking.service_type)}`}
                 style={getTimedEventStyle(event)}
               >
                 <div className="font-medium text-sm truncate">{event.booking.customer_name}</div>
@@ -2502,7 +2579,7 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
               ))}
             </div>
             {weekDates.map((d) => {
-              const dayEvents = getEventsForDate(d);
+              const dayEvents = getPositionedEventsForDate(d);
               return (
                 <div key={formatLocalDateKey(d)} className="relative flex-1 border-r">
                   {timeSlots.map((slot) => {
@@ -2515,7 +2592,7 @@ function CalendarGrid({ bookings, date, view, timeSlots, onSelectBooking }: Cale
                     <div
                       key={event.id}
                       onClick={() => onSelectBooking(event.booking)}
-                      className={`absolute left-1 right-1 z-10 p-1 rounded text-xs cursor-pointer hover:shadow-md overflow-hidden ${getServiceColor(event.booking.service_type)}`}
+                      className={`absolute z-10 p-1 rounded text-xs cursor-pointer hover:shadow-md overflow-hidden ${getServiceColor(event.booking.service_type)}`}
                       style={getTimedEventStyle(event)}
                     >
                       <div className="font-medium truncate">{event.booking.customer_name}</div>
