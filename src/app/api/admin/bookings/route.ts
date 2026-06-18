@@ -44,6 +44,15 @@ const ADMIN_CATEGORY_RULES: Record<string, { minGuests: number; maxGuests: numbe
   nanny: { minGuests: 1, maxGuests: 1, menuCount: 4, separateSchedules: true },
 };
 
+const isPlainUnpaidBooking = (booking: {
+  paid_at?: string | null;
+  is_deposit_payment?: boolean | null;
+  deposit_paid?: boolean | null;
+  balance_paid?: boolean | null;
+}) => {
+  return !booking.paid_at && !booking.is_deposit_payment && !booking.deposit_paid && !booking.balance_paid;
+};
+
 // GET: Fetch all service bookings with filtering
 export async function GET(request: NextRequest) {
   try {
@@ -176,8 +185,10 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const visibleBookings = (bookings || []).filter((booking) => !isPlainUnpaidBooking(booking));
+
     // Merge and sort by created_at
-    const allBookings_merged = [...(bookings || []), ...voucherRedemptions].sort(
+    const allBookings_merged = [...visibleBookings, ...voucherRedemptions].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
@@ -194,19 +205,21 @@ export async function GET(request: NextRequest) {
     const voucherCount = allVoucherRedemptions?.length || 0;
     const voucherPending = allVoucherRedemptions?.filter((r: any) => r.status === "pending").length || 0;
 
+    const visibleStatsBookings = (allBookings || []).filter((booking) => !isPlainUnpaidBooking(booking));
+
     const stats = {
-      total: (allBookings?.length || 0) + voucherCount,
-      confirmed: allBookings?.filter((b) => b.status === "confirmed").length || 0,
-      pending: (allBookings?.filter((b) => b.status === "pending").length || 0) + voucherPending,
-      completed: allBookings?.filter((b) => b.status === "completed").length || 0,
-      cancelled: allBookings?.filter((b) => b.status === "cancelled").length || 0,
+      total: visibleStatsBookings.length + voucherCount,
+      confirmed: visibleStatsBookings.filter((b) => b.status === "confirmed").length || 0,
+      pending: visibleStatsBookings.filter((b) => b.status === "pending").length + voucherPending,
+      completed: visibleStatsBookings.filter((b) => b.status === "completed").length || 0,
+      cancelled: visibleStatsBookings.filter((b) => b.status === "cancelled").length || 0,
       // Payment stats
-      fullyPaid: (allBookings?.filter((b) => b.paid_at || (b.is_deposit_payment && b.deposit_paid && b.balance_paid)).length || 0) + (voucherCount - voucherPending),
-      depositPending: allBookings?.filter((b) => b.is_deposit_payment && !b.deposit_paid).length || 0,
-      balancePending: allBookings?.filter((b) => b.is_deposit_payment && b.deposit_paid && !b.balance_paid).length || 0,
+      fullyPaid: visibleStatsBookings.filter((b) => b.paid_at || (b.is_deposit_payment && b.deposit_paid && b.balance_paid)).length + (voucherCount - voucherPending),
+      depositPending: visibleStatsBookings.filter((b) => b.is_deposit_payment && !b.deposit_paid).length || 0,
+      balancePending: visibleStatsBookings.filter((b) => b.is_deposit_payment && b.deposit_paid && !b.balance_paid).length || 0,
       // Revenue
-      totalRevenue: allBookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0,
-      collectedRevenue: allBookings?.reduce((sum, b) => {
+      totalRevenue: visibleStatsBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0,
+      collectedRevenue: visibleStatsBookings.reduce((sum, b) => {
         if (b.paid_at) return sum + (b.total_amount || 0);
         if (b.is_deposit_payment && b.deposit_paid) return sum + (b.deposit_amount || 0);
         return sum;
