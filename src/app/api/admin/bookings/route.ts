@@ -64,6 +64,21 @@ const isPlainUnpaidBooking = (booking: {
   );
 };
 
+const isUnpaidStatusBooking = (booking: {
+  paid_at?: string | null;
+  deposit_paid?: boolean | null;
+  balance_paid?: boolean | null;
+  payment_status?: string | null;
+  status?: string | null;
+}) => {
+  return (
+    !booking.paid_at &&
+    !booking.deposit_paid &&
+    !booking.balance_paid &&
+    (booking.payment_status === "unpaid" || booking.status === "unpaid")
+  );
+};
+
 // GET: Fetch all service bookings with filtering
 export async function GET(request: NextRequest) {
   try {
@@ -76,6 +91,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get("endDate");
     const limit = parseInt(searchParams.get("limit") || "100");
     const offset = parseInt(searchParams.get("offset") || "0");
+    const showUnpaid = paymentStatus === "unpaid";
 
     const supabase = createAdminClient();
     if (!supabase) {
@@ -99,7 +115,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (paymentStatus && paymentStatus !== "all") {
-      if (paymentStatus === "pending" || paymentStatus === "unpaid") {
+      if (showUnpaid) {
+        query = query
+          .is("paid_at", null)
+          .eq("deposit_paid", false)
+          .eq("balance_paid", false)
+          .or("status.eq.unpaid,payment_status.eq.unpaid");
+      } else if (paymentStatus === "pending") {
         query = query
           .is("paid_at", null)
           .eq("deposit_paid", false)
@@ -136,7 +158,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch voucher redemptions (only if no service type filter or filter is 'voucher')
     let voucherRedemptions: any[] = [];
-    if (!serviceType || serviceType === "all" || serviceType === "voucher") {
+    if (!showUnpaid && (!serviceType || serviceType === "all" || serviceType === "voucher")) {
       let voucherQuery = supabase
         .from("voucher_redemptions")
         .select("*")
@@ -202,7 +224,9 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const visibleBookings = (bookings || []).filter((booking) => !isPlainUnpaidBooking(booking));
+    const visibleBookings = showUnpaid
+      ? (bookings || []).filter((booking) => isUnpaidStatusBooking(booking))
+      : (bookings || []).filter((booking) => !isPlainUnpaidBooking(booking));
 
     // Merge and sort by created_at
     const allBookings_merged = [...visibleBookings, ...voucherRedemptions].sort(
@@ -235,6 +259,7 @@ export async function GET(request: NextRequest) {
       fullyPaid: visibleStatsBookings.filter((b) => b.paid_at || (b.is_deposit_payment && b.deposit_paid && b.balance_paid)).length + (voucherCount - voucherPending),
       depositPending: 0,
       balancePending: visibleStatsBookings.filter((b) => b.is_deposit_payment && b.deposit_paid && !b.balance_paid).length || 0,
+      unpaid: (allBookings || []).filter((b) => isUnpaidStatusBooking(b)).length || 0,
       // Revenue
       totalRevenue: visibleStatsBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0,
       collectedRevenue: visibleStatsBookings.reduce((sum, b) => {

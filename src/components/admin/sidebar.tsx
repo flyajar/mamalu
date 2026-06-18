@@ -28,6 +28,7 @@ import {
   BookOpen,
   BellRing,
   CalendarDays,
+  AlertCircle,
 } from "lucide-react";
 
 interface AdminSidebarProps {
@@ -40,6 +41,7 @@ const navigation = [
   { name: "Mamalu Users", href: "/admin/users", icon: Users },
   { name: "Leads CRM", href: "/admin/leads", icon: UserPlus },
   { name: "Bookings", href: "/admin/bookings", icon: Ticket },
+  { name: "Unpaid Bookings", href: "/admin/unpaid-bookings", icon: AlertCircle },
   { name: "Event Scanner", href: "/admin/scanner", icon: ScanLine },
   { name: "Attendees", href: "/admin/attendees", icon: ClipboardList },
   { name: "Invoices", href: "/admin/invoices", icon: FileText },

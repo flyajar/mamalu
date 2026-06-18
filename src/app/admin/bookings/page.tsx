@@ -156,6 +156,7 @@ interface BookingStats {
   fullyPaid: number;
   depositPending: number;
   balancePending: number;
+  unpaid: number;
   totalRevenue: number;
   collectedRevenue: number;
 }
@@ -259,7 +260,11 @@ interface BookingInvoice {
   payment_link: string | null;
 }
 
-export default function AdminBookingsPage() {
+interface AdminBookingsPageContentProps {
+  unpaidOnly?: boolean;
+}
+
+export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPageContentProps) {
   const [bookings, setBookings] = useState<ServiceBooking[]>([]);
   const [stats, setStats] = useState<BookingStats | null>(null);
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -325,7 +330,11 @@ export default function AdminBookingsPage() {
       setLoading(true);
       const params = new URLSearchParams();
       if (statusFilter !== "all") params.set("status", statusFilter);
-      if (paymentFilter !== "all") params.set("payment_status", paymentFilter);
+      if (unpaidOnly) {
+        params.set("payment_status", "unpaid");
+      } else if (paymentFilter !== "all") {
+        params.set("payment_status", paymentFilter);
+      }
       if (serviceTypeFilter !== "all") params.set("service_type", serviceTypeFilter);
       if (creatorFilter !== "all") params.set("created_by", creatorFilter);
       if (startDate) params.set("startDate", startDate);
@@ -347,7 +356,7 @@ export default function AdminBookingsPage() {
 
   useEffect(() => {
     fetchBookings();
-  }, [statusFilter, paymentFilter, serviceTypeFilter, creatorFilter, startDate, endDate]);
+  }, [unpaidOnly, statusFilter, paymentFilter, serviceTypeFilter, creatorFilter, startDate, endDate]);
 
   useEffect(() => {
     const fetchTimeSlots = async () => {
@@ -678,6 +687,9 @@ export default function AdminBookingsPage() {
   };
 
   const getPaymentStatusBadge = (booking: ServiceBooking) => {
+    if (booking.payment_status === "unpaid" || booking.status === "unpaid") {
+      return { className: "bg-red-100 text-red-700", label: "Unpaid" };
+    }
     if (booking.paid_at || (booking.is_deposit_payment && booking.deposit_paid && booking.balance_paid)) {
       return { className: "bg-green-100 text-green-700", label: "Paid" };
     }
@@ -963,100 +975,108 @@ export default function AdminBookingsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-stone-900">Bookings</h1>
-          <p className="text-stone-500 mt-1">Manage all service bookings and payments</p>
+          <h1 className="text-3xl font-bold text-stone-900">{unpaidOnly ? "Unpaid Bookings" : "Bookings"}</h1>
+          <p className="text-stone-500 mt-1">
+            {unpaidOnly ? "Manage bookings with unpaid status" : "Manage all service bookings and payments"}
+          </p>
         </div>
         <div className="flex gap-3">
           {/* View Toggle */}
-          <div className="flex bg-stone-100 rounded-lg p-1">
-            <button
-              onClick={() => setViewMode("list")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1 transition-colors ${
-                viewMode === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"
-              }`}
-            >
-              <List className="h-4 w-4" />
-              List
-            </button>
-            <button
-              onClick={() => setViewMode("calendar")}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1 transition-colors ${
-                viewMode === "calendar" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"
-              }`}
-            >
-              <CalendarDays className="h-4 w-4" />
-              Calendar
-            </button>
-          </div>
+          {!unpaidOnly && (
+            <div className="flex bg-stone-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode("list")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1 transition-colors ${
+                  viewMode === "list" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                <List className="h-4 w-4" />
+                List
+              </button>
+              <button
+                onClick={() => setViewMode("calendar")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium flex items-center gap-1 transition-colors ${
+                  viewMode === "calendar" ? "bg-white text-stone-900 shadow-sm" : "text-stone-600 hover:text-stone-900"
+                }`}
+              >
+                <CalendarDays className="h-4 w-4" />
+                Calendar
+              </button>
+            </div>
+          )}
           <Button onClick={fetchBookings} variant="outline">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button onClick={() => setShowCreateModal(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Booking
-          </Button>
+          {!unpaidOnly && (
+            <Button onClick={() => setShowCreateModal(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Booking
+            </Button>
+          )}
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-violet-100">
-              <Users className="h-5 w-5 text-violet-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-stone-900">{stats?.total || 0}</p>
-              <p className="text-sm text-stone-500">Total Bookings</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-green-100">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-stone-900">{stats?.fullyPaid || 0}</p>
-              <p className="text-sm text-stone-500">Fully Paid</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-amber-100">
-              <Clock className="h-5 w-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-stone-900">{stats?.pending || 0}</p>
-              <p className="text-sm text-stone-500">Pending</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-blue-100">
-              <DollarSign className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-stone-900">{stats?.balancePending || 0}</p>
-              <p className="text-sm text-stone-500">Balance Due</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-emerald-100">
-              <DollarSign className="h-5 w-5 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-stone-900">{formatPrice(stats?.collectedRevenue || 0)}</p>
-              <p className="text-sm text-stone-500">Collected</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {!unpaidOnly && (
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-violet-100">
+                <Users className="h-5 w-5 text-violet-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-stone-900">{stats?.total || 0}</p>
+                <p className="text-sm text-stone-500">Total Bookings</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-green-100">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-stone-900">{stats?.fullyPaid || 0}</p>
+                <p className="text-sm text-stone-500">Fully Paid</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-amber-100">
+                <Clock className="h-5 w-5 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-stone-900">{stats?.pending || 0}</p>
+                <p className="text-sm text-stone-500">Pending</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-blue-100">
+                <DollarSign className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-stone-900">{stats?.balancePending || 0}</p>
+                <p className="text-sm text-stone-500">Balance Due</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-emerald-100">
+                <DollarSign className="h-5 w-5 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-stone-900">{formatPrice(stats?.collectedRevenue || 0)}</p>
+                <p className="text-sm text-stone-500">Collected</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Filters */}
       <Card>
@@ -1075,27 +1095,31 @@ export default function AdminBookingsPage() {
                 />
               </div>
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-2 border border-stone-200 rounded-lg"
-            >
-              <option value="all">All Status</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <select
-              value={paymentFilter}
-              onChange={(e) => setPaymentFilter(e.target.value)}
-              className="px-4 py-2 border border-stone-200 rounded-lg"
-            >
-              <option value="all">All Payments</option>
-              <option value="pending">Pending</option>
-              <option value="deposit_paid">Balance Due</option>
-              <option value="paid">Fully Paid</option>
-            </select>
+            {!unpaidOnly && (
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-stone-200 rounded-lg"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            )}
+            {!unpaidOnly && (
+              <select
+                value={paymentFilter}
+                onChange={(e) => setPaymentFilter(e.target.value)}
+                className="px-4 py-2 border border-stone-200 rounded-lg"
+              >
+                <option value="all">All Payments</option>
+                <option value="pending">Pending</option>
+                <option value="deposit_paid">Balance Due</option>
+                <option value="paid">Fully Paid</option>
+              </select>
+            )}
             <select
               value={serviceTypeFilter}
               onChange={(e) => setServiceTypeFilter(e.target.value)}
@@ -1285,11 +1309,15 @@ export default function AdminBookingsPage() {
             <div className="p-8 text-center">
               <Users className="h-12 w-12 text-stone-300 mx-auto mb-4" />
               <h3 className="font-semibold text-stone-900 mb-2">No bookings found</h3>
-              <p className="text-stone-500 mb-4">Try adjusting your filters or create a new booking</p>
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Booking
-              </Button>
+              <p className="text-stone-500 mb-4">
+                {unpaidOnly ? "No unpaid bookings match your filters" : "Try adjusting your filters or create a new booking"}
+              </p>
+              {!unpaidOnly && (
+                <Button onClick={() => setShowCreateModal(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create Booking
+                </Button>
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -2005,6 +2033,10 @@ export default function AdminBookingsPage() {
       )}
     </div>
   );
+}
+
+export default function AdminBookingsPage() {
+  return <AdminBookingsPageContent />;
 }
 
 // Create Booking Modal Component
