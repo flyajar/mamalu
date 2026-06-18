@@ -44,6 +44,8 @@ const ADMIN_CATEGORY_RULES: Record<string, { minGuests: number; maxGuests: numbe
   nanny: { minGuests: 1, maxGuests: 1, menuCount: 4, separateSchedules: true },
 };
 
+const HIDDEN_ADMIN_BOOKING_NUMBERS = ["SB-20260617-779821"];
+
 const isPlainUnpaidBooking = (booking: {
   paid_at?: string | null;
   is_deposit_payment?: boolean | null;
@@ -88,6 +90,7 @@ export async function GET(request: NextRequest) {
         creator:created_by(id, full_name, email),
         payment_link:payment_link_id(id, link_code, stripe_payment_link_url, status)
       `)
+      .not("booking_number", "in", `(${HIDDEN_ADMIN_BOOKING_NUMBERS.join(",")})`)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -209,7 +212,8 @@ export async function GET(request: NextRequest) {
     // Calculate stats from all bookings (including voucher redemptions)
     const { data: allBookings } = await supabase
       .from("service_bookings")
-      .select("status, payment_status, paid_at, total_amount, deposit_amount, deposit_paid, balance_paid, is_deposit_payment, created_by");
+      .select("booking_number, status, payment_status, paid_at, total_amount, deposit_amount, deposit_paid, balance_paid, is_deposit_payment, created_by")
+      .not("booking_number", "in", `(${HIDDEN_ADMIN_BOOKING_NUMBERS.join(",")})`);
 
     // Get voucher redemption stats
     const { data: allVoucherRedemptions } = await supabase
