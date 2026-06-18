@@ -199,8 +199,8 @@ export async function POST(request: NextRequest) {
 
     // Determine payment amount (deposit for corporate, full for others)
     const paymentAmount = isDepositPayment ? adjustedDepositAmount || 0 : discountedTotalAmount;
-    const paymentStatus = paymentAmount <= 0 ? "paid" : (isDepositPayment ? "deposit_pending" : "pending");
-    const bookingStatus = paymentAmount <= 0 ? "confirmed" : "pending";
+    const paymentStatus = paymentAmount <= 0 ? "paid" : "unpaid";
+    const bookingStatus = paymentAmount <= 0 ? "confirmed" : "unpaid";
 
     if (eventDate && eventTime && !hasMinimumBookingNotice(eventDate, eventTime)) {
       return NextResponse.json(
@@ -482,28 +482,28 @@ export async function POST(request: NextRequest) {
       createdBy,
     });
 
-    await sendAdminNotification(supabase, {
-      eventType: isRentalBooking ? "rental_booking" : "service_booking",
-      sourceId: booking.id,
-      reference: booking.booking_number,
-      customerName: booking.customer_name,
-      customerEmail: booking.customer_email,
-      customerPhone: booking.customer_phone,
-      title: [booking.service_name, booking.package_name || booking.menu_name].filter(Boolean).join(" - "),
-      amount: Number(booking.total_amount || discountedTotalAmount),
-      eventDate: booking.event_date,
-      eventTime: booking.event_time,
-      guestCount: booking.guest_count || guestCount || 1,
-      items: Array.isArray(booking.items)
-        ? booking.items.map((item: { name?: string; title?: string; quantity?: number | string }) => ({
-            name: item.name || item.title || "Booked item",
-            quantity: item.quantity,
-          }))
-        : undefined,
-    });
-
     if (paymentAmount <= 0) {
       await markSourceInvoicePaid(supabase, { serviceBookingId: booking.id });
+
+      await sendAdminNotification(supabase, {
+        eventType: isRentalBooking ? "rental_booking" : "service_booking",
+        sourceId: booking.id,
+        reference: booking.booking_number,
+        customerName: booking.customer_name,
+        customerEmail: booking.customer_email,
+        customerPhone: booking.customer_phone,
+        title: [booking.service_name, booking.package_name || booking.menu_name].filter(Boolean).join(" - "),
+        amount: Number(booking.total_amount || discountedTotalAmount),
+        eventDate: booking.event_date,
+        eventTime: booking.event_time,
+        guestCount: booking.guest_count || guestCount || 1,
+        items: Array.isArray(booking.items)
+          ? booking.items.map((item: { name?: string; title?: string; quantity?: number | string }) => ({
+              name: item.name || item.title || "Booked item",
+              quantity: item.quantity,
+            }))
+          : undefined,
+      });
 
       if (voucher) {
         const consumeResult = await consumeVoucherUse(supabase, voucher.id);

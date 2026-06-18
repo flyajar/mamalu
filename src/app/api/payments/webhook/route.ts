@@ -307,6 +307,28 @@ export async function POST(request: NextRequest) {
                 );
               }
 
+              await sendAdminNotification(supabase, {
+                eventType: String(booking.service_type || booking.service_name || "").toLowerCase().includes("rental")
+                  ? "rental_booking"
+                  : "service_booking",
+                sourceId: booking.id,
+                reference: booking.booking_number,
+                customerName: booking.customer_name,
+                customerEmail: booking.customer_email,
+                customerPhone: booking.customer_phone,
+                title: [booking.service_name, booking.package_name || booking.menu_name].filter(Boolean).join(" - "),
+                amount: Number(booking.total_amount || paidAmount),
+                eventDate: booking.event_date,
+                eventTime: booking.event_time,
+                guestCount: booking.guest_count || 1,
+                items: Array.isArray(booking.items)
+                  ? booking.items.map((item: { name?: string; title?: string; quantity?: number | string }) => ({
+                      name: item.name || item.title || "Booked item",
+                      quantity: item.quantity,
+                    }))
+                  : undefined,
+              });
+
               console.log(`Service booking ${bookingId} marked as ${isFullPayment ? "paid" : "deposit paid"}`);
             }
           }

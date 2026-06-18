@@ -681,15 +681,15 @@ export default function AdminBookingsPage() {
     if (booking.paid_at || (booking.is_deposit_payment && booking.deposit_paid && booking.balance_paid)) {
       return { className: "bg-green-100 text-green-700", label: "Paid" };
     }
+    if (!booking.deposit_paid && !booking.balance_paid) {
+      return { className: "bg-amber-100 text-amber-700", label: "Pending" };
+    }
     if (booking.is_deposit_payment) {
       if (booking.deposit_paid && !booking.balance_paid) {
         return { className: "bg-blue-100 text-blue-700", label: "Balance Due" };
       }
-      if (!booking.deposit_paid) {
-        return { className: "bg-amber-100 text-amber-700", label: "Deposit Pending" };
-      }
     }
-    return { className: "bg-stone-100 text-stone-600", label: "Unpaid" };
+    return { className: "bg-amber-100 text-amber-700", label: "Pending" };
   };
 
   const getInvoiceStatusBadge = (status: string) => {
@@ -1092,8 +1092,7 @@ export default function AdminBookingsPage() {
               className="px-4 py-2 border border-stone-200 rounded-lg"
             >
               <option value="all">All Payments</option>
-              <option value="unpaid">Unpaid</option>
-              <option value="deposit_pending">Deposit Pending</option>
+              <option value="pending">Pending</option>
               <option value="deposit_paid">Balance Due</option>
               <option value="paid">Fully Paid</option>
             </select>

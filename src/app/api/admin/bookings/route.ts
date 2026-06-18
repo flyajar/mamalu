@@ -49,8 +49,17 @@ const isPlainUnpaidBooking = (booking: {
   is_deposit_payment?: boolean | null;
   deposit_paid?: boolean | null;
   balance_paid?: boolean | null;
+  payment_status?: string | null;
+  status?: string | null;
+  created_by?: string | null;
 }) => {
-  return !booking.paid_at && !booking.is_deposit_payment && !booking.deposit_paid && !booking.balance_paid;
+  return (
+    !booking.created_by &&
+    !booking.paid_at &&
+    !booking.deposit_paid &&
+    !booking.balance_paid &&
+    (booking.payment_status === "unpaid" || booking.status === "unpaid")
+  );
 };
 
 // GET: Fetch all service bookings with filtering
@@ -87,8 +96,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (paymentStatus && paymentStatus !== "all") {
-      if (paymentStatus === "unpaid") {
-        query = query.is("paid_at", null);
+      if (paymentStatus === "pending" || paymentStatus === "unpaid") {
+        query = query
+          .is("paid_at", null)
+          .eq("deposit_paid", false)
+          .eq("balance_paid", false)
+          .neq("status", "unpaid")
+          .neq("payment_status", "unpaid");
       } else {
         query = query.eq("payment_status", paymentStatus);
       }
@@ -195,7 +209,7 @@ export async function GET(request: NextRequest) {
     // Calculate stats from all bookings (including voucher redemptions)
     const { data: allBookings } = await supabase
       .from("service_bookings")
-      .select("status, payment_status, paid_at, total_amount, deposit_amount, deposit_paid, balance_paid, is_deposit_payment");
+      .select("status, payment_status, paid_at, total_amount, deposit_amount, deposit_paid, balance_paid, is_deposit_payment, created_by");
 
     // Get voucher redemption stats
     const { data: allVoucherRedemptions } = await supabase
@@ -215,7 +229,7 @@ export async function GET(request: NextRequest) {
       cancelled: visibleStatsBookings.filter((b) => b.status === "cancelled").length || 0,
       // Payment stats
       fullyPaid: visibleStatsBookings.filter((b) => b.paid_at || (b.is_deposit_payment && b.deposit_paid && b.balance_paid)).length + (voucherCount - voucherPending),
-      depositPending: visibleStatsBookings.filter((b) => b.is_deposit_payment && !b.deposit_paid).length || 0,
+      depositPending: 0,
       balancePending: visibleStatsBookings.filter((b) => b.is_deposit_payment && b.deposit_paid && !b.balance_paid).length || 0,
       // Revenue
       totalRevenue: visibleStatsBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0,
@@ -363,7 +377,7 @@ export async function POST(request: NextRequest) {
       balance_amount: balanceAmount || null,
       deposit_paid: false,
       balance_paid: false,
-      payment_status: isDepositPayment ? "deposit_pending" : "pending",
+      payment_status: "pending",
       special_requests: specialRequests || null,
       notes: notes || null,
       created_by: createdBy || null,
