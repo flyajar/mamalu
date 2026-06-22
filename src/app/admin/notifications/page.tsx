@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 interface Recipient {
   id: string;
   email: string;
+  recipient_group: "admin" | "easy_freezy";
   is_enabled: boolean;
   created_at: string;
 }
@@ -44,14 +45,28 @@ export default function AdminNotificationsPage() {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [logs, setLogs] = useState<DeliveryLog[]>([]);
   const [email, setEmail] = useState("");
+  const [easyFreezyEmail, setEasyFreezyEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [workingId, setWorkingId] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
+  const [addingGroup, setAddingGroup] = useState<Recipient["recipient_group"] | null>(null);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const enabledCount = useMemo(
-    () => recipients.filter((recipient) => recipient.is_enabled).length,
+  const adminRecipients = useMemo(
+    () => recipients.filter((recipient) => (recipient.recipient_group || "admin") === "admin"),
     [recipients]
+  );
+  const easyFreezyRecipients = useMemo(
+    () => recipients.filter((recipient) => recipient.recipient_group === "easy_freezy"),
+    [recipients]
+  );
+
+  const adminEnabledCount = useMemo(
+    () => adminRecipients.filter((recipient) => recipient.is_enabled).length,
+    [adminRecipients]
+  );
+  const easyFreezyEnabledCount = useMemo(
+    () => easyFreezyRecipients.filter((recipient) => recipient.is_enabled).length,
+    [easyFreezyRecipients]
   );
 
   const loadSettings = useCallback(async () => {
@@ -76,25 +91,27 @@ export default function AdminNotificationsPage() {
     loadSettings();
   }, [loadSettings]);
 
-  async function addRecipient(event: FormEvent) {
+  async function addRecipient(event: FormEvent, recipientGroup: Recipient["recipient_group"]) {
     event.preventDefault();
-    setAdding(true);
+    const targetEmail = recipientGroup === "easy_freezy" ? easyFreezyEmail : email;
+    setAddingGroup(recipientGroup);
     setMessage(null);
     try {
       const response = await fetch("/api/admin/notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: targetEmail, recipient_group: recipientGroup }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to add email");
-      setEmail("");
-      setMessage({ type: "success", text: `${data.recipient.email} will receive new customer notifications.` });
+      if (recipientGroup === "easy_freezy") setEasyFreezyEmail("");
+      else setEmail("");
+      setMessage({ type: "success", text: `${data.recipient.email} was added.` });
       await loadSettings();
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Failed to add email" });
     } finally {
-      setAdding(false);
+      setAddingGroup(null);
     }
   }
 
@@ -144,7 +161,7 @@ export default function AdminNotificationsPage() {
       const response = await fetch("/api/admin/notifications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "send_test", email: recipient.email }),
+        body: JSON.stringify({ action: "send_test", email: recipient.email, recipient_group: recipient.recipient_group }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Test notification failed");
@@ -155,6 +172,119 @@ export default function AdminNotificationsPage() {
       setWorkingId(null);
       await loadSettings();
     }
+  }
+
+  function renderRecipientSection({
+    title,
+    description,
+    group,
+    sectionRecipients,
+    enabledCount,
+    inputValue,
+    setInputValue,
+    emptyText,
+  }: {
+    title: string;
+    description: string;
+    group: Recipient["recipient_group"];
+    sectionRecipients: Recipient[];
+    enabledCount: number;
+    inputValue: string;
+    setInputValue: (value: string) => void;
+    emptyText: string;
+  }) {
+    return (
+      <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
+        <div className="border-b border-stone-200 p-5">
+          <h2 className="text-lg font-semibold text-stone-900">{title}</h2>
+          <p className="mt-1 text-sm text-stone-500">{description}</p>
+          <p className="mt-1 text-sm text-stone-500">
+            {enabledCount} of {sectionRecipients.length} email{sectionRecipients.length === 1 ? "" : "s"} enabled
+          </p>
+        </div>
+
+        <form onSubmit={(event) => addRecipient(event, group)} className="flex flex-col gap-3 border-b border-stone-200 bg-stone-50 p-5 sm:flex-row">
+          <div className="relative flex-1">
+            <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+            <input
+              type="email"
+              value={inputValue}
+              onChange={(event) => setInputValue(event.target.value)}
+              placeholder="admin@mamalukitchen.com"
+              required
+              className="h-10 w-full rounded-md border border-stone-300 bg-white pl-10 pr-3 text-sm outline-none focus:border-[#FF7A5C] focus:ring-2 focus:ring-[#FF7A5C]/20"
+            />
+          </div>
+          <Button type="submit" disabled={addingGroup === group || !inputValue.trim()}>
+            {addingGroup === group ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            Add email
+          </Button>
+        </form>
+
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 p-12 text-stone-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading notification settings...
+          </div>
+        ) : sectionRecipients.length === 0 ? (
+          <div className="p-12 text-center">
+            <Mail className="mx-auto h-10 w-10 text-stone-300" />
+            <p className="mt-3 font-semibold text-stone-800">{emptyText}</p>
+            <p className="mt-1 text-sm text-stone-500">Add the first recipient above.</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-stone-100">
+            {sectionRecipients.map((recipient) => (
+              <div key={recipient.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="truncate font-semibold text-stone-900">{recipient.email}</p>
+                  <p className="mt-1 text-xs text-stone-500">
+                    Added {new Date(recipient.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleRecipient(recipient)}
+                    disabled={workingId === recipient.id}
+                    className={`relative h-7 w-12 rounded-full transition-colors ${
+                      recipient.is_enabled ? "bg-emerald-500" : "bg-stone-300"
+                    }`}
+                    aria-label={`${recipient.is_enabled ? "Disable" : "Enable"} ${recipient.email}`}
+                  >
+                    <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                      recipient.is_enabled ? "translate-x-6" : "translate-x-1"
+                    }`} />
+                  </button>
+                  <span className={`w-16 text-sm ${recipient.is_enabled ? "text-emerald-700" : "text-stone-500"}`}>
+                    {recipient.is_enabled ? "Enabled" : "Disabled"}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => sendTest(recipient)}
+                    disabled={workingId === recipient.id}
+                  >
+                    {workingId === recipient.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    Test
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => deleteRecipient(recipient)}
+                    disabled={workingId === recipient.id}
+                    className="rounded-md p-2 text-stone-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    aria-label={`Delete ${recipient.email}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    );
   }
 
   return (
@@ -187,100 +317,34 @@ export default function AdminNotificationsPage() {
       )}
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-sm">
-          <div className="border-b border-stone-200 p-5">
-            <h2 className="text-lg font-semibold text-stone-900">Notification recipients</h2>
-            <p className="mt-1 text-sm text-stone-500">
-              {enabledCount} of {recipients.length} email{recipients.length === 1 ? "" : "s"} enabled
-            </p>
-          </div>
+        <div className="space-y-6">
+          {renderRecipientSection({
+            title: "Notification recipients",
+            description: "Receive class bookings, rentals, and rental inquiries.",
+            group: "admin",
+            sectionRecipients: adminRecipients,
+            enabledCount: adminEnabledCount,
+            inputValue: email,
+            setInputValue: setEmail,
+            emptyText: "No notification emails yet",
+          })}
 
-          <form onSubmit={addRecipient} className="flex flex-col gap-3 border-b border-stone-200 bg-stone-50 p-5 sm:flex-row">
-            <div className="relative flex-1">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="admin@mamalukitchen.com"
-                required
-                className="h-10 w-full rounded-md border border-stone-300 bg-white pl-10 pr-3 text-sm outline-none focus:border-[#FF7A5C] focus:ring-2 focus:ring-[#FF7A5C]/20"
-              />
-            </div>
-            <Button type="submit" disabled={adding || !email.trim()}>
-              {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              Add email
-            </Button>
-          </form>
-
-          {loading ? (
-            <div className="flex items-center justify-center gap-2 p-12 text-stone-500">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              Loading notification settings...
-            </div>
-          ) : recipients.length === 0 ? (
-            <div className="p-12 text-center">
-              <Mail className="mx-auto h-10 w-10 text-stone-300" />
-              <p className="mt-3 font-semibold text-stone-800">No notification emails yet</p>
-              <p className="mt-1 text-sm text-stone-500">Add the first recipient above.</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-stone-100">
-              {recipients.map((recipient) => (
-                <div key={recipient.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-stone-900">{recipient.email}</p>
-                    <p className="mt-1 text-xs text-stone-500">
-                      Added {new Date(recipient.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleRecipient(recipient)}
-                      disabled={workingId === recipient.id}
-                      className={`relative h-7 w-12 rounded-full transition-colors ${
-                        recipient.is_enabled ? "bg-emerald-500" : "bg-stone-300"
-                      }`}
-                      aria-label={`${recipient.is_enabled ? "Disable" : "Enable"} ${recipient.email}`}
-                    >
-                      <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                        recipient.is_enabled ? "translate-x-6" : "translate-x-1"
-                      }`} />
-                    </button>
-                    <span className={`w-16 text-sm ${recipient.is_enabled ? "text-emerald-700" : "text-stone-500"}`}>
-                      {recipient.is_enabled ? "Enabled" : "Disabled"}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => sendTest(recipient)}
-                      disabled={workingId === recipient.id}
-                    >
-                      {workingId === recipient.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                      Test
-                    </Button>
-                    <button
-                      type="button"
-                      onClick={() => deleteRecipient(recipient)}
-                      disabled={workingId === recipient.id}
-                      className="rounded-md p-2 text-stone-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
-                      aria-label={`Delete ${recipient.email}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
+          {renderRecipientSection({
+            title: "Easy Freezy recipients",
+            description: "Receive notifications when customers order from the products page.",
+            group: "easy_freezy",
+            sectionRecipients: easyFreezyRecipients,
+            enabledCount: easyFreezyEnabledCount,
+            inputValue: easyFreezyEmail,
+            setInputValue: setEasyFreezyEmail,
+            emptyText: "No Easy Freezy emails yet",
+          })}
+        </div>
 
         <aside className="h-fit rounded-2xl border border-orange-200 bg-orange-50 p-5">
           <h2 className="font-semibold text-stone-900">Events included</h2>
           <div className="mt-4 space-y-3 text-sm text-stone-700">
-            {["Class and item bookings", "Kitchen rental bookings", "Rental inquiries", "Paid product orders"].map((label) => (
+            {["Class and item bookings", "Kitchen rental bookings", "Rental inquiries"].map((label) => (
               <div key={label} className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                 {label}
@@ -288,6 +352,9 @@ export default function AdminNotificationsPage() {
             ))}
           </div>
           <p className="mt-5 border-t border-orange-200 pt-4 text-xs leading-5 text-stone-600">
+            Paid product order notifications go to Easy Freezy recipients.
+          </p>
+          <p className="mt-3 text-xs leading-5 text-stone-600">
             Disabled emails stay in the list but receive nothing until they are enabled again.
           </p>
         </aside>

@@ -27,6 +27,8 @@ export interface AdminNotificationEvent {
   items?: Array<{ name: string; quantity?: number | string | null }>;
 }
 
+export type AdminNotificationRecipientGroup = "admin" | "easy_freezy";
+
 const eventLabels: Record<AdminNotificationEventType, string> = {
   class_booking: "Class Booking",
   service_booking: "Item Booking",
@@ -131,7 +133,8 @@ async function writeLog(
 export async function sendAdminNotification(
   supabase: SupabaseClient,
   event: AdminNotificationEvent,
-  recipientOverride?: string
+  recipientOverride?: string,
+  recipientGroup: AdminNotificationRecipientGroup = "admin"
 ): Promise<{ sent: number; failed: number; skipped: boolean }> {
   let recipients: Array<{ email: string }>;
 
@@ -141,6 +144,7 @@ export async function sendAdminNotification(
     const { data, error } = await supabase
       .from("admin_notification_recipients")
       .select("email")
+      .eq("recipient_group", recipientGroup)
       .eq("is_enabled", true)
       .order("created_at", { ascending: true });
 

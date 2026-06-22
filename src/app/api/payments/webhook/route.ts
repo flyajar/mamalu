@@ -666,7 +666,7 @@ export async function POST(request: NextRequest) {
               items: productLineItems
                 .filter((item) => item.name !== "Shipping")
                 .map((item) => ({ name: item.name, quantity: item.quantity })),
-            });
+            }, undefined, "easy_freezy");
 
             if (orderCustomerEmail) {
               const accountResult = await ensureCustomerAccountAndSendAccess({

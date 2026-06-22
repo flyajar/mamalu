@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase/server";
-import { sendAdminNotification } from "@/lib/email/admin-notification";
+import { sendAdminNotification, type AdminNotificationRecipientGroup } from "@/lib/email/admin-notification";
 import { requireAuth } from "@/lib/auth/api-auth";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const RECIPIENT_GROUPS = new Set<AdminNotificationRecipientGroup>(["admin", "easy_freezy"]);
+
+function normalizeRecipientGroup(value: unknown) {
+  const group = String(value || "admin");
+  return RECIPIENT_GROUPS.has(group as AdminNotificationRecipientGroup)
+    ? group as AdminNotificationRecipientGroup
+    : null;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -47,7 +55,9 @@ export async function GET(request: NextRequest) {
 
     const { data: recipients, error: recipientsError } = await supabase
       .from("admin_notification_recipients")
-      .select("id, email, is_enabled, created_at, updated_at")
+      .select("id, email, recipient_group, is_enabled, created_at, updated_at")
+      .in("recipient_group", ["admin", "easy_freezy"])
+      .order("recipient_group", { ascending: true })
       .order("created_at", { ascending: true });
 
     const { data: deliveryLogs, error: logsError } = await supabase
@@ -85,8 +95,12 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const email = String(body.email || "").trim().toLowerCase();
+    const recipientGroup = normalizeRecipientGroup(body.recipient_group);
     if (!EMAIL_PATTERN.test(email)) {
       return NextResponse.json({ error: "Enter a valid email address" }, { status: 400 });
+    }
+    if (!recipientGroup) {
+      return NextResponse.json({ error: "Invalid notification recipient group" }, { status: 400 });
     }
 
     if (body.action === "send_test") {
@@ -105,7 +119,8 @@ export async function POST(request: NextRequest) {
           guestCount: 2,
           items: [{ name: "Sample item", quantity: 1 }],
         },
-        email
+        email,
+        recipientGroup
       );
 
       if (result.failed > 0) {
@@ -116,12 +131,12 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase
       .from("admin_notification_recipients")
-      .insert({ email, is_enabled: body.is_enabled !== false })
+      .insert({ email, recipient_group: recipientGroup, is_enabled: body.is_enabled !== false })
       .select()
       .single();
 
     if (error?.code === "23505") {
-      return NextResponse.json({ error: "That email is already in the notification list" }, { status: 409 });
+      return NextResponse.json({ error: "That email is already in this notification list" }, { status: 409 });
     }
     if (error) throw error;
 
