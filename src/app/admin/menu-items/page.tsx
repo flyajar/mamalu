@@ -43,9 +43,20 @@ interface MenuItem {
   allowed_persons: number | null;
   metadata: {
     monthly_special_end_time?: string;
+    monthly_special_schedules?: MonthlySpecialSchedule[];
     [key: string]: unknown;
   } | null;
   created_at: string;
+}
+
+interface MonthlySpecialTimeRange {
+  start: string;
+  end: string;
+}
+
+interface MonthlySpecialSchedule {
+  date: string;
+  times: MonthlySpecialTimeRange[];
 }
 
 const CATEGORIES = [
@@ -128,6 +139,83 @@ const getMonthlySpecialEndTime = (item: Partial<MenuItem>) =>
     ? item.metadata.monthly_special_end_time
     : "";
 
+const emptyMonthlySchedule = (): MonthlySpecialSchedule => ({
+  date: "",
+  times: [{ start: "", end: "" }],
+});
+
+const getMonthlySpecialSchedules = (item: Partial<MenuItem>): MonthlySpecialSchedule[] => {
+  const schedules = item.metadata?.monthly_special_schedules;
+  if (Array.isArray(schedules) && schedules.length > 0) {
+    return schedules.map((schedule) => ({
+      date: typeof schedule.date === "string" ? schedule.date : "",
+      times: Array.isArray(schedule.times) && schedule.times.length > 0
+        ? schedule.times.map((time) => ({
+          start: typeof time.start === "string" ? time.start : "",
+          end: typeof time.end === "string" ? time.end : "",
+        }))
+        : [{ start: "", end: "" }],
+    }));
+  }
+
+  const legacyDate = toDateInputValue(item.scheduled_date);
+  const legacyStart = toTimeInputValue(item.scheduled_date);
+  const legacyEnd = getMonthlySpecialEndTime(item);
+  if (legacyDate || legacyStart || legacyEnd) {
+    return [{ date: legacyDate, times: [{ start: legacyStart, end: legacyEnd }] }];
+  }
+
+  return [emptyMonthlySchedule()];
+};
+
+const normalizeMonthlySpecialSchedules = (schedules: MonthlySpecialSchedule[]) =>
+  schedules
+    .map((schedule) => ({
+      date: schedule.date,
+      times: schedule.times.filter((time) => time.start && time.end),
+    }))
+    .filter((schedule) => schedule.date || schedule.times.length > 0);
+
+const withMonthlySpecialSchedules = (
+  item: Partial<MenuItem> | null | undefined,
+  schedules: MonthlySpecialSchedule[]
+) => {
+  const normalizedSchedules = normalizeMonthlySpecialSchedules(schedules);
+  const firstSchedule = normalizedSchedules.find((schedule) => schedule.date && schedule.times[0]?.start && schedule.times[0]?.end);
+  const firstTime = firstSchedule?.times[0];
+  return {
+    ...item,
+    scheduled_date: firstSchedule && firstTime
+      ? fromDateAndTimeInputs(firstSchedule.date, firstTime.start)
+      : null,
+    metadata: {
+      ...(item?.metadata || {}),
+      monthly_special_end_time: firstTime?.end || "",
+      monthly_special_schedules: schedules,
+    },
+  };
+};
+
+const prepareMenuItemForSave = (item: Partial<MenuItem>) => {
+  if (!hasMonthlySpecialCategories(item.categories || [])) return item;
+
+  const normalizedSchedules = normalizeMonthlySpecialSchedules(getMonthlySpecialSchedules(item));
+  const firstSchedule = normalizedSchedules.find((schedule) => schedule.date && schedule.times[0]?.start && schedule.times[0]?.end);
+  const firstTime = firstSchedule?.times[0];
+
+  return {
+    ...item,
+    scheduled_date: firstSchedule && firstTime
+      ? fromDateAndTimeInputs(firstSchedule.date, firstTime.start)
+      : null,
+    metadata: {
+      ...(item.metadata || {}),
+      monthly_special_end_time: firstTime?.end || "",
+      monthly_special_schedules: normalizedSchedules,
+    },
+  };
+};
+
 interface UploadResult {
   inserted: number;
   skipped: number;
@@ -196,7 +284,7 @@ export default function AdminMenuItemsPage() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingItem),
+        body: JSON.stringify(prepareMenuItemForSave(editingItem)),
       });
 
       if (res.ok) {
@@ -920,53 +1008,121 @@ export default function AdminMenuItemsPage() {
                   <div>
                     <label className="flex items-center gap-2 text-sm font-medium text-amber-800 mb-1">
                       <CalendarClock className="h-4 w-4" />
-                      Available Date
+                      Available Dates
                     </label>
                     <p className="text-xs text-amber-600 mb-2">
                       Shown on the Mini Chef / Big Chef page when this monthly special is selected.
                     </p>
-                    <input
-                      type="date"
-                      value={toDateInputValue(editingItem.scheduled_date)}
-                      onChange={(e) => setEditingItem((p) => ({
-                        ...p,
-                        scheduled_date: fromDateAndTimeInputs(e.target.value, toTimeInputValue(p?.scheduled_date) || "00:00"),
-                      }))}
-                      className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-                    />
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-amber-800 mb-1">
-                        Start Time
-                      </label>
-                      <input
-                        type="time"
-                        value={toTimeInputValue(editingItem.scheduled_date)}
-                        onChange={(e) => setEditingItem((p) => ({
-                          ...p,
-                          scheduled_date: fromDateAndTimeInputs(toDateInputValue(p?.scheduled_date), e.target.value),
-                        }))}
-                        className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-                      />
+                    <div className="space-y-3">
+                      {getMonthlySpecialSchedules(editingItem).map((schedule, scheduleIndex, schedules) => (
+                        <div key={scheduleIndex} className="rounded-lg border border-amber-200 bg-white p-3">
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="date"
+                              value={schedule.date}
+                              onChange={(e) => {
+                                const next = schedules.map((item, index) =>
+                                  index === scheduleIndex ? { ...item, date: e.target.value } : item
+                                );
+                                setEditingItem((p) => withMonthlySpecialSchedules(p, next));
+                              }}
+                              className="min-w-0 flex-1 px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                            />
+                            {schedules.length > 1 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = schedules.filter((_, index) => index !== scheduleIndex);
+                                  setEditingItem((p) => withMonthlySpecialSchedules(p, next));
+                                }}
+                                className="p-2 rounded-lg text-amber-700 hover:bg-amber-100"
+                                title="Remove date"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                          <div className="mt-3 space-y-2">
+                            {schedule.times.map((time, timeIndex) => (
+                              <div key={timeIndex} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                                <input
+                                  type="time"
+                                  value={time.start}
+                                  onChange={(e) => {
+                                    const next = schedules.map((item, index) => index === scheduleIndex
+                                      ? {
+                                        ...item,
+                                        times: item.times.map((timeItem, tIndex) =>
+                                          tIndex === timeIndex ? { ...timeItem, start: e.target.value } : timeItem
+                                        ),
+                                      }
+                                      : item);
+                                    setEditingItem((p) => withMonthlySpecialSchedules(p, next));
+                                  }}
+                                  className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                                  aria-label="Start time"
+                                />
+                                <input
+                                  type="time"
+                                  value={time.end}
+                                  onChange={(e) => {
+                                    const next = schedules.map((item, index) => index === scheduleIndex
+                                      ? {
+                                        ...item,
+                                        times: item.times.map((timeItem, tIndex) =>
+                                          tIndex === timeIndex ? { ...timeItem, end: e.target.value } : timeItem
+                                        ),
+                                      }
+                                      : item);
+                                    setEditingItem((p) => withMonthlySpecialSchedules(p, next));
+                                  }}
+                                  className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+                                  aria-label="End time"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = schedules.map((item, index) => index === scheduleIndex
+                                      ? { ...item, times: item.times.filter((_, tIndex) => tIndex !== timeIndex) }
+                                      : item);
+                                    setEditingItem((p) => withMonthlySpecialSchedules(p, next));
+                                  }}
+                                  disabled={schedule.times.length === 1}
+                                  className="p-2 rounded-lg text-amber-700 hover:bg-amber-100 disabled:opacity-40 disabled:hover:bg-transparent"
+                                  title="Remove time"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = schedules.map((item, index) => index === scheduleIndex
+                                ? { ...item, times: [...item.times, { start: "", end: "" }] }
+                                : item);
+                              setEditingItem((p) => withMonthlySpecialSchedules(p, next));
+                            }}
+                            className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-amber-800 hover:text-amber-900"
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                            Add time
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-amber-800 mb-1">
-                        End Time
-                      </label>
-                      <input
-                        type="time"
-                        value={getMonthlySpecialEndTime(editingItem)}
-                        onChange={(e) => setEditingItem((p) => ({
-                          ...p,
-                          metadata: {
-                            ...(p?.metadata || {}),
-                            monthly_special_end_time: e.target.value,
-                          },
-                        }))}
-                        className="w-full px-3 py-2 border border-amber-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white"
-                      />
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const schedules = getMonthlySpecialSchedules(editingItem);
+                        setEditingItem((p) => withMonthlySpecialSchedules(p, [...schedules, emptyMonthlySchedule()]));
+                      }}
+                      className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-amber-800 hover:text-amber-900"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add date
+                    </button>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-amber-800 mb-1">

@@ -16,7 +16,9 @@ import { MonthlyAvailableDatePicker } from "@/components/booking/monthly-availab
 import { BigChefPageContent, defaultBigChefContent } from "@/types/site-content";
 import { dateAllowsDeposit, getDubaiDate } from "@/lib/payments/deposit-policy";
 
-interface MenuItem { id: string; name: string; price: number; image: string; dishes: string[]; category: string; scheduled_date?: string | null; allowed_persons?: number | null; metadata?: { monthly_special_end_time?: string } | null; }
+interface MonthlySpecialTimeRange { start: string; end: string; }
+interface MonthlySpecialSchedule { date: string; times: MonthlySpecialTimeRange[]; }
+interface MenuItem { id: string; name: string; price: number; image: string; dishes: string[]; category: string; scheduled_date?: string | null; allowed_persons?: number | null; metadata?: { monthly_special_end_time?: string; monthly_special_schedules?: MonthlySpecialSchedule[] } | null; }
 interface ExtraItem { id: string; name: string; description: string; price: number; icon: LucideIcon; category: string; image?: string; }
 interface PartyExtraMenuItem {
   id: string;
@@ -35,57 +37,79 @@ interface NannyMenuSchedule { date: string; time: string; allTimeSlots: TimeSlot
 interface AppliedVoucher { code: string; amount: number; }
 type CategoryType = "corporate" | "classics" | "monthly" | "teenagers" | "nanny";
 
-const formatMonthlySpecialSchedule = (value?: string | null, endTime?: string | null) => {
-  if (!value) return null;
-  const date = new Date(value);
+const formatTimeLabel = (time: string) => {
+  const [hours, minutes] = time.split(":").map(Number);
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return time;
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+};
+
+const getMonthlySpecialSchedules = (menu: MenuItem | null): MonthlySpecialSchedule[] => {
+  const schedules = menu?.metadata?.monthly_special_schedules;
+  if (Array.isArray(schedules) && schedules.length > 0) {
+    return schedules
+      .map((schedule) => ({
+        date: typeof schedule.date === "string" ? schedule.date : "",
+        times: Array.isArray(schedule.times) ? schedule.times.filter((time) => time.start && time.end) : [],
+      }))
+      .filter((schedule) => schedule.date && schedule.times.length > 0);
+  }
+
+  if (!menu?.scheduled_date) return [];
+  const date = new Date(menu.scheduled_date);
+  if (Number.isNaN(date.getTime())) return [];
+  const start = `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+  const fallbackEnd = new Date(date);
+  fallbackEnd.setHours(date.getHours() + 1, date.getMinutes(), 0, 0);
+  const end = menu.metadata?.monthly_special_end_time || `${String(fallbackEnd.getHours()).padStart(2, "0")}:${String(fallbackEnd.getMinutes()).padStart(2, "0")}`;
+  return [{
+    date: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`,
+    times: [{ start, end }],
+  }];
+};
+
+const formatMonthlySpecialSchedules = (menu: MenuItem) => {
+  const schedules = getMonthlySpecialSchedules(menu);
+  if (schedules.length === 0) return null;
+  return schedules.map((schedule) => {
+    const date = new Date(`${schedule.date}T00:00:00`);
   if (Number.isNaN(date.getTime())) return null;
   const dateLabel = date.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
     year: "numeric",
   });
-  const startLabel = date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  if (!endTime) return `${dateLabel}, ${startLabel}`;
-  const [hours, minutes] = endTime.split(":").map(Number);
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return `${dateLabel}, ${startLabel}`;
-  const endDate = new Date(date);
-  endDate.setHours(hours, minutes, 0, 0);
-  const endLabel = endDate.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  return `${dateLabel}, ${startLabel} to ${endLabel}`;
+    const times = schedule.times.map((time) => `${formatTimeLabel(time.start)} to ${formatTimeLabel(time.end)}`).join(", ");
+    return `${dateLabel}, ${times}`;
+  }).filter(Boolean).join("; ");
 };
 
-const getMonthlySpecialDateKey = (menu: MenuItem | null) => {
-  if (!menu?.scheduled_date) return "";
-  const date = new Date(menu.scheduled_date);
-  if (Number.isNaN(date.getTime())) return "";
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-};
+const getMonthlySpecialTimeSlots = (menu: MenuItem | null, dateKey: string) =>
+  getMonthlySpecialSchedules(menu)
+    .find((schedule) => schedule.date === dateKey)
+    ?.times.map((time) => ({
+      start: time.start,
+      end: time.end,
+      duration: 0,
+      label: `${formatTimeLabel(time.start)} - ${formatTimeLabel(time.end)}`,
+    })) || [];
 
-const getMonthlySpecialTimeSlot = (menu: MenuItem | null) => {
-  if (!menu?.scheduled_date) return null;
-  const startDate = new Date(menu.scheduled_date);
-  if (Number.isNaN(startDate.getTime())) return null;
-  const start = `${String(startDate.getHours()).padStart(2, "0")}:${String(startDate.getMinutes()).padStart(2, "0")}`;
-  const end = menu.metadata?.monthly_special_end_time || "";
-  const endDate = new Date(startDate);
-  const [endHours, endMinutes] = end.split(":").map(Number);
-  if (Number.isFinite(endHours) && Number.isFinite(endMinutes)) {
-    endDate.setHours(endHours, endMinutes, 0, 0);
-  } else {
-    endDate.setHours(startDate.getHours() + 1, startDate.getMinutes(), 0, 0);
-  }
-  const label = `${startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })} - ${endDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}`;
+const getMonthlySpecialDates = (menu: MenuItem | null) =>
+  getMonthlySpecialSchedules(menu).map((schedule) => schedule.date);
+
+const getFirstMonthlySpecialTimeSlot = (menu: MenuItem | null) => {
+  const firstSchedule = getMonthlySpecialSchedules(menu)[0];
+  const firstTime = firstSchedule?.times[0];
+  if (!firstSchedule || !firstTime) return null;
   return {
-    start,
-    end: `${String(endDate.getHours()).padStart(2, "0")}:${String(endDate.getMinutes()).padStart(2, "0")}`,
-    duration: Math.max(0, Math.round((endDate.getTime() - startDate.getTime()) / 60000)),
-    label,
+    date: firstSchedule.date,
+    slot: {
+      start: firstTime.start,
+      end: firstTime.end,
+      duration: 0,
+      label: `${formatTimeLabel(firstTime.start)} - ${formatTimeLabel(firstTime.end)}`,
+    },
   };
 };
 
@@ -375,11 +399,10 @@ export default function BigChefPage() {
       return;
     }
 
-    const menuDate = getMonthlySpecialDateKey(selectedMenu);
-    const dates = menuDate ? [menuDate] : [];
+    const dates = getMonthlySpecialDates(selectedMenu);
     setMonthlyAvailableDates(dates);
     setLoadingMonthlyDates(false);
-    if (eventDate && eventDate !== menuDate) {
+    if (eventDate && !dates.includes(eventDate)) {
       setEventDate("");
       setEventTime("");
     }
@@ -587,15 +610,14 @@ export default function BigChefPage() {
   const handleWaiverAccept = () => { setWaiverAccepted(true); setShowWaiverModal(false); handleSubmit(true); };
   const today = getDubaiDate();
   const detailsStep = hasExtras ? 3 : 2;
-  const monthlySpecialDate = getMonthlySpecialDateKey(selectedMenu);
-  const monthlySpecialTimeSlot = getMonthlySpecialTimeSlot(selectedMenu);
-  const monthlySpecialTimeSlots = isMonthly && eventDate && eventDate === monthlySpecialDate && monthlySpecialTimeSlot && eventDate >= today
-    ? [monthlySpecialTimeSlot]
+  const monthlySpecialDates = getMonthlySpecialDates(selectedMenu);
+  const monthlySpecialTimeSlots = isMonthly && eventDate && monthlySpecialDates.includes(eventDate) && eventDate >= today
+    ? getMonthlySpecialTimeSlots(selectedMenu, eventDate)
     : [];
   const displayedTimeSlots = isMonthly ? monthlySpecialTimeSlots : availableTimeSlots;
   const timeSlotEmptyMessage = isMonthly
-    ? selectedMenu && monthlySpecialDate && monthlySpecialDate < today
-      ? "This monthly special date has passed"
+    ? selectedMenu && monthlySpecialDates.length > 0 && monthlySpecialDates.every((date) => date < today)
+      ? "These monthly special dates have passed"
       : selectedMenu
       ? "Select the available date first"
       : "Select a monthly special first"
@@ -625,9 +647,9 @@ export default function BigChefPage() {
   const selectMenu = (menu: MenuItem) => {
     setSelectedMenu(menu);
     if (activeCategory === "monthly") {
-      const menuDate = getMonthlySpecialDateKey(menu);
-      setEventDate((currentDate) => (currentDate === menuDate ? currentDate : ""));
-      setEventTime("");
+      const firstSlot = getFirstMonthlySpecialTimeSlot(menu);
+      setEventDate(firstSlot?.date || "");
+      setEventTime(firstSlot?.slot.start || "");
       return;
     }
 
@@ -775,10 +797,10 @@ export default function BigChefPage() {
                           <div className="relative h-64 w-full bg-stone-200"><Image src={menu.image} alt={menu.name} fill className="object-cover" />{cap && !isFull && <div className="absolute top-2 left-2"><span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FF8C6B]/15 text-[#FF8C6B]">{cap.available} spot{cap.available === 1 ? "" : "s"} left</span></div>}{isSelected && <div className="absolute top-2 right-2 bg-[#FF8C6B] text-white p-1 rounded-full"><Check className="h-4 w-4" /></div>}</div>
                           <div className="p-4 flex-1 flex flex-col">
                             <h3 className="text-xl font-bold text-stone-900 mb-3">{menu.name}</h3>
-                            {activeCategory === "monthly" && formatMonthlySpecialSchedule(menu.scheduled_date, menu.metadata?.monthly_special_end_time) && (
+                            {activeCategory === "monthly" && formatMonthlySpecialSchedules(menu) && (
                               <div className="mb-3 flex items-start gap-2 rounded-lg bg-[#FF8C6B]/10 px-3 py-2 text-sm font-bold text-stone-800">
                                 <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8C6B]" />
-                                <span>Available on {formatMonthlySpecialSchedule(menu.scheduled_date, menu.metadata?.monthly_special_end_time)}</span>
+                                <span>Available on {formatMonthlySpecialSchedules(menu)}</span>
                               </div>
                             )}
                             <div className="space-y-1 flex-1">{menu.dishes.map((d, i) => <div key={i} className="flex items-center gap-2 text-base text-stone-600"><Check className="h-3 w-3 text-[#ff7f5c]" /><span>{d}</span></div>)}</div>
@@ -866,7 +888,7 @@ export default function BigChefPage() {
                 <Card><CardContent className="p-6 space-y-4">
                   {activeCategory === "monthly" && selectedMenu && (() => {
                     const cap = menuCapacities[selectedMenu.id];
-                    const scheduledDateTime = formatMonthlySpecialSchedule(selectedMenu.scheduled_date, selectedMenu.metadata?.monthly_special_end_time);
+                    const scheduledDateTime = formatMonthlySpecialSchedules(selectedMenu);
                     if (!cap && !scheduledDateTime) return null;
                     return (
                       <div className="px-4 py-3 rounded-xl bg-[#FF8C6B]/10 border border-[#FF8C6B]/25 space-y-2">
