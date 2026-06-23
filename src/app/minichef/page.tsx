@@ -128,21 +128,6 @@ const getMonthlySpecialTimeSlots = (menu: MenuItem | null, dateKey: string) =>
 const getMonthlySpecialDates = (menu: MenuItem | null) =>
   getMonthlySpecialSchedules(menu).map((schedule) => schedule.date);
 
-const getFirstMonthlySpecialTimeSlot = (menu: MenuItem | null) => {
-  const firstSchedule = getMonthlySpecialSchedules(menu)[0];
-  const firstTime = firstSchedule?.times[0];
-  if (!firstSchedule || !firstTime) return null;
-  return {
-    date: firstSchedule.date,
-    slot: {
-      start: firstTime.start,
-      end: firstTime.end,
-      duration: 0,
-      label: `${formatTimeLabel(firstTime.start)} - ${formatTimeLabel(firstTime.end)}`,
-    },
-  };
-};
-
 // Extra item interface
 interface ExtraItem {
   id: string;
@@ -1348,9 +1333,8 @@ export default function MiniChefPage() {
     setSelectedMenu(menu);
     setSelectedPackageMenuItems([]);
     if (activeCategory === "monthly") {
-      const firstSlot = getFirstMonthlySpecialTimeSlot(menu);
-      setEventDate(firstSlot?.date || "");
-      setEventTime(firstSlot?.slot.start || "");
+      setEventDate("");
+      setEventTime("");
       return;
     }
 
@@ -1714,7 +1698,16 @@ export default function MiniChefPage() {
                               Loading dates...
                             </div>
                           ) : (
-                            <MonthlyAvailableDatePicker availableDates={monthlyAvailableDates} unavailableDates={blockedRentalDates} value={eventDate} onChange={setEventDate} today={today} />
+                            <MonthlyAvailableDatePicker
+                              availableDates={monthlyAvailableDates}
+                              unavailableDates={blockedRentalDates}
+                              value={eventDate}
+                              onChange={(date) => {
+                                setEventDate(date);
+                                setEventTime("");
+                              }}
+                              today={today}
+                            />
                           )
                         ) : isSummerCamp ? (
                           loadingSummerCampDates ? (
@@ -2103,7 +2096,10 @@ export default function MiniChefPage() {
                                 availableDates={monthlyAvailableDates}
                                 unavailableDates={blockedRentalDates}
                                 value={eventDate}
-                                onChange={setEventDate}
+                                onChange={(date) => {
+                                  setEventDate(date);
+                                  setEventTime("");
+                                }}
                                 today={today}
                               />
                             )

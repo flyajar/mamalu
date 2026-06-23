@@ -99,21 +99,6 @@ const getMonthlySpecialTimeSlots = (menu: MenuItem | null, dateKey: string) =>
 const getMonthlySpecialDates = (menu: MenuItem | null) =>
   getMonthlySpecialSchedules(menu).map((schedule) => schedule.date);
 
-const getFirstMonthlySpecialTimeSlot = (menu: MenuItem | null) => {
-  const firstSchedule = getMonthlySpecialSchedules(menu)[0];
-  const firstTime = firstSchedule?.times[0];
-  if (!firstSchedule || !firstTime) return null;
-  return {
-    date: firstSchedule.date,
-    slot: {
-      start: firstTime.start,
-      end: firstTime.end,
-      duration: 0,
-      label: `${formatTimeLabel(firstTime.start)} - ${formatTimeLabel(firstTime.end)}`,
-    },
-  };
-};
-
 const AVAILABILITY_CATEGORY_BY_TAB: Record<CategoryType, string> = {
   classics: "classics_big",
   monthly: "monthly_big",
@@ -670,9 +655,8 @@ export default function BigChefPage() {
   const selectMenu = (menu: MenuItem) => {
     setSelectedMenu(menu);
     if (activeCategory === "monthly") {
-      const firstSlot = getFirstMonthlySpecialTimeSlot(menu);
-      setEventDate(firstSlot?.date || "");
-      setEventTime(firstSlot?.slot.start || "");
+      setEventDate("");
+      setEventTime("");
       return;
     }
 
@@ -804,7 +788,16 @@ export default function BigChefPage() {
                               Loading dates...
                             </div>
                           ) : (
-                            <MonthlyAvailableDatePicker availableDates={monthlyAvailableDates} unavailableDates={blockedRentalDates} value={eventDate} onChange={setEventDate} today={today} />
+                            <MonthlyAvailableDatePicker
+                              availableDates={monthlyAvailableDates}
+                              unavailableDates={blockedRentalDates}
+                              value={eventDate}
+                              onChange={(date) => {
+                                setEventDate(date);
+                                setEventTime("");
+                              }}
+                              today={today}
+                            />
                           )
                         ) : (
                           <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} unavailableDates={blockedRentalDates} restrictToAvailableDates={false} />
@@ -1021,7 +1014,10 @@ export default function BigChefPage() {
                                 availableDates={monthlyAvailableDates}
                                 unavailableDates={blockedRentalDates}
                                 value={eventDate}
-                                onChange={setEventDate}
+                                onChange={(date) => {
+                                  setEventDate(date);
+                                  setEventTime("");
+                                }}
                                 today={today}
                               />
                           )
