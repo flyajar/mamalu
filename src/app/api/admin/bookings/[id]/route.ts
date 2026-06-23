@@ -90,6 +90,18 @@ function normalizeTime(time: string) {
   return time.slice(0, 5);
 }
 
+function summerCampTimeMatches(
+  batches: Array<{ camp_dates?: string[] | null; time_slots?: Record<string, Array<{ start?: string | null }>> | null }>,
+  eventDate: string,
+  eventTime: string
+) {
+  const requestedTime = normalizeTime(eventTime);
+  return batches.some((batch) =>
+    (batch.camp_dates || []).includes(eventDate) &&
+    (batch.time_slots?.[eventDate] || []).some((slot) => slot.start && normalizeTime(slot.start) === requestedTime)
+  );
+}
+
 function inferBookingSlotCategory(booking: BookingForReschedule | ServiceBookingForScheduleUpdate) {
   const text = [
     booking.service_name,
@@ -146,7 +158,7 @@ async function validateCategorySchedule(
   if (category === SUMMER_CAMP_SLOT_CATEGORY_ID) {
     const { data: batches, error: batchesError } = await supabase
       .from("summer_camp_batches")
-      .select("camp_dates")
+      .select("camp_dates, time_slots")
       .eq("is_active", true);
 
     if (batchesError) {
@@ -162,6 +174,10 @@ async function validateCategorySchedule(
 
     if (!availableDates.has(eventDate)) {
       return "This summer camp class is not available on the selected date. Please choose another camp date.";
+    }
+
+    if (!summerCampTimeMatches(batches || [], eventDate, eventTime)) {
+      return "This summer camp class is not available at the selected time. Please choose another camp time slot.";
     }
   }
 

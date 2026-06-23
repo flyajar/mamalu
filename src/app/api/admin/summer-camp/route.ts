@@ -7,8 +7,14 @@ interface SummerCampBatchPayload {
   id?: string;
   name: string;
   camp_dates: string[];
+  time_slots?: Record<string, SummerCampTimeSlot[]>;
   sort_order: number;
   is_active: boolean;
+}
+
+interface SummerCampTimeSlot {
+  start: string;
+  end: string;
 }
 
 interface SummerCampItemPayload {
@@ -29,6 +35,7 @@ interface SummerCampBatchRow {
   id: string;
   name: string;
   camp_dates: string[] | null;
+  time_slots?: Record<string, SummerCampTimeSlot[]> | null;
   sort_order: number;
   is_active: boolean;
   created_at: string;
@@ -45,6 +52,31 @@ function normalizeDates(dates: unknown) {
   return [...new Set(dates.filter((date): date is string => typeof date === "string" && DATE_PATTERN.test(date)))].sort();
 }
 
+function normalizeTimeSlots(slots: unknown, dates: string[]) {
+  if (!slots || typeof slots !== "object" || Array.isArray(slots)) return {};
+
+  const allowedDates = new Set(dates);
+  return Object.fromEntries(
+    Object.entries(slots as Record<string, unknown>)
+      .filter(([date]) => allowedDates.has(date))
+      .map(([date, dateSlots]) => {
+        const normalizedSlots = Array.isArray(dateSlots)
+          ? dateSlots
+              .map((slot) => {
+                if (!slot || typeof slot !== "object") return null;
+                const { start, end } = slot as Record<string, unknown>;
+                if (typeof start !== "string" || typeof end !== "string") return null;
+                if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end) || start >= end) return null;
+                return { start, end };
+              })
+              .filter((slot): slot is SummerCampTimeSlot => Boolean(slot))
+          : [];
+        return [date, normalizedSlots];
+      })
+      .filter(([, dateSlots]) => dateSlots.length > 0)
+  );
+}
+
 function normalizeOptionalDate(date: unknown) {
   return typeof date === "string" && DATE_PATTERN.test(date) ? date : null;
 }
@@ -54,6 +86,7 @@ function toApiBatch(row: SummerCampBatchRow) {
     id: row.id,
     name: row.name,
     camp_dates: (row.camp_dates || []).sort(),
+    time_slots: row.time_slots || {},
     sort_order: row.sort_order,
     is_active: row.is_active,
     created_at: row.created_at,
@@ -123,19 +156,31 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Expected batches array" }, { status: 400 });
     }
 
-    const rows = batches.map((batch, index) => ({
-      ...(batch.id ? { id: batch.id } : {}),
-      name: batch.name?.trim() || `Batch ${index + 1}`,
-      camp_dates: normalizeDates(batch.camp_dates),
-      sort_order: Number.isInteger(batch.sort_order) ? batch.sort_order : index * 10,
-      is_active: Boolean(batch.is_active),
-      updated_at: new Date().toISOString(),
-    }));
+    const rows = batches.map((batch, index) => {
+      const campDates = normalizeDates(batch.camp_dates);
+      return {
+        ...(batch.id ? { id: batch.id } : {}),
+        name: batch.name?.trim() || `Batch ${index + 1}`,
+        camp_dates: campDates,
+        time_slots: normalizeTimeSlots(batch.time_slots, campDates),
+        sort_order: Number.isInteger(batch.sort_order) ? batch.sort_order : index * 10,
+        is_active: Boolean(batch.is_active),
+        updated_at: new Date().toISOString(),
+      };
+    });
 
     const invalidBatch = rows.find((batch) => batch.camp_dates.length !== 5);
     if (invalidBatch) {
       return NextResponse.json(
         { error: `${invalidBatch.name} must have exactly 5 unique dates.` },
+        { status: 400 }
+      );
+    }
+
+    const batchWithoutSlots = rows.find((batch) => batch.camp_dates.some((date) => !batch.time_slots[date]?.length));
+    if (batchWithoutSlots) {
+      return NextResponse.json(
+        { error: `${batchWithoutSlots.name} needs at least one time slot for every date.` },
         { status: 400 }
       );
     }

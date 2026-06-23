@@ -105,6 +105,24 @@ function getSummerCampFullWeekBatches(batches: Array<{ camp_dates?: string[] | n
     .filter((dates) => dates.length === 5 && dates.every((date) => date > today));
 }
 
+function summerCampTimeMatches(
+  batches: Array<{ camp_dates?: string[] | null; time_slots?: Record<string, Array<{ start?: string | null; end?: string | null }>> | null }>,
+  requestedDates: string[],
+  eventTime: string
+) {
+  const requestedTime = normalizeTimeForQuery(eventTime);
+
+  return batches.some((batch) => {
+    const batchDates = new Set(batch.camp_dates || []);
+    const includesRequestedDate = requestedDates.some((date) => batchDates.has(date));
+    if (!includesRequestedDate) return false;
+
+    return requestedDates.some((date) =>
+      (batch.time_slots?.[date] || []).some((slot) => slot.start && normalizeTimeForQuery(slot.start) === requestedTime)
+    );
+  });
+}
+
 function getEffectiveSummerCampPrice(item: {
   price?: number | string | null;
   discount_percentage?: number | string | null;
@@ -333,7 +351,7 @@ export async function POST(request: NextRequest) {
 
       const { data: batches, error: batchesError } = await supabase
         .from("summer_camp_batches")
-        .select("camp_dates")
+        .select("camp_dates, time_slots")
         .eq("is_active", true);
 
       if (batchesError) {
@@ -365,6 +383,13 @@ export async function POST(request: NextRequest) {
       ) {
         return NextResponse.json(
           { error: "This summer camp class is not available on the selected date. Please choose another camp date." },
+          { status: 409 }
+        );
+      }
+
+      if (eventTime && !summerCampTimeMatches(batches || [], requestedCampDates, eventTime)) {
+        return NextResponse.json(
+          { error: "This summer camp class is not available at the selected time. Please choose another camp time slot." },
           { status: 409 }
         );
       }

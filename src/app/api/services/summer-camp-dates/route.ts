@@ -6,6 +6,23 @@ interface SummerCampBatchRow {
   id?: string;
   name?: string | null;
   camp_dates: string[] | null;
+  time_slots?: Record<string, SummerCampTimeSlot[]> | null;
+}
+
+interface SummerCampTimeSlot {
+  start: string;
+  end: string;
+}
+
+function normalizeTimeSlots(slots: SummerCampTimeSlot[] | undefined) {
+  return (slots || [])
+    .filter((slot) => slot.start && slot.end && slot.start < slot.end)
+    .map((slot) => ({
+      start: slot.start,
+      end: slot.end,
+      duration: 0,
+      label: `${slot.start} - ${slot.end}`,
+    }));
 }
 
 interface SummerCampItemRow {
@@ -47,6 +64,7 @@ function getAvailableWeekBatches(batches: SummerCampBatchRow[], today: string) {
       id: batch.id || `batch-${index + 1}`,
       name: batch.name || `Batch ${index + 1}`,
       dates: [...new Set(batch.camp_dates || [])].sort(),
+      time_slots: batch.time_slots || {},
     }))
     .filter((batch) => batch.dates.length === 5 && batch.dates.every((date) => date > today));
 }
@@ -86,12 +104,25 @@ export async function GET(request: NextRequest) {
     const dayCount = Math.min(5, Math.max(1, Number.isFinite(requestedDays) ? requestedDays : 1));
     const today = getDubaiDate();
 
-    const { data, error } = await supabase
+    const batchQuery = await supabase
       .from("summer_camp_batches")
-      .select("id, name, camp_dates")
+      .select("id, name, camp_dates, time_slots")
       .eq("is_active", true)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
+    let data: unknown[] | null = batchQuery.data;
+    let error = batchQuery.error;
+
+    if (error && error.message.includes("time_slots")) {
+      const fallback = await supabase
+        .from("summer_camp_batches")
+        .select("id, name, camp_dates")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true });
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) throw error;
 
@@ -109,6 +140,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       dates,
       batches: getAvailableWeekBatches(batches, today),
+      timeSlotsByDate: Object.fromEntries(
+        batches.flatMap((batch) =>
+          normalizeBatchDates(batch, today).map((date) => [date, normalizeTimeSlots(batch.time_slots?.[date])])
+        )
+      ),
       items: ((itemData || []) as SummerCampItemRow[]).map((item) => getDiscountedItem(item, today)),
     });
   } catch (error: unknown) {

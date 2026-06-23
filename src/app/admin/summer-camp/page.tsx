@@ -8,8 +8,14 @@ interface SummerCampBatch {
   id?: string;
   name: string;
   camp_dates: string[];
+  time_slots: Record<string, SummerCampTimeSlot[]>;
   sort_order: number;
   is_active: boolean;
+}
+
+interface SummerCampTimeSlot {
+  start: string;
+  end: string;
 }
 
 interface SummerCampItem {
@@ -61,9 +67,14 @@ function createBatch(index: number): SummerCampBatch {
   return {
     name: `Batch ${index + 1}`,
     camp_dates: Array(DATES_PER_BATCH).fill(""),
+    time_slots: {},
     sort_order: index * 10,
     is_active: true,
   };
+}
+
+function createTimeSlot(): SummerCampTimeSlot {
+  return { start: "10:00", end: "12:30" };
 }
 
 function formatDate(date: string) {
@@ -73,6 +84,10 @@ function formatDate(date: string) {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function formatTimeSlot(slot: SummerCampTimeSlot) {
+  return `${slot.start || "--:--"} - ${slot.end || "--:--"}`;
 }
 
 export default function AdminSummerCampPage() {
@@ -99,6 +114,7 @@ export default function AdminSummerCampPage() {
         (data.batches || []).map((batch: SummerCampBatch, index: number) => ({
           ...batch,
           camp_dates: [...batch.camp_dates, ...Array(DATES_PER_BATCH).fill("")].slice(0, DATES_PER_BATCH),
+          time_slots: batch.time_slots || {},
           sort_order: batch.sort_order ?? index * 10,
         }))
       );
@@ -135,8 +151,54 @@ export default function AdminSummerCampPage() {
       current.map((batch, currentIndex) => {
         if (currentIndex !== batchIndex) return batch;
         const campDates = [...batch.camp_dates];
+        const timeSlots = { ...(batch.time_slots || {}) };
+        const previousDate = campDates[dateIndex];
         campDates[dateIndex] = date;
-        return { ...batch, camp_dates: campDates };
+        if (previousDate && previousDate !== date && timeSlots[previousDate]) {
+          timeSlots[date] = timeSlots[date] || timeSlots[previousDate];
+          delete timeSlots[previousDate];
+        }
+        if (date && !timeSlots[date]) timeSlots[date] = [createTimeSlot()];
+        return { ...batch, camp_dates: campDates, time_slots: timeSlots };
+      })
+    );
+  }
+
+  function updateBatchTimeSlot(
+    batchIndex: number,
+    date: string,
+    slotIndex: number,
+    updates: Partial<SummerCampTimeSlot>
+  ) {
+    if (!date) return;
+    setBatches((current) =>
+      current.map((batch, currentIndex) => {
+        if (currentIndex !== batchIndex) return batch;
+        const slots = [...(batch.time_slots?.[date] || [createTimeSlot()])];
+        slots[slotIndex] = { ...slots[slotIndex], ...updates };
+        return { ...batch, time_slots: { ...(batch.time_slots || {}), [date]: slots } };
+      })
+    );
+  }
+
+  function addBatchTimeSlot(batchIndex: number, date: string) {
+    if (!date) return;
+    setBatches((current) =>
+      current.map((batch, currentIndex) => {
+        if (currentIndex !== batchIndex) return batch;
+        const slots = [...(batch.time_slots?.[date] || []), createTimeSlot()];
+        return { ...batch, time_slots: { ...(batch.time_slots || {}), [date]: slots } };
+      })
+    );
+  }
+
+  function removeBatchTimeSlot(batchIndex: number, date: string, slotIndex: number) {
+    if (!date) return;
+    setBatches((current) =>
+      current.map((batch, currentIndex) => {
+        if (currentIndex !== batchIndex) return batch;
+        const slots = (batch.time_slots?.[date] || []).filter((_, index) => index !== slotIndex);
+        return { ...batch, time_slots: { ...(batch.time_slots || {}), [date]: slots } };
       })
     );
   }
@@ -181,12 +243,25 @@ export default function AdminSummerCampPage() {
         ...batch,
         name: batch.name.trim() || `Batch ${index + 1}`,
         camp_dates: [...new Set(batch.camp_dates.filter(Boolean))].sort(),
+        time_slots: Object.fromEntries(
+          [...new Set(batch.camp_dates.filter(Boolean))].sort().map((date) => [
+            date,
+            (batch.time_slots?.[date] || []).filter((slot) => slot.start && slot.end && slot.start < slot.end),
+          ])
+        ),
         sort_order: index * 10,
       }));
 
       const invalidBatch = normalizedBatches.find((batch) => batch.camp_dates.length !== DATES_PER_BATCH);
       if (invalidBatch) {
         throw new Error(`${invalidBatch.name} must have exactly ${DATES_PER_BATCH} unique dates.`);
+      }
+
+      const invalidSlotBatch = normalizedBatches.find((batch) =>
+        batch.camp_dates.some((date) => !batch.time_slots[date]?.length)
+      );
+      if (invalidSlotBatch) {
+        throw new Error(`${invalidSlotBatch.name} needs at least one valid time slot for every date.`);
       }
 
       const invalidDiscountItem = items.find((item) => {
@@ -226,6 +301,7 @@ export default function AdminSummerCampPage() {
         (data.batches || []).map((batch: SummerCampBatch) => ({
           ...batch,
           camp_dates: [...batch.camp_dates, ...Array(DATES_PER_BATCH).fill("")].slice(0, DATES_PER_BATCH),
+          time_slots: batch.time_slots || {},
         }))
       );
       if (data.items) setItems(data.items);
@@ -396,7 +472,7 @@ export default function AdminSummerCampPage() {
         <div className="flex items-center justify-between border-b border-stone-200 p-4">
           <div>
             <h2 className="font-semibold text-stone-900">Camp Batches</h2>
-            <p className="text-sm text-stone-500">Create Batch 1, Batch 2, and so on with five selected dates each.</p>
+            <p className="text-sm text-stone-500">Create batches with five dates and configurable time slots for each date.</p>
           </div>
           <Button type="button" variant="outline" onClick={addBatch} disabled={loading || saving}>
             <Plus className="h-4 w-4 mr-2" />
@@ -441,6 +517,7 @@ export default function AdminSummerCampPage() {
                                 className="rounded-full border border-[#FF7A5C]/30 bg-orange-50 px-3 py-1.5 text-sm text-stone-800"
                               >
                                 Day {dateIndex + 1}: {formatDate(date)}
+                                {date && batch.time_slots?.[date]?.length ? ` (${batch.time_slots[date].map(formatTimeSlot).join(", ")})` : ""}
                               </span>
                             ))}
                           </div>
@@ -449,7 +526,7 @@ export default function AdminSummerCampPage() {
 
                       <div className="grid gap-3 md:grid-cols-5">
                         {batch.camp_dates.map((date, dateIndex) => (
-                          <div key={dateIndex}>
+                          <div key={dateIndex} className="space-y-2">
                             <label className="text-xs font-semibold uppercase text-stone-500">
                               Date {dateIndex + 1}
                             </label>
@@ -459,6 +536,46 @@ export default function AdminSummerCampPage() {
                               onChange={(event) => updateBatchDate(batchIndex, dateIndex, event.target.value)}
                               className="mt-1 w-full rounded-md border border-stone-300 bg-white px-3 py-2 text-sm"
                             />
+                            {date && (
+                              <div className="space-y-2 rounded-md border border-stone-200 bg-stone-50 p-2">
+                                {(batch.time_slots?.[date] || []).map((slot, slotIndex) => (
+                                  <div key={slotIndex} className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                                    <input
+                                      type="time"
+                                      value={slot.start}
+                                      onChange={(event) => updateBatchTimeSlot(batchIndex, date, slotIndex, { start: event.target.value })}
+                                      className="w-full rounded-md border border-stone-300 bg-white px-2 py-1.5 text-sm"
+                                      aria-label={`Day ${dateIndex + 1} slot ${slotIndex + 1} start`}
+                                    />
+                                    <input
+                                      type="time"
+                                      value={slot.end}
+                                      onChange={(event) => updateBatchTimeSlot(batchIndex, date, slotIndex, { end: event.target.value })}
+                                      className="w-full rounded-md border border-stone-300 bg-white px-2 py-1.5 text-sm"
+                                      aria-label={`Day ${dateIndex + 1} slot ${slotIndex + 1} end`}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => removeBatchTimeSlot(batchIndex, date, slotIndex)}
+                                      className="rounded-md p-2 text-stone-400 hover:bg-red-50 hover:text-red-600"
+                                      aria-label={`Remove day ${dateIndex + 1} time slot ${slotIndex + 1}`}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                ))}
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => addBatchTimeSlot(batchIndex, date)}
+                                  className="w-full"
+                                >
+                                  <Plus className="mr-2 h-3.5 w-3.5" />
+                                  Add Time Slot
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>

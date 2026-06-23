@@ -201,6 +201,14 @@ interface SummerCampApiBatch {
   id: string;
   name: string;
   dates: string[];
+  time_slots?: Record<string, TimeSlot[]>;
+}
+
+interface TimeSlot {
+  start: string;
+  end: string;
+  duration: number;
+  label: string;
 }
 
 interface AppliedVoucher {
@@ -599,10 +607,11 @@ export default function MiniChefPage() {
   const [blockedRentalDates, setBlockedRentalDates] = useState<string[]>([]);
   const [summerCampAvailableDates, setSummerCampAvailableDates] = useState<string[]>([]);
   const [summerCampBatches, setSummerCampBatches] = useState<SummerCampApiBatch[]>([]);
+  const [summerCampTimeSlotsByDate, setSummerCampTimeSlotsByDate] = useState<Record<string, TimeSlot[]>>({});
   const [loadingSummerCampDates, setLoadingSummerCampDates] = useState(false);
   const [summerCampItems, setSummerCampItems] = useState<MenuItem[]>(STATIC_SUMMER_CAMP_MENUS);
-  const [allTimeSlots, setAllTimeSlots] = useState<{ start: string; end: string; duration: number; label: string }[]>([]);
-  const [availableTimeSlots, setAvailableTimeSlots] = useState<{ start: string; end: string; duration: number; label: string }[]>([]);
+  const [allTimeSlots, setAllTimeSlots] = useState<TimeSlot[]>([]);
+  const [availableTimeSlots, setAvailableTimeSlots] = useState<TimeSlot[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
@@ -885,6 +894,7 @@ export default function MiniChefPage() {
     if (!isSummerCamp) {
       setSummerCampAvailableDates([]);
       setSummerCampBatches([]);
+      setSummerCampTimeSlotsByDate({});
       setLoadingSummerCampDates(false);
       return;
     }
@@ -901,6 +911,7 @@ export default function MiniChefPage() {
         const dates = data.dates || [];
         setSummerCampAvailableDates(dates);
         setSummerCampBatches(Array.isArray(data.batches) ? data.batches : []);
+        setSummerCampTimeSlotsByDate(data.timeSlotsByDate && typeof data.timeSlotsByDate === "object" ? data.timeSlotsByDate : {});
         if (Array.isArray(data.items) && data.items.length > 0) {
           setSummerCampItems(
             data.items.map((item: SummerCampApiItem) => ({
@@ -944,6 +955,7 @@ export default function MiniChefPage() {
         console.error("Failed to fetch summer camp dates:", err);
         setSummerCampAvailableDates([]);
         setSummerCampBatches([]);
+        setSummerCampTimeSlotsByDate({});
       })
       .finally(() => setLoadingSummerCampDates(false));
   }, [isSummerCamp, isSummerCampPerDay, isSummerCampPerWeek, summerCampBookingOption, summerCampDayCount, summerCampRequiredDateCount]);
@@ -957,6 +969,18 @@ export default function MiniChefPage() {
 
   const handleSummerCampBatchSelect = (batch: SummerCampApiBatch) => {
     handleSummerCampDatesChange(batch.dates);
+  };
+
+  const getSummerCampTimeSlotsForSelection = () => {
+    if (!isSummerCamp || summerCampSelectedDates.length === 0) return [];
+    const slotsByKey = new Map<string, TimeSlot>();
+
+    summerCampSelectedDates.forEach((date) => {
+      const slots = summerCampTimeSlotsByDate[date] || [];
+      slots.forEach((slot) => slotsByKey.set(`${slot.start}-${slot.end}`, slot));
+    });
+
+    return [...slotsByKey.values()].sort((a, b) => a.start.localeCompare(b.start));
   };
 
   const formatSummerCampDate = (date: string) => {
@@ -994,11 +1018,20 @@ export default function MiniChefPage() {
     setSummerCampDayCount(1);
   }, [isSummerCamp, isSummerCampPerDay, summerCampDayCount, menuItemsByCategory, summerCampItems]);
 
+  const summerCampTimeSlots = getSummerCampTimeSlotsForSelection();
+  const summerCampTimeSlotKey = summerCampTimeSlots.map((slot) => `${slot.start}-${slot.end}`).join("|");
+
   // Fetch available time slots when date changes
   useEffect(() => {
     if (isMonthly) {
       setAllTimeSlots([]);
       setAvailableTimeSlots([]);
+      return;
+    }
+    if (isSummerCamp) {
+      setAllTimeSlots([]);
+      setAvailableTimeSlots([]);
+      setLoadingSlots(false);
       return;
     }
     if (!eventDate) {
@@ -1016,7 +1049,13 @@ export default function MiniChefPage() {
       })
       .catch(err => console.error("Failed to fetch availability:", err))
       .finally(() => setLoadingSlots(false));
-  }, [eventDate, activeCategory, isMonthly]);
+  }, [eventDate, activeCategory, isMonthly, isSummerCamp]);
+
+  useEffect(() => {
+    if (!isSummerCamp || !eventTime) return;
+    const stillAvailable = summerCampTimeSlots.some((slot) => slot.start === eventTime);
+    if (!stillAvailable) setEventTime("");
+  }, [eventTime, isSummerCamp, summerCampTimeSlotKey]);
 
   // Calculate totals
   const getMenuPrice = (menu = selectedMenu) => {
@@ -1059,18 +1098,23 @@ export default function MiniChefPage() {
     }));
 
   const today = getDubaiDate();
-  const selectedTimeSlotLabel = allTimeSlots.find((slot) => slot.start === eventTime)?.label || eventTime;
+  const lookupTimeSlots = isSummerCamp ? summerCampTimeSlots : allTimeSlots;
+  const selectedTimeSlotLabel = lookupTimeSlots.find((slot) => slot.start === eventTime)?.label || eventTime;
   const monthlySpecialDates = getMonthlySpecialDates(selectedMenu);
   const monthlySpecialTimeSlots = isMonthly && eventDate && monthlySpecialDates.includes(eventDate) && eventDate >= today
     ? getMonthlySpecialTimeSlots(selectedMenu, eventDate)
     : [];
-  const displayedTimeSlots = isMonthly ? monthlySpecialTimeSlots : isSummerCamp ? allTimeSlots : availableTimeSlots;
+  const displayedTimeSlots = isMonthly ? monthlySpecialTimeSlots : isSummerCamp ? summerCampTimeSlots : availableTimeSlots;
   const timeSlotEmptyMessage = isMonthly
     ? selectedMenu && monthlySpecialDates.length > 0 && monthlySpecialDates.every((date) => date < today)
       ? "These monthly special dates have passed"
       : selectedMenu
       ? "Select the available date first"
       : "Select a monthly special first"
+    : isSummerCamp
+    ? summerCampSelectedDates.length > 0
+      ? "No camp time slots configured for the selected date"
+      : "Select a camp date first"
     : eventDate
     ? "No slots available for this date"
     : "Select a date first";
@@ -1780,7 +1824,7 @@ export default function MiniChefPage() {
                         ) : eventDate && displayedTimeSlots.length > 0 ? (
                           <div className="grid grid-cols-2 gap-2">
                             {displayedTimeSlots.map((slot) => (
-                              <button key={slot.start} type="button" onClick={() => setEventTime(slot.start)} className={`px-3 py-2 text-sm rounded-lg border transition-all ${eventTime === slot.start ? "bg-[#FF8C6B] text-white border-[#FF8C6B]" : "border-stone-300 hover:border-[#FF8C6B]"}`}>
+                              <button key={`${slot.start}-${slot.end}`} type="button" onClick={() => setEventTime(slot.start)} className={`px-3 py-2 text-sm rounded-lg border transition-all ${eventTime === slot.start ? "bg-[#FF8C6B] text-white border-[#FF8C6B]" : "border-stone-300 hover:border-[#FF8C6B]"}`}>
                                 {slot.label}
                               </button>
                             ))}
