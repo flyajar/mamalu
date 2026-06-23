@@ -124,6 +124,7 @@ interface DailyReportBooking {
   bookedItems: Array<{ name: string; quantity: number }>;
   status: "confirmed" | "completed";
   paymentStatus: string;
+  paidAt: string | null;
   guests: number;
   allocatedAmount: number;
   amountCollected: number;
@@ -357,6 +358,10 @@ export default function AdminSalesPage() {
     });
   };
 
+  const formatPaymentDate = (dateStr: string | null) => {
+    return dateStr ? new Date(dateStr).toLocaleDateString() : "-";
+  };
+
   const renderDateFilters = () => (
     <div className="flex flex-wrap items-end gap-3 rounded-lg bg-stone-50 p-4 xl:flex-nowrap">
       <Button
@@ -440,9 +445,9 @@ export default function AdminSalesPage() {
     XLSX.utils.book_append_sheet(wb, summarySheet, "Summary");
 
     const bookingData = [
-      ["Date", "Time", "Booking Number", "Customer", "Email", "Type", "Service/Class", "Booked Items", "Status", "Payment Status", "Guests", "Allocated Amount", "Amount Collected", "Outstanding"],
+      ["Date", "Payment Date", "Time", "Booking Number", "Customer", "Email", "Type", "Service/Class", "Booked Items", "Status", "Payment Status", "Guests", "Allocated Amount", "Amount Collected", "Outstanding"],
       ...report.bookings.map((booking) => [
-        booking.date, booking.time || "", booking.bookingNumber, booking.customerName,
+        booking.date, formatPaymentDate(booking.paidAt), booking.time || "", booking.bookingNumber, booking.customerName,
         booking.customerEmail, booking.bookingType, booking.serviceType,
         booking.bookedItems.map((item) => `${item.name} x${item.quantity}`).join(", "),
         booking.status, booking.paymentStatus, booking.guests, booking.allocatedAmount,
@@ -726,7 +731,7 @@ export default function AdminSalesPage() {
                         <div className="overflow-x-auto">
                           <table className="min-w-[1200px] w-full text-sm">
                             <thead><tr className="bg-stone-100 text-left">
-                              {["Time", "Booking #", "Customer", "Type", "Booked Items", "Status", "Payment", "Guests", "Allocated", "Collected", "Outstanding"].map((heading) => <th key={heading} className="px-3 py-2">{heading}</th>)}
+                              {["Time", "Booking #", "Customer", "Type", "Booked Items", "Status", "Payment", "Payment Date", "Guests", "Allocated", "Collected", "Outstanding"].map((heading) => <th key={heading} className="px-3 py-2">{heading}</th>)}
                             </tr></thead>
                             <tbody>
                               {dayBookings.map((booking) => (
@@ -736,11 +741,11 @@ export default function AdminSalesPage() {
                                   <td className="px-3 py-3">{booking.serviceType}</td>
                                   <td className="px-3 py-3">{booking.bookedItems.map((item) => `${item.name} x${item.quantity}`).join(", ")}</td>
                                   <td className="px-3 py-3"><Badge className={booking.status === "completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}>{booking.status}</Badge></td>
-                                  <td className="px-3 py-3">{booking.paymentStatus}</td><td className="px-3 py-3 text-right">{booking.guests}</td>
+                                  <td className="px-3 py-3">{booking.paymentStatus}</td><td className="px-3 py-3">{formatPaymentDate(booking.paidAt)}</td><td className="px-3 py-3 text-right">{booking.guests}</td>
                                   <td className="px-3 py-3 text-right">{formatCurrency(booking.allocatedAmount)}</td><td className="px-3 py-3 text-right">{formatCurrency(booking.amountCollected)}</td><td className="px-3 py-3 text-right">{formatCurrency(booking.outstandingBalance)}</td>
                                 </tr>
                               ))}
-                              {dayBookings.length === 0 && <tr><td colSpan={11} className="px-3 py-8 text-center text-stone-500">No bookings scheduled for this day.</td></tr>}
+                              {dayBookings.length === 0 && <tr><td colSpan={12} className="px-3 py-8 text-center text-stone-500">No bookings scheduled for this day.</td></tr>}
                             </tbody>
                           </table>
                         </div>

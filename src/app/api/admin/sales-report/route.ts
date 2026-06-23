@@ -10,6 +10,9 @@ type ScheduledItem = {
   event_date?: string;
   event_time?: string;
   time_label?: string;
+  packageId?: string;
+  packageName?: string;
+  session?: number;
 };
 
 type DailyBooking = {
@@ -24,6 +27,7 @@ type DailyBooking = {
   bookedItems: Array<{ name: string; quantity: number }>;
   status: "confirmed" | "completed";
   paymentStatus: string;
+  paidAt: string | null;
   guests: number;
   allocatedAmount: number;
   amountCollected: number;
@@ -570,7 +574,10 @@ export async function GET(request: NextRequest) {
 
     (dailyServiceBookings || []).forEach((booking: Record<string, unknown>) => {
       const items = Array.isArray(booking.items) ? booking.items as ScheduledItem[] : [];
-      const scheduledItems = items.filter((item) => item.event_date);
+      const packageItems = getPackageBookingItems(booking) as ScheduledItem[];
+      const allocatableItems = packageItems.length > 0 ? packageItems : items;
+      const scheduledItems = allocatableItems.filter((item) => item.event_date);
+      const allocationDivisor = Math.max(packageItems.length > 0 ? packageItems.length : scheduledItems.length, 1);
       const matchingItems = scheduledItems.filter(
         (item) => item.event_date && item.event_date >= requestedFromDate && item.event_date <= requestedToDate
       );
@@ -579,7 +586,7 @@ export async function GET(request: NextRequest) {
             date: item.event_date as string,
             time: item.event_time || item.time_label || null,
             items: [{ name: item.name || "Package Item", quantity: Number(item.quantity) || 1 }],
-            divisor: scheduledItems.length,
+            divisor: allocationDivisor,
           }))
         : booking.event_date && String(booking.event_date) >= requestedFromDate && String(booking.event_date) <= requestedToDate
           ? [{
@@ -607,6 +614,7 @@ export async function GET(request: NextRequest) {
           bookedItems: occurrence.items,
           status: "completed",
           paymentStatus: String(booking.payment_status || "pending"),
+          paidAt: booking.paid_at ? String(booking.paid_at) : null,
           guests: Number(booking.guest_count) || 1,
           allocatedAmount: total / occurrence.divisor,
           amountCollected: collected / occurrence.divisor,
@@ -640,6 +648,7 @@ export async function GET(request: NextRequest) {
         }],
         status: "completed",
         paymentStatus: booking.paid_at ? "paid" : String(booking.payment_status || "pending"),
+        paidAt: booking.paid_at ? String(booking.paid_at) : null,
         guests: Number(booking.number_of_guests) || 1,
         allocatedAmount: total,
         amountCollected: collected || (booking.paid_at ? total : 0),
