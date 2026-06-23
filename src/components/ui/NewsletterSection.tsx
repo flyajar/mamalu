@@ -43,19 +43,19 @@ export default function NewsletterSection() {
   };
 
   return (
-    <section className="py-16 md:py-20 bg-stone-100">
+    <section className="py-16 md:py-20 bg-white">
       <div className="container mx-auto px-4 text-center">
         <h2 
           className="text-3xl md:text-4xl lg:text-5xl mb-4"
           style={{ fontFamily: 'var(--font-mossy), cursive' }}
         >
-          Get Cooking Tips in Your Inbox
+          Cooking Up Memories Together
         </h2>
         <p 
           className="text-stone-800 text-lg mb-8 max-w-2xl mx-auto"
           style={{ fontFamily: 'var(--font-mossy), cursive' }}
         >
-          Subscribe for weekly recipes, meal prep ideas, and family cooking inspiration.
+          Subscribe to our monthly newsletter to see what&apos;s cooking at Mamalu Kitchen.
         </p>
 
         <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-lg mx-auto">

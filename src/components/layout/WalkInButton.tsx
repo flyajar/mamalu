@@ -1,14 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { MessageCircle, X, ChefHat } from "lucide-react";
 import Image from "next/image";
 
 export function WalkInButton() {
   const [expanded, setExpanded] = useState(false);
+  const pathname = usePathname();
+
+  // Hide on mobile for Mini Chef and Big Chef pages
+  const isMobileOnlyPage = pathname === "/minichef" || pathname === "/bigchef";
 
   return (
-    <div className="fixed bottom-4 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col items-end gap-3">
+    <div className={`fixed bottom-4 right-4 lg:bottom-6 lg:right-6 z-50 flex flex-col items-end gap-3 ${isMobileOnlyPage ? "hidden lg:flex" : ""}`}>
       {expanded && (
         <div className="bg-white rounded-2xl shadow-2xl border border-stone-200 p-5 w-72 animate-in slide-in-from-bottom-2 fade-in duration-200">
           <div className="flex items-center justify-between mb-3">

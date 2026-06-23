@@ -358,12 +358,12 @@ const STATIC_SUMMER_CAMP_MENUS: MenuItem[] = [
 
 // Category configuration with min guests - Birthdays last
 const getCategoryConfig = (pageContent: MiniChefPageContent): Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> => ({
-  classics: { label: "Our Classics", icon: pageContent.categoryIcons?.classics || "/icons/boy.png", minGuests: 1, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
+  classics: { label: "Our Classics", icon: pageContent.categoryIcons?.classics || "/icons/boy.png", minGuests: 1, maxGuests: 35, description: "1 and a half hour hands-on cooking experience with professional chefs" },
   monthly: { label: "Monthly Specials", icon: pageContent.categoryIcons?.monthly || "/icons/girl.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
   mommy_me: { label: "Mommy & Me", icon: pageContent.categoryIcons?.mommy_me || "/icons/boy.png", minGuests: 1, maxGuests: 20, description: "Mom and kid have their own station where they share laughter, learning, and delicious moments together!" },
   birthdays: { label: "Birthdays", icon: pageContent.categoryIcons?.birthdays || "/icons/girl.png", minGuests: 6, maxGuests: 35, description: "2-hour private birthday cooking experience" },
   packages: { label: "Packages", icon: pageContent.categoryIcons?.packages || "/icons/boy.png", minGuests: 6, maxGuests: 35, description: "Bundled menu packages for groups" },
-  summer_camp: { label: "Summer Camp", icon: pageContent.categoryIcons?.packages || "/icons/boy.png", minGuests: 1, maxGuests: 35, description: "Choose Per Day or Per Week for the selected camp date." },
+  summer_camp: { label: "Mini Chef Camp", icon: pageContent.categoryIcons?.packages || "/icons/boy.png", minGuests: 1, maxGuests: 35, description: "Choose Per Day or Per Week for the selected camp date." },
 });
 
 
@@ -628,6 +628,9 @@ export default function MiniChefPage() {
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [externalSupplierRequirements, setExternalSupplierRequirements] = useState<ExternalSupplierRequirements>(EMPTY_SUPPLIER_REQUIREMENTS);
   const [externalSupplierFiles, setExternalSupplierFiles] = useState<ExternalSupplierFiles>(EMPTY_SUPPLIER_FILES);
+
+  // Validation message
+  const [validationMessage, setValidationMessage] = useState("");
 
   // Waiver
   const [waiverAccepted, setWaiverAccepted] = useState(false);
@@ -1279,6 +1282,25 @@ export default function MiniChefPage() {
     ? { 1: "Package", 2: "Customize", 3: "Details", 4: "Confirm" }
     : { 1: "Package", 2: "Details", 3: "Confirm" };
 
+  // Get reason why we can't proceed
+  const getValidationMessage = () => {
+    if (step === 1) {
+      if (!selectedMenu) return "Please select a menu to continue.";
+      if (isPackage && !isPackageSelectionComplete(selectedMenu, selectedPackageMenuItems)) return "Please complete your package class selection.";
+      if (isSummerCamp && selectedSummerCampMenus.length !== SUMMER_CAMP_SELECTION_COUNT) return "Please select your summer camp option.";
+      if (!eventDate) return "Please select an event date.";
+      if (!eventTime) return "Please select a time slot.";
+    }
+    const detailsStep = hasExtras ? 3 : 2;
+    if (step === detailsStep) {
+      if (!customerName) return "Please enter your name.";
+      if (!customerEmail) return "Please enter your email address.";
+      if (!eventDate) return "Please select an event date.";
+      if (!eventTime) return "Please select a time slot.";
+    }
+    return "";
+  };
+
   // Can proceed to next step
   const canProceed = () => {
     if (step === 1) {
@@ -1438,14 +1460,6 @@ export default function MiniChefPage() {
                       </div>
                       <div className="p-3">
                         <h3 className="font-bold text-stone-900">{item.name}</h3>
-                        <div className="mt-1.5 space-y-0.5">
-                          {item.dishes.map((dish, i) => (
-                            <div key={i} className="flex items-center gap-1.5 text-sm text-stone-500">
-                              <Check className="h-2.5 w-2.5 text-[#ff7f5c] shrink-0" />
-                              <span>{dish}</span>
-                            </div>
-                          ))}
-                        </div>
                       </div>
                     </div>
                   );
@@ -1503,9 +1517,10 @@ export default function MiniChefPage() {
                 href={pageContent.monthlySpecialsPdfUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-auto hidden shrink-0 items-center gap-2 rounded-full border border-[#FF8C6B] bg-[#FF8C6B] px-4 py-2 text-sm font-bold uppercase tracking-wide text-white shadow-sm transition-colors hover:bg-[#ff7e5b] sm:inline-flex"
+                className="ml-auto hidden shrink-0 items-center gap-2 rounded-2xl border-2 border-[#FF8C6B] bg-white px-5 py-2.5 text-sm font-bold text-[#FF8C6B] shadow-sm transition-all hover:bg-[#FF8C6B] hover:text-white sm:inline-flex"
+                style={{ fontFamily: 'var(--font-mossy), cursive' }}
               >
-                Monthly Specials
+                What&apos;s Happening
                 <ExternalLink className="h-4 w-4" />
               </a>
             )}
@@ -1544,9 +1559,118 @@ export default function MiniChefPage() {
                 <div>
                   <h2 className="text-2xl" style={{ fontFamily: 'var(--font-mossy), cursive' }}>Pick your perfect Menu</h2>
                   <p className="text-stone-500 mt-1">{currentConfig.description}</p>
-                  <p className="text-base text-stone-400 mt-2">
-                    Min: {currentConfig.minGuests} {isMommyAndMe ? "child" : isBirthday ? "kid(s)" : "guest(s)"} • Max: {currentConfig.maxGuests} {isMommyAndMe ? "children" : isBirthday ? "kids" : "guests"} • {isMommyAndMe ? `AED ${MOMMY_ME_ADDITIONAL_CHILD_PRICE} per additional child` : "Price per person"}
-                  </p>
+                  {!isMommyAndMe && (
+                    <p className="text-base text-stone-400 mt-2">
+                      Min: {currentConfig.minGuests} {isBirthday ? "kid(s)" : "guest(s)"} • Max: {currentConfig.maxGuests} {isBirthday ? "kids" : "guests"} • Price per person
+                    </p>
+                  )}
+                </div>
+
+                {/* Menu Grid */}
+                {loadingMenus ? (
+                  <div className="flex items-center justify-center py-12 text-stone-500">
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    Loading menus...
+                  </div>
+                ) : null}
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {!loadingMenus && getCurrentMenus().map((menu) => {
+                    const cap = activeCategory === "monthly" ? menuCapacities[menu.id] : undefined;
+                    const isFull = cap !== undefined && cap !== null && cap.available <= 0;
+                    const isSummerCampSelected = selectedSummerCampMenus.some((item) => item.id === menu.id);
+                    return (
+                    <Card
+                      key={menu.id}
+                      className={`cursor-pointer transition-all ${
+                        selectedMenu?.id === menu.id || isSummerCampSelected ? "ring-2 ring-[#FF8C6B] shadow-lg" : "hover:shadow-md"
+                      }`}
+                      onClick={() => {
+                        if (activeCategory === "packages" && packageMenuItems[menu.id]?.length > 0) {
+                          setPendingPackage(menu);
+                          setPendingPackageMenuItems(selectedMenu?.id === menu.id ? selectedPackageMenuItems : []);
+                          setShowPackageModal(true);
+                        } else {
+                          selectMenu(menu);
+                        }
+                      }}
+                    >
+                      <CardContent className="p-0 overflow-hidden flex flex-col h-full">
+                        <div className="relative h-64 w-full bg-stone-200">
+                          <Image src={menu.image} alt={menu.name} fill className="object-cover" />
+                          {cap && !isFull && (
+                            <div className="absolute top-2 left-2">
+                              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FF8C6B]/15 text-[#FF8C6B]">
+                                {cap.available} spot{cap.available === 1 ? "" : "s"} left
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="p-4 flex-1 flex flex-col">
+                          {/* Full width menu name */}
+                          <h3 className="text-xl font-bold text-stone-900 mb-3">{menu.name}</h3>
+                          {activeCategory === "monthly" && formatMonthlySpecialSchedules(menu) && (
+                            <div className="mb-3 flex items-start gap-2 rounded-lg bg-[#FF8C6B]/10 px-3 py-2 text-sm font-bold text-stone-800">
+                              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8C6B]" />
+                              <span>Available on {formatMonthlySpecialSchedules(menu)}</span>
+                            </div>
+                          )}
+                          {/* Dishes list - hide for packages */}
+                          {activeCategory !== "packages" && (
+                            <div className="space-y-1 flex-1">
+                              {menu.dishes.map((dish, idx) => (
+                                <div key={idx} className="flex items-center gap-2 text-base text-stone-600">
+                                  <Check className="h-3 w-3 text-[#ff7f5c] flex-shrink-0" />
+                                  <span>{dish}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {/* Price in separate box at bottom */}
+                        <div className="bg-stone-50 border-t px-4 py-3">
+                          {activeCategory === "packages" && selectedMenu?.id === menu.id && selectedPackageMenuItems.length > 0 && (
+                            <p className="text-xs text-[#ff7f5c] font-bold mb-1.5">
+                              ✓ {selectedPackageMenuItems.length} class{selectedPackageMenuItems.length === 1 ? "" : "es"} selected
+                            </p>
+                          )}
+                          {isSummerCampSelected && (
+                            <p className="text-xs text-[#ff7f5c] font-bold mb-1.5">Selected for Summer Camp</p>
+                          )}
+                          <div className="flex items-center justify-between">
+                            <span className="text-base text-stone-500">
+                              {activeCategory === "packages"
+                                ? "flat rate"
+                                : isMommyAndMe
+                                ? "mom + 1 child"
+                                : isSummerCamp && menu.id === "summer-camp-per-day"
+                                ? "per guest per day"
+                                : isSummerCamp && menu.id === "summer-camp-per-week"
+                                ? "per guest per week"
+                                : "per person"}
+                            </span>
+                            <span className="text-xl font-bold text-stone-900">
+                              AED {isMommyAndMe && selectedMenu?.id === menu.id ? getMenuPrice(menu).toLocaleString() : menu.price.toLocaleString()}
+                            </span>
+                          </div>
+                          {isSummerCamp && menu.discount_active && menu.original_price && menu.original_price > menu.price && (
+                            <div className="mt-1 flex items-center justify-end gap-2 text-xs">
+                              <span className="text-stone-400 line-through">AED {menu.original_price.toLocaleString()}</span>
+                              <span className="font-bold text-[#ff7f5c]">{menu.discount_percentage}% off</span>
+                            </div>
+                          )}
+                          {isMommyAndMe && (
+                            <p className="text-xs text-stone-400 mt-1">
+                              +AED {MOMMY_ME_ADDITIONAL_CHILD_PRICE} per additional child
+                            </p>
+                          )}
+                          {activeCategory === "packages" && selectedMenu?.id !== menu.id && (
+                            <p className="text-xs text-stone-400 mt-1">Click to choose your classes</p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                  })}
                 </div>
 
                 {/* Guest Count Selector with Desktop Navigation */}
@@ -1556,19 +1680,19 @@ export default function MiniChefPage() {
                       Number of {isMommyAndMe ? "Children" : isBirthday ? "Kids" : "Guests"}
                     </label>
                     <div className="flex items-center gap-4 mb-4 lg:mb-6">
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        onClick={() => setGuestCount(Math.max(currentConfig.minGuests, guestCount - 1))} 
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setGuestCount(Math.max(currentConfig.minGuests, guestCount - 1))}
                         disabled={guestCount <= currentConfig.minGuests}
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
                       <span className="text-2xl font-bold w-12 text-center">{guestCount}</span>
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        onClick={() => setGuestCount(Math.min(currentConfig.maxGuests, guestCount + 1))} 
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setGuestCount(Math.min(currentConfig.maxGuests, guestCount + 1))}
                         disabled={guestCount >= currentConfig.maxGuests}
                       >
                         <Plus className="h-4 w-4" />
@@ -1717,11 +1841,15 @@ export default function MiniChefPage() {
                       </div>
                     )}
                     {/* Desktop Continue Button - Inside Card */}
-                    <div className="hidden lg:flex justify-end items-center pt-4 border-t">
+                    <div className="hidden lg:flex flex-col items-end gap-1 pt-4 border-t">
+                      {validationMessage && <p className="text-xs text-red-500 font-bold">{validationMessage}</p>}
                       <Button
-                        className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
-                        onClick={() => goToStep(step + 1)}
-                        disabled={!canProceed()}
+                        className={`px-8 ${PRIMARY_BUTTON_CLASS} ${!canProceed() ? "opacity-50 cursor-not-allowed" : ""}`}
+                        onClick={() => {
+                          if (!canProceed()) { setValidationMessage(getValidationMessage()); return; }
+                          setValidationMessage("");
+                          goToStep(step + 1);
+                        }}
                       >
                         Continue
                         <ArrowRight className="ml-2 h-4 w-4" />
@@ -1729,125 +1857,6 @@ export default function MiniChefPage() {
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Menu Grid */}
-                {loadingMenus ? (
-                  <div className="flex items-center justify-center py-12 text-stone-500">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    Loading menus...
-                  </div>
-                ) : null}
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {!loadingMenus && getCurrentMenus().map((menu) => {
-                    const cap = activeCategory === "monthly" ? menuCapacities[menu.id] : undefined;
-                    const isFull = cap !== undefined && cap !== null && cap.available <= 0;
-                    const isSummerCampSelected = selectedSummerCampMenus.some((item) => item.id === menu.id);
-                    return (
-                    <Card
-                      key={menu.id}
-                      className={`cursor-pointer transition-all ${
-                        selectedMenu?.id === menu.id || isSummerCampSelected ? "ring-2 ring-[#FF8C6B] shadow-lg" : "hover:shadow-md"
-                      }`}
-                      onClick={() => {
-                        if (activeCategory === "packages" && packageMenuItems[menu.id]?.length > 0) {
-                          setPendingPackage(menu);
-                          setPendingPackageMenuItems(selectedMenu?.id === menu.id ? selectedPackageMenuItems : []);
-                          setShowPackageModal(true);
-                        } else {
-                          selectMenu(menu);
-                        }
-                      }}
-                    >
-                      <CardContent className="p-0 overflow-hidden flex flex-col h-full">
-                        <div className="relative h-64 w-full bg-stone-200">
-                          <Image src={menu.image} alt={menu.name} fill className="object-cover" />
-                          {cap && !isFull && (
-                            <div className="absolute top-2 left-2">
-                              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FF8C6B]/15 text-[#FF8C6B]">
-                                {cap.available} spot{cap.available === 1 ? "" : "s"} left
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="p-4 flex-1 flex flex-col">
-                          {/* Full width menu name */}
-                          <h3 className="text-xl font-bold text-stone-900 mb-3">{menu.name}</h3>
-                          {activeCategory === "monthly" && formatMonthlySpecialSchedules(menu) && (
-                            <div className="mb-3 flex items-start gap-2 rounded-lg bg-[#FF8C6B]/10 px-3 py-2 text-sm font-bold text-stone-800">
-                              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8C6B]" />
-                              <span>Available on {formatMonthlySpecialSchedules(menu)}</span>
-                            </div>
-                          )}
-                          {/* Dishes list */}
-                          <div className="space-y-1 flex-1">
-                            {menu.dishes.map((dish, idx) => (
-                              <div key={idx} className="flex items-center gap-2 text-base text-stone-600">
-                                <Check className="h-3 w-3 text-[#ff7f5c] flex-shrink-0" />
-                                <span>{dish}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                        {/* Price in separate box at bottom */}
-                        <div className="bg-stone-50 border-t px-4 py-3">
-                          {activeCategory === "packages" && selectedMenu?.id === menu.id && selectedPackageMenuItems.length > 0 && (
-                            <p className="text-xs text-[#ff7f5c] font-bold mb-1.5">
-                              ✓ {selectedPackageMenuItems.length} class{selectedPackageMenuItems.length === 1 ? "" : "es"} selected
-                            </p>
-                          )}
-                          {isSummerCampSelected && (
-                            <p className="text-xs text-[#ff7f5c] font-bold mb-1.5">Selected for Summer Camp</p>
-                          )}
-                          <div className="flex items-center justify-between">
-                            <span className="text-base text-stone-500">
-                              {activeCategory === "packages"
-                                ? "flat rate"
-                                : isMommyAndMe
-                                ? "mom + 1 child"
-                                : isSummerCamp && menu.id === "summer-camp-per-day"
-                                ? "per guest per day"
-                                : isSummerCamp && menu.id === "summer-camp-per-week"
-                                ? "per guest per week"
-                                : "per person"}
-                            </span>
-                            <span className="text-xl font-bold text-stone-900">
-                              AED {isMommyAndMe && selectedMenu?.id === menu.id ? getMenuPrice(menu).toLocaleString() : menu.price.toLocaleString()}
-                            </span>
-                          </div>
-                          {isSummerCamp && menu.discount_active && menu.original_price && menu.original_price > menu.price && (
-                            <div className="mt-1 flex items-center justify-end gap-2 text-xs">
-                              <span className="text-stone-400 line-through">AED {menu.original_price.toLocaleString()}</span>
-                              <span className="font-bold text-[#ff7f5c]">{menu.discount_percentage}% off</span>
-                            </div>
-                          )}
-                          {isMommyAndMe && (
-                            <p className="text-xs text-stone-400 mt-1">
-                              +AED {MOMMY_ME_ADDITIONAL_CHILD_PRICE} per additional child
-                            </p>
-                          )}
-                          {activeCategory === "packages" && selectedMenu?.id !== menu.id && (
-                            <p className="text-xs text-stone-400 mt-1">Click to choose your classes</p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  );
-                  })}
-                </div>
-
-                {/* Price Update Link */}
-                <div className="mt-4">
-                  <p className="text-sm text-stone-600">
-                    Need to see our whole pricelist, <a 
-                      href="https://docs.google.com/spreadsheets/d/1V52xihcamaOT7HrcsAJcLKhUGvTADwVkYW3Oi7JGrJA/edit?usp=sharing"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-stone-900 underline hover:text-stone-700"
-                    >
-                      Click here
-                    </a>
-                  </p>
-                </div>
 
               </div>
             )}
@@ -2420,14 +2429,20 @@ export default function MiniChefPage() {
                 )}
                 
                 {step < maxStep ? (
-                  <Button
-                    className={PRIMARY_BUTTON_CLASS}
-                    onClick={() => goToStep(step + 1)}
-                    disabled={!canProceed()}
-                  >
-                    Continue
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  <div className="flex flex-col items-end gap-1">
+                    {validationMessage && <p className="text-xs text-red-500 font-bold text-right max-w-[180px]">{validationMessage}</p>}
+                    <Button
+                      className={`${PRIMARY_BUTTON_CLASS} ${!canProceed() ? "opacity-50 cursor-not-allowed" : ""}`}
+                      onClick={() => {
+                        if (!canProceed()) { setValidationMessage(getValidationMessage()); return; }
+                        setValidationMessage("");
+                        goToStep(step + 1);
+                      }}
+                    >
+                      Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
                 ) : (
                   <Button
                     className={PRIMARY_BUTTON_CLASS}

@@ -35,7 +35,7 @@ interface PartyExtraMenuItem {
 interface TimeSlot { start: string; end: string; duration: number; label: string; days?: number[]; }
 interface NannyMenuSchedule { date: string; time: string; allTimeSlots: TimeSlot[]; availableTimeSlots: TimeSlot[]; loading: boolean; }
 interface AppliedVoucher { code: string; amount: number; }
-type CategoryType = "corporate" | "classics" | "monthly" | "teenagers" | "nanny";
+type CategoryType = "classics" | "monthly" | "corporate" | "teenagers" | "nanny";
 type PaymentOption = "deposit" | "full";
 
 const formatTimeLabel = (time: string) => {
@@ -115,9 +115,9 @@ const getFirstMonthlySpecialTimeSlot = (menu: MenuItem | null) => {
 };
 
 const AVAILABILITY_CATEGORY_BY_TAB: Record<CategoryType, string> = {
-  corporate: "corporate",
   classics: "classics_big",
   monthly: "monthly_big",
+  corporate: "corporate",
   teenagers: "teenagers",
   nanny: "nanny",
 };
@@ -125,9 +125,9 @@ const AVAILABILITY_CATEGORY_BY_TAB: Record<CategoryType, string> = {
 const PRIMARY_BUTTON_CLASS = "bg-[rgb(255_140_107)] hover:bg-[rgb(255_126_91)] text-white border border-[rgb(255_140_107)] font-bold disabled:!bg-[rgb(255_170_145)] disabled:!border-[rgb(255_170_145)] disabled:!text-white disabled:!opacity-100 disabled:cursor-not-allowed";
 
 const getCategoryConfig = (pageContent: BigChefPageContent): Record<CategoryType, { label: string; icon: string; minGuests: number; maxGuests: number; description: string }> => ({
-  corporate: { label: "Corporate / Private", icon: pageContent.categoryIcons?.corporate || "/icons/knives.png", minGuests: 6, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
-  classics: { label: "Our Classics", icon: pageContent.categoryIcons?.classics || "/icons/whisk.png", minGuests: 1, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
+  classics: { label: "Our Classics", icon: pageContent.categoryIcons?.classics || "/icons/whisk.png", minGuests: 1, maxGuests: 35, description: "1 and a half hour hands-on cooking experience with professional chefs" },
   monthly: { label: "Monthly Specials", icon: pageContent.categoryIcons?.monthly || "/icons/knives.png", minGuests: 1, maxGuests: 35, description: "Seasonal rotating menus" },
+  corporate: { label: "Corporate / Private", icon: pageContent.categoryIcons?.corporate || "/icons/knives.png", minGuests: 6, maxGuests: 35, description: "2-hour hands-on cooking experience with professional chefs" },
   teenagers: { label: "Teenager Course", icon: pageContent.categoryIcons?.teenagers || "/icons/whisk.png", minGuests: 1, maxGuests: 20, description: "Fun cooking classes for teens aged 12-17" },
   nanny: { label: "Nanny Class", icon: pageContent.categoryIcons?.nanny || "/icons/knives.png", minGuests: 1, maxGuests: 10, description: "Mummy's Fabulous Helpers - Turn your housekeeper into a chef" },
 });
@@ -188,7 +188,7 @@ function WaiverModal({ isOpen, onClose, onAccept }: { isOpen: boolean; onClose: 
 export default function BigChefPage() {
   const [step, setStep] = useState(1);
   const [pageContent, setPageContent] = useState<BigChefPageContent>(defaultBigChefContent);
-  const [activeCategory, setActiveCategory] = useState<CategoryType>("corporate");
+  const [activeCategory, setActiveCategory] = useState<CategoryType>("classics");
   const [selectedMenu, setSelectedMenu] = useState<MenuItem | null>(null);
   const [selectedTeenMenus, setSelectedTeenMenus] = useState<MenuItem[]>([]);
   const [selectedNannyMenus, setSelectedNannyMenus] = useState<MenuItem[]>([]);
@@ -234,6 +234,7 @@ export default function BigChefPage() {
   const [companyName, setCompanyName] = useState("");
   const [specialRequests, setSpecialRequests] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [validationMessage, setValidationMessage] = useState("");
   const [waiverAccepted, setWaiverAccepted] = useState(false);
   const [showWaiverModal, setShowWaiverModal] = useState(false);
   const [voucherCode, setVoucherCode] = useState("");
@@ -289,9 +290,9 @@ export default function BigChefPage() {
         const data = res.ok ? await res.json() : { items: [] };
 
         const dbLabelToCategory: Record<string, CategoryType> = {
-          "corporate": "corporate",
           "classics_big": "classics",
           "monthly_big": "monthly",
+          "corporate": "corporate",
           "teenagers": "teenagers",
           "nanny": "nanny",
         };
@@ -630,6 +631,23 @@ export default function BigChefPage() {
     ? "No slots available"
     : "Select a date first";
 
+  const getValidationMessage = () => {
+    if (step === 1) {
+      if (isNanny) return selectedNannyMenus.length < 4 ? `Please select 4 menus (${selectedNannyMenus.length}/4 selected).` : "";
+      if (isTeenager) return selectedTeenMenus.length < 4 ? `Please select 4 menus (${selectedTeenMenus.length}/4 selected).` : "";
+      if (!selectedMenu) return "Please select a menu to continue.";
+      if (!eventDate) return "Please select an event date.";
+      if (!eventTime) return "Please select a time slot.";
+    }
+    if (step === detailsStep) {
+      if (!customerName) return "Please enter your name.";
+      if (!customerEmail) return "Please enter your email address.";
+      if (!eventDate) return "Please select an event date.";
+      if (!eventTime) return "Please select a time slot.";
+    }
+    return "";
+  };
+
   const canProceed = () => {
     if (step === 1) {
       if (isNanny) return selectedNannyMenus.length === 4;
@@ -712,6 +730,58 @@ export default function BigChefPage() {
                   <p className="text-stone-500 mt-1">{currentConfig.description}</p>
                   {isNanny ? <p className="text-base text-stone-400 mt-2">AED 1,200 for 4 classes. Select any 4 menus. Each class is 1.5 hours. Available Monday and Tuesday at 11am</p> : <p className="text-base text-stone-400 mt-2">Min: {currentConfig.minGuests} • Max: {currentConfig.maxGuests} guests • {isTeenager ? "Select 4 menus. Prices are per person" : "Price per person"}</p>}
                 </div>
+                {isTeenager && <div className="p-4 bg-[#FF8C6B]/10 rounded-lg"><p className="font-medium text-stone-900">Selected: {selectedTeenMenus.length}/4 menus {selectedTeenMenus.length === 4 && <span className="text-[#FF8C6B] ml-2">✓ Ready</span>}</p>{selectedTeenMenus.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{selectedTeenMenus.map(m => <Badge key={m.id} className="bg-[#FF8C6B] text-white">{m.name}<button onClick={() => toggleTeenMenu(m)} className="ml-1">×</button></Badge>)}</div>}</div>}
+                {isNanny && <div className="p-4 bg-[#FF8C6B]/10 rounded-lg"><p className="font-medium text-stone-900">Selected: {selectedNannyMenus.length}/4 menus {selectedNannyMenus.length === 4 && <span className="text-[#FF8C6B] ml-2">✓ Ready</span>}</p>{selectedNannyMenus.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{selectedNannyMenus.map(m => <Badge key={m.id} className="bg-[#FF8C6B] text-white">{m.name}<button onClick={() => toggleNannyMenu(m)} className="ml-1">×</button></Badge>)}</div>}</div>}
+                
+                {/* Desktop Continue Button for Nanny Class */}
+                {isNanny && (
+                  <div className="hidden lg:flex flex-col items-end gap-1 pb-4">
+                    {validationMessage && <p className="text-xs text-red-500 font-bold">{validationMessage}</p>}
+                    <Button
+                      className={`px-8 ${PRIMARY_BUTTON_CLASS} ${!canProceed() ? "opacity-50 cursor-not-allowed" : ""}`}
+                      onClick={() => { if (!canProceed()) { setValidationMessage(getValidationMessage()); return; } setValidationMessage(""); setStep(step + 1); }}
+                    >
+                      Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+
+                {loadingMenus ? (
+                  <div className="flex items-center justify-center py-12 text-stone-500">
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    Loading menus...
+                  </div>
+                ) : null}
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {!loadingMenus && getCurrentMenus().map(menu => {
+                    const selectedCourseMenus = isNanny ? selectedNannyMenus : selectedTeenMenus;
+                    const isSelected = usesFourMenuSelection ? selectedCourseMenus.some(m => m.id === menu.id) : selectedMenu?.id === menu.id;
+                    const isDisabled = usesFourMenuSelection && selectedCourseMenus.length >= 4 && !isSelected;
+                    const cap = activeCategory === "monthly" ? menuCapacities[menu.id] : undefined;
+                    const isFull = cap !== undefined && cap !== null && cap.available <= 0;
+                    return (
+                      <Card key={menu.id} className={`cursor-pointer transition-all ${isSelected ? "ring-2 ring-[#FF8C6B] shadow-lg" : isDisabled ? "opacity-50" : "hover:shadow-md"}`} onClick={() => { if (isDisabled) return; if (isNanny) toggleNannyMenu(menu); else if (isTeenager) toggleTeenMenu(menu); else selectMenu(menu); }}>
+                        <CardContent className="p-0 overflow-hidden flex flex-col h-full">
+                          <div className="relative h-64 w-full bg-stone-200"><Image src={menu.image} alt={menu.name} fill className="object-cover" />{cap && !isFull && <div className="absolute top-2 left-2"><span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FF8C6B]/15 text-[#FF8C6B]">{cap.available} spot{cap.available === 1 ? "" : "s"} left</span></div>}{isSelected && <div className="absolute top-2 right-2 bg-[#FF8C6B] text-white p-1 rounded-full"><Check className="h-4 w-4" /></div>}</div>
+                          <div className="p-4 flex-1 flex flex-col">
+                            <h3 className="text-xl font-bold text-stone-900 mb-3">{menu.name}</h3>
+                            {activeCategory === "monthly" && formatMonthlySpecialSchedules(menu) && (
+                              <div className="mb-3 flex items-start gap-2 rounded-lg bg-[#FF8C6B]/10 px-3 py-2 text-sm font-bold text-stone-800">
+                                <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8C6B]" />
+                                <span>Available on {formatMonthlySpecialSchedules(menu)}</span>
+                              </div>
+                            )}
+                            <div className="space-y-1 flex-1">{menu.dishes.map((d, i) => <div key={i} className="flex items-center gap-2 text-base text-stone-600"><Check className="h-3 w-3 text-[#ff7f5c]" /><span>{d}</span></div>)}</div>
+                          </div>
+                          {!isNanny && <div className="bg-stone-50 border-t px-4 py-3"><div className="flex items-center justify-between"><span className="text-base text-stone-500">per person</span><span className="text-xl font-bold text-stone-900">AED {menu.price}</span></div></div>}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+
+                {/* Guest Count Selector with Desktop Navigation */}
                 {!isNanny && (
                   <Card><CardContent className="p-5">
                     <label className="block text-lg font-bold text-stone-900 mb-3">Number of Guests</label>
@@ -761,75 +831,12 @@ export default function BigChefPage() {
                       </div>
                     </div>}
                     {/* Desktop Continue Button - Inside Card */}
-                    <div className="hidden lg:flex justify-end items-center pt-4 border-t">
-                      <Button className={`px-8 ${PRIMARY_BUTTON_CLASS}`} onClick={() => setStep(step + 1)} disabled={!canProceed()}>Continue<ArrowRight className="ml-2 h-4 w-4" /></Button>
+                    <div className="hidden lg:flex flex-col items-end gap-1 pt-4 border-t">
+                      {validationMessage && <p className="text-xs text-red-500 font-bold">{validationMessage}</p>}
+                      <Button className={`px-8 ${PRIMARY_BUTTON_CLASS} ${!canProceed() ? "opacity-50 cursor-not-allowed" : ""}`} onClick={() => { if (!canProceed()) { setValidationMessage(getValidationMessage()); return; } setValidationMessage(""); setStep(step + 1); }}>Continue<ArrowRight className="ml-2 h-4 w-4" /></Button>
                     </div>
                   </CardContent></Card>
                 )}
-                {isTeenager && <div className="p-4 bg-[#FF8C6B]/10 rounded-lg"><p className="font-medium text-stone-900">Selected: {selectedTeenMenus.length}/4 menus {selectedTeenMenus.length === 4 && <span className="text-[#FF8C6B] ml-2">✓ Ready</span>}</p>{selectedTeenMenus.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{selectedTeenMenus.map(m => <Badge key={m.id} className="bg-[#FF8C6B] text-white">{m.name}<button onClick={() => toggleTeenMenu(m)} className="ml-1">×</button></Badge>)}</div>}</div>}
-                {isNanny && <div className="p-4 bg-[#FF8C6B]/10 rounded-lg"><p className="font-medium text-stone-900">Selected: {selectedNannyMenus.length}/4 menus {selectedNannyMenus.length === 4 && <span className="text-[#FF8C6B] ml-2">✓ Ready</span>}</p>{selectedNannyMenus.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{selectedNannyMenus.map(m => <Badge key={m.id} className="bg-[#FF8C6B] text-white">{m.name}<button onClick={() => toggleNannyMenu(m)} className="ml-1">×</button></Badge>)}</div>}</div>}
-                
-                {/* Desktop Continue Button for Nanny Class */}
-                {isNanny && (
-                  <div className="hidden lg:flex justify-end items-center pb-4">
-                    <Button 
-                      className={`px-8 ${PRIMARY_BUTTON_CLASS}`}
-                      onClick={() => setStep(step + 1)} 
-                      disabled={!canProceed()}
-                    >
-                      Continue
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-
-                {loadingMenus ? (
-                  <div className="flex items-center justify-center py-12 text-stone-500">
-                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                    Loading menus...
-                  </div>
-                ) : null}
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {!loadingMenus && getCurrentMenus().map(menu => {
-                    const selectedCourseMenus = isNanny ? selectedNannyMenus : selectedTeenMenus;
-                    const isSelected = usesFourMenuSelection ? selectedCourseMenus.some(m => m.id === menu.id) : selectedMenu?.id === menu.id;
-                    const isDisabled = usesFourMenuSelection && selectedCourseMenus.length >= 4 && !isSelected;
-                    const cap = activeCategory === "monthly" ? menuCapacities[menu.id] : undefined;
-                    const isFull = cap !== undefined && cap !== null && cap.available <= 0;
-                    return (
-                      <Card key={menu.id} className={`cursor-pointer transition-all ${isSelected ? "ring-2 ring-[#FF8C6B] shadow-lg" : isDisabled ? "opacity-50" : "hover:shadow-md"}`} onClick={() => { if (isDisabled) return; if (isNanny) toggleNannyMenu(menu); else if (isTeenager) toggleTeenMenu(menu); else selectMenu(menu); }}>
-                        <CardContent className="p-0 overflow-hidden flex flex-col h-full">
-                          <div className="relative h-64 w-full bg-stone-200"><Image src={menu.image} alt={menu.name} fill className="object-cover" />{cap && !isFull && <div className="absolute top-2 left-2"><span className="text-xs font-bold px-2.5 py-1 rounded-full bg-[#FF8C6B]/15 text-[#FF8C6B]">{cap.available} spot{cap.available === 1 ? "" : "s"} left</span></div>}{isSelected && <div className="absolute top-2 right-2 bg-[#FF8C6B] text-white p-1 rounded-full"><Check className="h-4 w-4" /></div>}</div>
-                          <div className="p-4 flex-1 flex flex-col">
-                            <h3 className="text-xl font-bold text-stone-900 mb-3">{menu.name}</h3>
-                            {activeCategory === "monthly" && formatMonthlySpecialSchedules(menu) && (
-                              <div className="mb-3 flex items-start gap-2 rounded-lg bg-[#FF8C6B]/10 px-3 py-2 text-sm font-bold text-stone-800">
-                                <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8C6B]" />
-                                <span>Available on {formatMonthlySpecialSchedules(menu)}</span>
-                              </div>
-                            )}
-                            <div className="space-y-1 flex-1">{menu.dishes.map((d, i) => <div key={i} className="flex items-center gap-2 text-base text-stone-600"><Check className="h-3 w-3 text-[#ff7f5c]" /><span>{d}</span></div>)}</div>
-                          </div>
-                          {!isNanny && <div className="bg-stone-50 border-t px-4 py-3"><div className="flex items-center justify-between"><span className="text-base text-stone-500">per person</span><span className="text-xl font-bold text-stone-900">AED {menu.price}</span></div></div>}
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-
-                {/* Price Update Link */}
-                <div className="mt-4">
-                  <p className="text-base text-stone-600">
-                    Need to see our whole pricelist, <a 
-                      href="https://docs.google.com/spreadsheets/d/1V52xihcamaOT7HrcsAJcLKhUGvTADwVkYW3Oi7JGrJA/edit?usp=sharing"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-stone-900 underline hover:text-stone-700"
-                    >
-                      Click here
-                    </a>
-                  </p>
-                </div>
 
               </div>
             )}
@@ -1240,14 +1247,16 @@ export default function BigChefPage() {
                 )}
                 
                 {step < maxStep ? (
-                  <Button
-                    className={PRIMARY_BUTTON_CLASS}
-                    onClick={() => setStep(step + 1)}
-                    disabled={!canProceed()}
-                  >
-                    Continue
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+                  <div className="flex flex-col items-end gap-1">
+                    {validationMessage && <p className="text-xs text-red-500 font-bold text-right max-w-[180px]">{validationMessage}</p>}
+                    <Button
+                      className={`${PRIMARY_BUTTON_CLASS} ${!canProceed() ? "opacity-50 cursor-not-allowed" : ""}`}
+                      onClick={() => { if (!canProceed()) { setValidationMessage(getValidationMessage()); return; } setValidationMessage(""); setStep(step + 1); }}
+                    >
+                      Continue
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
                 ) : (
                   <Button
                     className={PRIMARY_BUTTON_CLASS}

@@ -162,11 +162,7 @@ export default function VouchersPage() {
                     {formatPrice(g.amount)}
                   </p>
 
-                  <div className="flex items-center gap-2 text-sm text-stone-600 mb-6">
-                    <span className="px-2.5 py-1 bg-stone-100 rounded-lg font-medium">
-                      {g.count} available
-                    </span>
-                    <span className="text-stone-400">·</span>
+                  <div className="text-sm text-stone-600 mb-6">
                     <span className="text-stone-500">Valid 6 months</span>
                   </div>
 
