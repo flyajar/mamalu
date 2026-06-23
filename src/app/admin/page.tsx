@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import Link from "next/link";
 import { 
   Users, 
@@ -9,34 +9,341 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Bell,
-  CreditCard,
   Target,
   Zap,
   Activity,
   BarChart3,
 } from "lucide-react";
 
+type SupabaseQueryResult<T> = { data: T[] | null; error: { message: string } | null };
+type CountResult = { count: number | null; error: { message: string } | null };
+
+type StatTrend = {
+  current: number;
+  previous: number;
+  change: number;
+  sparkline: number[];
+};
+
+type DashboardData = {
+  stats: {
+    totalUsers: number;
+    totalBookings: number;
+    totalOrders: number;
+    totalLeads: number;
+  };
+  trends: {
+    users: StatTrend;
+    bookings: StatTrend;
+    orders: StatTrend;
+    leads: StatTrend;
+  };
+  monthlyRevenue: Array<{
+    month: string;
+    classes: number;
+    services: number;
+    products: number;
+  }>;
+  recentActivity: Array<{
+    action: string;
+    user: string;
+    time: string;
+    icon: typeof Calendar;
+    color: string;
+    href: string;
+  }>;
+  popularClasses: Array<{
+    name: string;
+    students: number;
+    revenue: string;
+    fill: number;
+  }>;
+};
+
+const currencyFormatter = new Intl.NumberFormat("en-AE", {
+  style: "currency",
+  currency: "AED",
+  maximumFractionDigits: 0,
+});
+
+const monthLabels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function toNumber(value: unknown) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatCurrency(amount: number) {
+  return currencyFormatter.format(amount).replace("AED", "AED ");
+}
+
+function relativeTime(value?: string | null) {
+  if (!value) return "Recently";
+  const diffMs = Date.now() - new Date(value).getTime();
+  const diffMinutes = Math.max(0, Math.floor(diffMs / 60000));
+  if (diffMinutes < 1) return "Just now";
+  if (diffMinutes < 60) return `${diffMinutes} min ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? "" : "s"} ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 30) return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`;
+  const diffMonths = Math.floor(diffDays / 30);
+  return `${diffMonths} month${diffMonths === 1 ? "" : "s"} ago`;
+}
+
+function percentChange(current: number, previous: number) {
+  if (previous === 0) return current > 0 ? 100 : 0;
+  return Math.round(((current - previous) / previous) * 100);
+}
+
+function monthWindow(monthsAgo: number) {
+  const start = new Date();
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  start.setMonth(start.getMonth() - monthsAgo);
+
+  const end = new Date(start);
+  end.setMonth(end.getMonth() + 1);
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
+async function safeCount(query: PromiseLike<CountResult>) {
+  const result = await query;
+  if (result.error) return 0;
+  return result.count || 0;
+}
+
+async function safeData<T>(query: PromiseLike<SupabaseQueryResult<T>>) {
+  const result = await query;
+  if (result.error) return [] as T[];
+  return result.data || [];
+}
+
+async function getTrend(
+  table: string,
+  column = "created_at",
+  activeLeadsOnly = false
+): Promise<StatTrend> {
+  const supabase = createAdminClient();
+  if (!supabase) return { current: 0, previous: 0, change: 0, sparkline: [0, 0, 0, 0, 0, 0] };
+
+  const windows = Array.from({ length: 6 }, (_, index) => monthWindow(5 - index));
+  const counts = await Promise.all(windows.map((window) => {
+    let query = supabase
+      .from(table)
+      .select("*", { count: "exact", head: true })
+      .gte(column, window.from)
+      .lt(column, window.to);
+    if (activeLeadsOnly) query = query.not("status", "in", "(won,lost)");
+    return safeCount(query);
+  }));
+
+  const current = counts.at(-1) || 0;
+  const previous = counts.at(-2) || 0;
+  return {
+    current,
+    previous,
+    change: percentChange(current, previous),
+    sparkline: counts,
+  };
+}
+
 async function getStats() {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   if (!supabase) return null;
 
-  const [users, bookings, orders, leads] = await Promise.all([
-    supabase.from("profiles").select("*", { count: "exact", head: true }),
-    supabase.from("class_bookings").select("*", { count: "exact", head: true }),
-    supabase.from("orders").select("*", { count: "exact", head: true }),
-    supabase.from("leads").select("*", { count: "exact", head: true }),
+  const [users, classBookings, serviceBookings, productOrders, legacyOrders, activeLeads] = await Promise.all([
+    safeCount(supabase.from("profiles").select("*", { count: "exact", head: true })),
+    safeCount(supabase.from("class_bookings").select("*", { count: "exact", head: true })),
+    safeCount(supabase.from("service_bookings").select("*", { count: "exact", head: true })),
+    safeCount(supabase.from("product_orders").select("*", { count: "exact", head: true })),
+    safeCount(supabase.from("orders").select("*", { count: "exact", head: true })),
+    safeCount(supabase.from("leads").select("*", { count: "exact", head: true }).not("status", "in", "(won,lost)")),
   ]);
 
   return {
-    totalUsers: users.count || 0,
-    totalBookings: bookings.count || 0,
-    totalOrders: orders.count || 0,
-    totalLeads: leads.count || 0,
+    totalUsers: users,
+    totalBookings: classBookings + serviceBookings,
+    totalOrders: productOrders || legacyOrders,
+    totalLeads: activeLeads,
+  };
+}
+
+async function getDashboardData(): Promise<DashboardData | null> {
+  const supabase = createAdminClient();
+  if (!supabase) return null;
+
+  const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString();
+  const yearEnd = new Date(new Date().getFullYear() + 1, 0, 1).toISOString();
+
+  const [
+    stats,
+    userTrend,
+    classTrend,
+    serviceTrend,
+    productOrderTrend,
+    legacyOrderTrend,
+    leadTrend,
+    classRevenueRows,
+    serviceRevenueRows,
+    productRevenueRows,
+    recentClassBookings,
+    recentServiceBookings,
+    recentOrders,
+    recentLeads,
+    popularClassRows,
+  ] = await Promise.all([
+    getStats(),
+    getTrend("profiles"),
+    getTrend("class_bookings"),
+    getTrend("service_bookings"),
+    getTrend("product_orders", "created_at"),
+    getTrend("orders", "created_at"),
+    getTrend("leads", "created_at", true),
+    safeData<Record<string, unknown>>(supabase
+      .from("class_bookings")
+      .select("created_at,total_amount,status,paid_at")
+      .gte("created_at", yearStart)
+      .lt("created_at", yearEnd)),
+    safeData<Record<string, unknown>>(supabase
+      .from("service_bookings")
+      .select("created_at,total_amount,status,payment_status,paid_at,balance_paid,deposit_paid,deposit_amount")
+      .gte("created_at", yearStart)
+      .lt("created_at", yearEnd)),
+    safeData<Record<string, unknown>>(supabase
+      .from("product_orders")
+      .select("created_at,total_amount,total_paid,total,status,payment_status,paid_at")
+      .gte("created_at", yearStart)
+      .lt("created_at", yearEnd)),
+    safeData<Record<string, unknown>>(supabase
+      .from("class_bookings")
+      .select("id,booking_number,class_title,attendee_name,created_at")
+      .order("created_at", { ascending: false })
+      .limit(5)),
+    safeData<Record<string, unknown>>(supabase
+      .from("service_bookings")
+      .select("id,booking_number,service_name,customer_name,created_at")
+      .order("created_at", { ascending: false })
+      .limit(5)),
+    safeData<Record<string, unknown>>(supabase
+      .from("product_orders")
+      .select("id,order_number,customer_name,created_at")
+      .order("created_at", { ascending: false })
+      .limit(5)),
+    safeData<Record<string, unknown>>(supabase
+      .from("leads")
+      .select("id,name,lead_type,created_at")
+      .order("created_at", { ascending: false })
+      .limit(5)),
+    safeData<Record<string, unknown>>(supabase
+      .from("class_bookings")
+      .select("class_title,sessions_booked,total_amount,status,paid_at")
+      .order("created_at", { ascending: false })
+      .limit(200)),
+  ]);
+
+  const monthlyRevenue = monthLabels.map((month) => ({ month, classes: 0, services: 0, products: 0 }));
+  classRevenueRows.forEach((row) => {
+    if (!row.created_at || !(row.paid_at || row.status === "completed" || row.status === "confirmed")) return;
+    monthlyRevenue[new Date(String(row.created_at)).getMonth()].classes += toNumber(row.total_amount);
+  });
+  serviceRevenueRows.forEach((row) => {
+    if (!row.created_at) return;
+    const collected = row.payment_status === "paid" || row.payment_status === "fully_paid" || row.balance_paid || row.paid_at
+      ? toNumber(row.total_amount)
+      : row.deposit_paid ? toNumber(row.deposit_amount) : 0;
+    monthlyRevenue[new Date(String(row.created_at)).getMonth()].services += collected;
+  });
+  productRevenueRows.forEach((row) => {
+    if (!row.created_at || !(row.payment_status === "paid" || row.status === "paid" || row.paid_at)) return;
+    monthlyRevenue[new Date(String(row.created_at)).getMonth()].products += toNumber(row.total_paid || row.total_amount || row.total);
+  });
+
+  const recentActivity = [
+    ...recentClassBookings.map((item) => ({
+      action: `Class booking ${item.booking_number ? `#${item.booking_number}` : ""}`.trim(),
+      user: String(item.attendee_name || item.class_title || "Class customer"),
+      time: relativeTime(String(item.created_at || "")),
+      date: String(item.created_at || ""),
+      icon: Calendar,
+      color: "bg-emerald-100 text-emerald-600",
+      href: "/admin/bookings",
+    })),
+    ...recentServiceBookings.map((item) => ({
+      action: String(item.service_name || "Service booking"),
+      user: String(item.customer_name || item.booking_number || "Booking customer"),
+      time: relativeTime(String(item.created_at || "")),
+      date: String(item.created_at || ""),
+      icon: Utensils,
+      color: "bg-purple-100 text-purple-600",
+      href: "/admin/bookings",
+    })),
+    ...recentOrders.map((item) => ({
+      action: `Product order ${item.order_number ? `#${item.order_number}` : ""}`.trim(),
+      user: String(item.customer_name || "Order customer"),
+      time: relativeTime(String(item.created_at || "")),
+      date: String(item.created_at || ""),
+      icon: ShoppingBag,
+      color: "bg-amber-100 text-amber-600",
+      href: "/admin/orders",
+    })),
+    ...recentLeads.map((item) => ({
+      action: String(item.lead_type || "New lead"),
+      user: String(item.name || "Lead"),
+      time: relativeTime(String(item.created_at || "")),
+      date: String(item.created_at || ""),
+      icon: Target,
+      color: "bg-blue-100 text-blue-600",
+      href: `/admin/leads/${item.id}`,
+    })),
+  ]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 5);
+
+  const classMap = new Map<string, { students: number; revenue: number }>();
+  popularClassRows.forEach((row) => {
+    const name = String(row.class_title || "Untitled class");
+    const existing = classMap.get(name) || { students: 0, revenue: 0 };
+    existing.students += toNumber(row.sessions_booked) || 1;
+    existing.revenue += row.paid_at || row.status === "completed" || row.status === "confirmed" ? toNumber(row.total_amount) : 0;
+    classMap.set(name, existing);
+  });
+  const maxStudents = Math.max(...Array.from(classMap.values()).map((item) => item.students), 1);
+  const popularClasses = Array.from(classMap.entries())
+    .map(([name, value]) => ({
+      name,
+      students: value.students,
+      revenue: formatCurrency(value.revenue),
+      fill: Math.max(5, Math.round((value.students / maxStudents) * 100)),
+    }))
+    .sort((a, b) => b.students - a.students)
+    .slice(0, 4);
+
+  return {
+    stats: stats || { totalUsers: 0, totalBookings: 0, totalOrders: 0, totalLeads: 0 },
+    trends: {
+      users: userTrend,
+      bookings: {
+        current: classTrend.current + serviceTrend.current,
+        previous: classTrend.previous + serviceTrend.previous,
+        change: percentChange(classTrend.current + serviceTrend.current, classTrend.previous + serviceTrend.previous),
+        sparkline: classTrend.sparkline.map((value, index) => value + (serviceTrend.sparkline[index] || 0)),
+      },
+      orders: productOrderTrend.current || productOrderTrend.previous || productOrderTrend.sparkline.some(Boolean) ? productOrderTrend : legacyOrderTrend,
+      leads: leadTrend,
+    },
+    monthlyRevenue,
+    recentActivity,
+    popularClasses,
   };
 }
 
 export default async function AdminDashboard() {
-  const stats = await getStats();
+  const dashboard = await getDashboardData();
+  const stats = dashboard?.stats || { totalUsers: 0, totalBookings: 0, totalOrders: 0, totalLeads: 0 };
+  const trends = dashboard?.trends;
+  const monthlyRevenue = dashboard?.monthlyRevenue || monthLabels.map((month) => ({ month, classes: 0, services: 0, products: 0 }));
+  const maxMonthlyRevenue = Math.max(...monthlyRevenue.map((item) => item.classes + item.services + item.products), 1);
 
   const quickActions = [
     { label: "Process Order", icon: ShoppingBag, color: "from-[#FF8C6B] to-[#ff7a54]", href: "/admin/orders" },
@@ -45,19 +352,41 @@ export default async function AdminDashboard() {
     { label: "Send Campaign", icon: Zap, color: "from-fuchsia-500 to-purple-500", href: "/admin/marketing" },
   ];
 
-  const recentActivity = [
-    { action: "New class booking", user: "Sarah M.", time: "2 min ago", icon: Calendar, color: "bg-emerald-100 text-emerald-600" },
-    { action: "Order #1234 completed", user: "John D.", time: "15 min ago", icon: ShoppingBag, color: "bg-amber-100 text-amber-600" },
-    { action: "Kitchen rental request", user: "Chef Ahmed", time: "1 hour ago", icon: Utensils, color: "bg-purple-100 text-purple-600" },
-    { action: "New user registered", user: "Maria K.", time: "2 hours ago", icon: Users, color: "bg-blue-100 text-blue-600" },
-    { action: "Payment received", user: "David L.", time: "3 hours ago", icon: CreditCard, color: "bg-green-100 text-green-600" },
-  ];
-
-  const popularClasses = [
-    { name: "Middle Eastern Essentials", students: 45, revenue: "AED 20,250", fill: 95 },
-    { name: "Bread Baking Masterclass", students: 38, revenue: "AED 13,300", fill: 80 },
-    { name: "Thai Street Food", students: 32, revenue: "AED 12,800", fill: 70 },
-    { name: "French Pastry Basics", students: 28, revenue: "AED 11,200", fill: 60 },
+  const recentActivity = dashboard?.recentActivity || [];
+  const popularClasses = dashboard?.popularClasses || [];
+  const statCards = [
+    {
+      label: "Total Users",
+      value: stats.totalUsers,
+      trend: trends?.users,
+      icon: Users,
+      gradient: "from-violet-500 to-purple-600",
+      shadow: "hover:shadow-purple-500/20",
+    },
+    {
+      label: "Total Bookings",
+      value: stats.totalBookings,
+      trend: trends?.bookings,
+      icon: Calendar,
+      gradient: "from-emerald-500 to-teal-600",
+      shadow: "hover:shadow-emerald-500/20",
+    },
+    {
+      label: "Paid Orders",
+      value: stats.totalOrders,
+      trend: trends?.orders,
+      icon: ShoppingBag,
+      gradient: "from-[#FF8C6B] to-[#ff7a54]",
+      shadow: "hover:shadow-amber-500/20",
+    },
+    {
+      label: "Active Leads",
+      value: stats.totalLeads,
+      trend: trends?.leads,
+      icon: Target,
+      gradient: "from-rose-500 to-pink-600",
+      shadow: "hover:shadow-rose-500/20",
+    },
   ];
 
   return (
@@ -79,97 +408,38 @@ export default async function AdminDashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-        {/* Users Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 p-6 text-white shadow-lg hover:shadow-xl hover:shadow-purple-500/20 transition-all duration-300">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
-                <Users className="h-5 w-5" />
+        {statCards.map((card) => {
+          const maxSparkline = Math.max(...(card.trend?.sparkline || [0]), 1);
+          const isPositive = (card.trend?.change || 0) >= 0;
+          const TrendIcon = isPositive ? ArrowUpRight : ArrowDownRight;
+          return (
+            <div key={card.label} className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${card.gradient} p-6 text-white shadow-lg hover:shadow-xl ${card.shadow} transition-all duration-300`}>
+              <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
+                    <card.icon className="h-5 w-5" />
+                  </div>
+                  <span className={`flex items-center text-sm font-medium ${isPositive ? "text-green-200" : "text-red-200"}`}>
+                    <TrendIcon className="h-4 w-4 mr-1" />
+                    {Math.abs(card.trend?.change || 0)}%
+                  </span>
+                </div>
+                <p className="text-3xl font-bold">{card.value}</p>
+                <p className="text-sm text-white/70 mt-1">{card.label}</p>
+                <div className="flex items-end gap-1 mt-4 h-8">
+                  {(card.trend?.sparkline || [0, 0, 0, 0, 0, 0]).map((value, i) => (
+                    <div
+                      key={i}
+                      className="flex-1 bg-white/30 rounded-t-sm group-hover:bg-white/40 transition-all"
+                      style={{ height: `${Math.max((value / maxSparkline) * 100, value > 0 ? 12 : 4)}%` }}
+                    />
+                  ))}
+                </div>
               </div>
-              <span className="flex items-center text-sm font-medium text-green-300">
-                <ArrowUpRight className="h-4 w-4 mr-1" />
-                12%
-              </span>
             </div>
-            <p className="text-3xl font-bold">{stats?.totalUsers || 0}</p>
-            <p className="text-sm text-white/70 mt-1">Total Users</p>
-            <div className="flex items-end gap-1 mt-4 h-8">
-              {[40, 70, 45, 90, 60, 80, 95].map((h, i) => (
-                <div key={i} className="flex-1 bg-white/30 rounded-t-sm group-hover:bg-white/40 transition-all" style={{ height: `${h}%` }} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Bookings Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 p-6 text-white shadow-lg hover:shadow-xl hover:shadow-emerald-500/20 transition-all duration-300">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
-                <Calendar className="h-5 w-5" />
-              </div>
-              <span className="flex items-center text-sm font-medium text-green-300">
-                <ArrowUpRight className="h-4 w-4 mr-1" />
-                8%
-              </span>
-            </div>
-            <p className="text-3xl font-bold">{stats?.totalBookings || 0}</p>
-            <p className="text-sm text-white/70 mt-1">Class Bookings</p>
-            <div className="flex items-end gap-1 mt-4 h-8">
-              {[60, 40, 80, 50, 70, 90, 65].map((h, i) => (
-                <div key={i} className="flex-1 bg-white/30 rounded-t-sm group-hover:bg-white/40 transition-all" style={{ height: `${h}%` }} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Orders Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#FF8C6B] to-[#ff7a54] p-6 text-white shadow-lg hover:shadow-xl hover:shadow-amber-500/20 transition-all duration-300">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
-                <ShoppingBag className="h-5 w-5" />
-              </div>
-              <span className="flex items-center text-sm font-medium text-green-300">
-                <ArrowUpRight className="h-4 w-4 mr-1" />
-                23%
-              </span>
-            </div>
-            <p className="text-3xl font-bold">{stats?.totalOrders || 0}</p>
-            <p className="text-sm text-white/70 mt-1">Total Orders</p>
-            <div className="flex items-end gap-1 mt-4 h-8">
-              {[30, 50, 40, 70, 85, 60, 90].map((h, i) => (
-                <div key={i} className="flex-1 bg-white/30 rounded-t-sm group-hover:bg-white/40 transition-all" style={{ height: `${h}%` }} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Leads Card */}
-        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500 to-pink-600 p-6 text-white shadow-lg hover:shadow-xl hover:shadow-rose-500/20 transition-all duration-300">
-          <div className="absolute top-0 right-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-white/10 blur-2xl" />
-          <div className="relative">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 rounded-xl bg-white/20 backdrop-blur-sm">
-                <Target className="h-5 w-5" />
-              </div>
-              <span className="flex items-center text-sm font-medium text-red-300">
-                <ArrowDownRight className="h-4 w-4 mr-1" />
-                3%
-              </span>
-            </div>
-            <p className="text-3xl font-bold">{stats?.totalLeads || 0}</p>
-            <p className="text-sm text-white/70 mt-1">Active Leads</p>
-            <div className="flex items-end gap-1 mt-4 h-8">
-              {[80, 60, 70, 50, 40, 55, 45].map((h, i) => (
-                <div key={i} className="flex-1 bg-white/30 rounded-t-sm group-hover:bg-white/40 transition-all" style={{ height: `${h}%` }} />
-              ))}
-            </div>
-          </div>
-        </div>
+          );
+        })}
       </div>
 
       {/* Main Content Grid */}
@@ -191,15 +461,22 @@ export default async function AdminDashboard() {
           </div>
           <div className="p-6">
             <div className="flex items-end justify-between gap-3 h-48">
-              {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((month, i) => {
-                const heights = [45, 65, 50, 80, 60, 75, 90, 70, 85, 95, 80, 88];
+              {monthlyRevenue.map((item) => {
+                const total = item.classes + item.services + item.products;
                 return (
-                  <div key={month} className="flex-1 flex flex-col items-center gap-2">
-                    <div 
-                      className="w-full bg-gradient-to-t from-amber-500 to-amber-300 rounded-t-lg hover:from-amber-600 hover:to-amber-400 transition-all cursor-pointer"
-                      style={{ height: `${heights[i]}%` }}
-                    />
-                    <span className="text-xs text-stone-400">{month}</span>
+                  <div key={item.month} className="group flex-1 flex flex-col items-center gap-2">
+                    <div className="relative flex h-full w-full items-end">
+                      <div
+                        className="w-full overflow-hidden rounded-t-lg bg-stone-100 transition-all"
+                        style={{ height: `${Math.max((total / maxMonthlyRevenue) * 100, total > 0 ? 3 : 0)}%` }}
+                        title={`${item.month}: ${formatCurrency(total)}`}
+                      >
+                        <div className="bg-purple-500" style={{ height: `${total ? (item.products / total) * 100 : 0}%` }} />
+                        <div className="bg-emerald-500" style={{ height: `${total ? (item.services / total) * 100 : 0}%` }} />
+                        <div className="bg-amber-500" style={{ height: `${total ? (item.classes / total) * 100 : 0}%` }} />
+                      </div>
+                    </div>
+                    <span className="text-xs text-stone-400">{item.month}</span>
                   </div>
                 );
               })}
@@ -211,7 +488,7 @@ export default async function AdminDashboard() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-emerald-500" />
-                <span className="text-sm text-stone-600">Kitchen Rentals</span>
+                <span className="text-sm text-stone-600">Service Bookings</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-purple-500" />
@@ -255,11 +532,13 @@ export default async function AdminDashboard() {
               </div>
               <h3 className="font-semibold text-stone-900">Recent Activity</h3>
             </div>
-            <button className="text-sm text-amber-600 hover:text-amber-700 font-medium">View all</button>
+            <Link href="/admin/bookings" className="text-sm text-amber-600 hover:text-amber-700 font-medium">View all</Link>
           </div>
           <div className="divide-y divide-stone-100">
-            {recentActivity.map((item, i) => (
-              <div key={i} className="p-4 hover:bg-stone-50 transition-colors">
+            {recentActivity.length === 0 ? (
+              <p className="p-6 text-sm text-stone-500">No recent activity yet.</p>
+            ) : recentActivity.map((item, i) => (
+              <Link key={i} href={item.href} className="block p-4 hover:bg-stone-50 transition-colors">
                 <div className="flex items-center gap-4">
                   <div className={`p-2.5 rounded-xl ${item.color}`}>
                     <item.icon className="h-4 w-4" />
@@ -270,7 +549,7 @@ export default async function AdminDashboard() {
                   </div>
                   <span className="text-xs text-stone-400 whitespace-nowrap">{item.time}</span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         </div>
@@ -284,10 +563,12 @@ export default async function AdminDashboard() {
               </div>
               <h3 className="font-semibold text-stone-900">Popular Classes</h3>
             </div>
-            <button className="text-sm text-amber-600 hover:text-amber-700 font-medium">View all</button>
+            <Link href="/admin/bookings" className="text-sm text-amber-600 hover:text-amber-700 font-medium">View all</Link>
           </div>
           <div className="p-4 space-y-4">
-            {popularClasses.map((course, i) => (
+            {popularClasses.length === 0 ? (
+              <p className="py-6 text-center text-sm text-stone-500">No class bookings yet.</p>
+            ) : popularClasses.map((course, i) => (
               <div key={i} className="group">
                 <div className="flex items-center justify-between mb-2">
                   <div>
