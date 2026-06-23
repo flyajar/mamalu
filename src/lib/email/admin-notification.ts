@@ -18,6 +18,7 @@ export interface AdminNotificationEvent {
   reference?: string | null;
   customerName: string;
   customerEmail?: string | null;
+  paymentEmail?: string | null;
   customerPhone?: string | null;
   title: string;
   amount?: number | null;
@@ -93,6 +94,7 @@ function buildHtml(event: AdminNotificationEvent) {
             ${detailRow("Reference", event.reference)}
             ${detailRow("Customer", event.customerName)}
             ${detailRow("Email", event.customerEmail)}
+            ${detailRow("Stripe payment email", event.paymentEmail)}
             ${detailRow("Phone", event.customerPhone)}
             ${detailRow(event.eventType === "product_order" ? "Order" : "Booking", event.title)}
             ${detailRow("Date", event.eventDate)}

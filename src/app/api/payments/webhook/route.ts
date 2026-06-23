@@ -112,6 +112,7 @@ export async function POST(request: NextRequest) {
           ...paymentLinkMetadata,
           ...session.metadata,
         };
+        const stripePaymentEmail = session.customer_details?.email || session.customer_email || null;
         const bookingId = checkoutMetadata.booking_id;
         const isServiceBooking = checkoutMetadata.type === "service_booking";
         const isServiceBookingBalance =
@@ -315,6 +316,7 @@ export async function POST(request: NextRequest) {
                 reference: booking.booking_number,
                 customerName: booking.customer_name,
                 customerEmail: booking.customer_email,
+                paymentEmail: stripePaymentEmail,
                 customerPhone: booking.customer_phone,
                 title: [booking.service_name, booking.package_name || booking.menu_name].filter(Boolean).join(" - "),
                 amount: Number(booking.total_amount || paidAmount),
@@ -426,6 +428,23 @@ export async function POST(request: NextRequest) {
             } catch (emailError) {
               console.error("Failed to send confirmation email:", emailError);
             }
+          }
+
+          if (confirmedBooking) {
+            await sendAdminNotification(supabase, {
+              eventType: "class_booking",
+              sourceId: confirmedBooking.id,
+              reference: confirmedBooking.booking_number,
+              customerName: confirmedBooking.attendee_name || "Customer",
+              customerEmail: confirmedBooking.attendee_email,
+              paymentEmail: stripePaymentEmail,
+              customerPhone: confirmedBooking.attendee_phone,
+              title: confirmedBooking.class_title,
+              amount: Number(confirmedBooking.total_amount || (session.amount_total || 0) / 100),
+              eventDate: confirmedBooking.class_date,
+              eventTime: confirmedBooking.class_time,
+              guestCount: confirmedBooking.number_of_guests || 1,
+            });
           }
         }
 
@@ -660,6 +679,7 @@ export async function POST(request: NextRequest) {
               reference: order.order_number,
               customerName: orderCustomerName,
               customerEmail: orderCustomerEmail,
+              paymentEmail: stripePaymentEmail,
               customerPhone: orderCustomerPhone,
               title: productLineItems.map((item) => item.name).join(", ") || "Product order",
               amount: Number(order.total_amount || 0),
