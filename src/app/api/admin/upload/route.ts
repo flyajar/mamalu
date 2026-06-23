@@ -14,7 +14,7 @@ const uploadLimits: Record<string, { maxSize: number; contentTypes: string[] }> 
   },
   documents: {
     maxSize: 20 * 1024 * 1024,
-    contentTypes: ["application/pdf"],
+    contentTypes: ["application/pdf", "image/jpeg", "image/jpg", "image/png", "image/webp"],
   },
 };
 

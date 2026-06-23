@@ -223,6 +223,26 @@ interface AppliedVoucher {
   amount: number;
 }
 
+interface ExternalSupplierRequirements {
+  photographerName: string;
+  photographerEmiratesId: string;
+  photographerTradeLicense: string;
+  photographerEquipmentList: string;
+  backdropDesign: string;
+  backdropSetupPersonEmiratesId: string;
+  backdropSupplierTradeLicense: string;
+}
+
+interface ExternalSupplierFiles {
+  photographerEmiratesId: File | null;
+  photographerTradeLicense: File | null;
+  backdropDesign: File | null;
+  backdropSetupPersonEmiratesId: File | null;
+  backdropSupplierTradeLicense: File | null;
+}
+
+type ExternalSupplierFileKey = keyof ExternalSupplierFiles;
+
 // Category type
 type CategoryType = "classics" | "monthly" | "mommy_me" | "birthdays" | "packages" | "summer_camp";
 
@@ -238,6 +258,84 @@ const AVAILABILITY_CATEGORY_BY_TAB: Record<CategoryType, string> = {
 const MOMMY_ME_ADDITIONAL_CHILD_PRICE = 200;
 const SUMMER_CAMP_SELECTION_COUNT = 1;
 const PRIMARY_BUTTON_CLASS = "bg-[rgb(255_140_107)] hover:bg-[rgb(255_126_91)] text-white border border-[rgb(255_140_107)] font-bold disabled:!bg-[rgb(255_170_145)] disabled:!border-[rgb(255_170_145)] disabled:!text-white disabled:!opacity-100 disabled:cursor-not-allowed";
+const EMPTY_SUPPLIER_REQUIREMENTS: ExternalSupplierRequirements = {
+  photographerName: "",
+  photographerEmiratesId: "",
+  photographerTradeLicense: "",
+  photographerEquipmentList: "",
+  backdropDesign: "",
+  backdropSetupPersonEmiratesId: "",
+  backdropSupplierTradeLicense: "",
+};
+const EMPTY_SUPPLIER_FILES: ExternalSupplierFiles = {
+  photographerEmiratesId: null,
+  photographerTradeLicense: null,
+  backdropDesign: null,
+  backdropSetupPersonEmiratesId: null,
+  backdropSupplierTradeLicense: null,
+};
+
+const formatExternalSupplierRequirements = (requirements: ExternalSupplierRequirements) => {
+  const hasRequirements = Object.values(requirements).some((value) => value.trim());
+  if (!hasRequirements) return "";
+
+  return [
+    "External Suppliers Requirements",
+    `Photographer / Videographer Company: ${requirements.photographerName.trim()}`,
+    `Photographer Emirates ID: ${requirements.photographerEmiratesId.trim()}`,
+    `Photography / Videography Trade License: ${requirements.photographerTradeLicense.trim()}`,
+    `Equipment List: ${requirements.photographerEquipmentList.trim()}`,
+    `Backdrop / Balloon Design: ${requirements.backdropDesign.trim()}`,
+    `Delivery / Setup Person Emirates ID: ${requirements.backdropSetupPersonEmiratesId.trim()}`,
+    `Backdrop / Balloon Supplier Trade License: ${requirements.backdropSupplierTradeLicense.trim()}`,
+  ].join("\n");
+};
+
+const hasExternalSupplierRequirementsStarted = (requirements: ExternalSupplierRequirements) =>
+  Object.values(requirements).some((value) => value.trim().length > 0);
+
+const hasExternalSupplierFilesStarted = (files: ExternalSupplierFiles) =>
+  Object.values(files).some(Boolean);
+
+const hasCompleteExternalSupplierRequirements = (requirements: ExternalSupplierRequirements) =>
+  Object.values(requirements).every((value) => value.trim().length > 0);
+
+const hasCompleteExternalSupplierFiles = (files: ExternalSupplierFiles) =>
+  Object.values(files).every(Boolean);
+
+const uploadExternalSupplierFiles = async (files: ExternalSupplierFiles, customerEmail: string) => {
+  const labels: Record<ExternalSupplierFileKey, string> = {
+    photographerEmiratesId: "Photographer Emirates ID file",
+    photographerTradeLicense: "Photography / videography trade license file",
+    backdropDesign: "Backdrop / balloon sample design file",
+    backdropSetupPersonEmiratesId: "Setup person Emirates ID file",
+    backdropSupplierTradeLicense: "Backdrop / balloon supplier trade license file",
+  };
+
+  const uploaded: string[] = [];
+  for (const [key, file] of Object.entries(files) as [ExternalSupplierFileKey, File | null][]) {
+    if (!file) throw new Error(`${labels[key]} is required.`);
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("bucket", "documents");
+    formData.append("userId", `supplier-${customerEmail.replace(/[^a-z0-9]/gi, "-").toLowerCase()}`);
+
+    const res = await fetch("/api/admin/upload", {
+      method: "POST",
+      body: formData,
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || `Failed to upload ${labels[key]}.`);
+    }
+
+    uploaded.push(`${labels[key]}: ${data.url}`);
+  }
+
+  return uploaded.join("\n");
+};
 
 const STATIC_SUMMER_CAMP_MENUS: MenuItem[] = [
   {
@@ -361,6 +459,124 @@ function WaiverModal({ isOpen, onClose, onAccept }: { isOpen: boolean; onClose: 
   );
 }
 
+function ExternalSupplierModal({
+  isOpen,
+  value,
+  files,
+  onChange,
+  onFilesChange,
+  onClose,
+}: {
+  isOpen: boolean;
+  value: ExternalSupplierRequirements;
+  files: ExternalSupplierFiles;
+  onChange: (value: ExternalSupplierRequirements) => void;
+  onFilesChange: (value: ExternalSupplierFiles) => void;
+  onClose: () => void;
+}) {
+  if (!isOpen) return null;
+
+  const updateField = (field: keyof ExternalSupplierRequirements, fieldValue: string) => {
+    onChange({ ...value, [field]: fieldValue });
+  };
+
+  const updateFile = (field: ExternalSupplierFileKey, file: File | null) => {
+    onFilesChange({ ...files, [field]: file });
+  };
+
+  const renderFileInput = (field: ExternalSupplierFileKey, label: string) => (
+    <div>
+      <label className="mb-1 block text-sm font-bold text-stone-700">{label} *</label>
+      <input
+        type="file"
+        accept=".pdf,image/jpeg,image/png,image/webp"
+        onChange={(event) => updateFile(field, event.target.files?.[0] || null)}
+        className="w-full rounded-lg border border-stone-300 px-4 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-stone-100 file:px-3 file:py-1.5 file:font-bold file:text-stone-700 hover:file:bg-stone-200"
+        required
+      />
+      {files[field] && <p className="mt-1 truncate text-xs font-medium text-stone-500">{files[field]?.name}</p>}
+    </div>
+  );
+
+  const canSave = hasCompleteExternalSupplierRequirements(value) && hasCompleteExternalSupplierFiles(files);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white">
+        <div className="flex items-center justify-between border-b p-5">
+          <div>
+            <h2 className="text-xl font-bold text-stone-900">External Suppliers Requirements</h2>
+            <p className="mt-1 text-sm text-stone-600">All fields are required for venue permit processing.</p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-6 overflow-y-auto p-5">
+          <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 text-sm leading-6 text-stone-700">
+            To ensure smooth coordination and compliance with venue regulations, all external suppliers must submit the required documents at least 5 days prior to the event to allow sufficient time for permit processing.
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-bold text-stone-900">1. Photographer & Videographer</h3>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-bold text-stone-700">Company / Supplier Name *</label>
+                <input value={value.photographerName} onChange={(e) => updateField("photographerName", e.target.value)} className="w-full rounded-lg border border-stone-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-[#FF8C6B]" required />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-bold text-stone-700">Photographer Emirates ID *</label>
+                <input value={value.photographerEmiratesId} onChange={(e) => updateField("photographerEmiratesId", e.target.value)} className="w-full rounded-lg border border-stone-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-[#FF8C6B]" required />
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-bold text-stone-700">Photography / Videography Trade License *</label>
+              <input value={value.photographerTradeLicense} onChange={(e) => updateField("photographerTradeLicense", e.target.value)} className="w-full rounded-lg border border-stone-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-[#FF8C6B]" required />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-bold text-stone-700">Complete Equipment List *</label>
+              <textarea value={value.photographerEquipmentList} onChange={(e) => updateField("photographerEquipmentList", e.target.value)} rows={3} placeholder="Cameras, lenses, lighting equipment, flashes, tripods, etc." className="w-full rounded-lg border border-stone-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-[#FF8C6B]" required />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {renderFileInput("photographerEmiratesId", "Photographer Emirates ID File")}
+              {renderFileInput("photographerTradeLicense", "Trade License File")}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-bold text-stone-900">2. Backdrops & Balloon Suppliers</h3>
+            <div>
+              <label className="mb-1 block text-sm font-bold text-stone-700">Sample Image / Design and Dimensions *</label>
+              <textarea value={value.backdropDesign} onChange={(e) => updateField("backdropDesign", e.target.value)} rows={3} placeholder="Describe the backdrop or balloon setup, including dimensions / measurements." className="w-full rounded-lg border border-stone-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-[#FF8C6B]" required />
+            </div>
+            {renderFileInput("backdropDesign", "Sample Image / Design File")}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-bold text-stone-700">Setup Person Emirates ID *</label>
+                <input value={value.backdropSetupPersonEmiratesId} onChange={(e) => updateField("backdropSetupPersonEmiratesId", e.target.value)} className="w-full rounded-lg border border-stone-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-[#FF8C6B]" required />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-bold text-stone-700">Supplier Trade License *</label>
+                <input value={value.backdropSupplierTradeLicense} onChange={(e) => updateField("backdropSupplierTradeLicense", e.target.value)} className="w-full rounded-lg border border-stone-300 px-4 py-2 focus:border-transparent focus:ring-2 focus:ring-[#FF8C6B]" required />
+              </div>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {renderFileInput("backdropSetupPersonEmiratesId", "Setup Person Emirates ID File")}
+              {renderFileInput("backdropSupplierTradeLicense", "Supplier Trade License File")}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 border-t bg-stone-50 p-5">
+          <Button type="button" variant="outline" onClick={onClose} className="font-bold">Cancel</Button>
+          <Button type="button" onClick={onClose} disabled={!canSave} className={PRIMARY_BUTTON_CLASS}>Save Requirements</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function MiniChefPage() {
   const [step, setStep] = useState(1);
   const [pageContent, setPageContent] = useState<MiniChefPageContent>(defaultMiniChefContent);
@@ -409,6 +625,9 @@ export default function MiniChefPage() {
   const [specialRequests, setSpecialRequests] = useState("");
   const [ageRange, setAgeRange] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [showSupplierModal, setShowSupplierModal] = useState(false);
+  const [externalSupplierRequirements, setExternalSupplierRequirements] = useState<ExternalSupplierRequirements>(EMPTY_SUPPLIER_REQUIREMENTS);
+  const [externalSupplierFiles, setExternalSupplierFiles] = useState<ExternalSupplierFiles>(EMPTY_SUPPLIER_FILES);
 
   // Waiver
   const [waiverAccepted, setWaiverAccepted] = useState(false);
@@ -937,6 +1156,11 @@ export default function MiniChefPage() {
       const packageClassNames = selectedPackageMenuItems.map((item) => item.name).join(", ");
       const summerCampClassNames = selectedSummerCampMenus.map((item) => item.name).join(", ");
       const bookingMenuItems = isSummerCamp ? selectedSummerCampMenus : selectedPackageMenuItems;
+      const supplierRequirementsText = isBirthday ? formatExternalSupplierRequirements(externalSupplierRequirements) : "";
+      const supplierFilesText = supplierRequirementsText
+        ? await uploadExternalSupplierFiles(externalSupplierFiles, customerEmail)
+        : "";
+      const combinedSpecialRequests = [specialRequests.trim(), supplierRequirementsText, supplierFilesText].filter(Boolean).join("\n\n");
 
       const res = await fetch("/api/services/book", {
         method: "POST",
@@ -1008,12 +1232,12 @@ export default function MiniChefPage() {
           depositAmount: isDepositPayment ? depositAmount : null,
           balanceAmount: isDepositPayment ? balanceAmount : null,
           specialRequests: isMommyAndMe
-            ? `${specialRequests ? `${specialRequests}\n\n` : ""}Mommy & Me children: ${guestCount}${guestCount > 1 ? ` (${guestCount - 1} additional child${guestCount - 1 === 1 ? "" : "ren"} at AED ${MOMMY_ME_ADDITIONAL_CHILD_PRICE} each)` : ""}`
+            ? `${combinedSpecialRequests ? `${combinedSpecialRequests}\n\n` : ""}Mommy & Me children: ${guestCount}${guestCount > 1 ? ` (${guestCount - 1} additional child${guestCount - 1 === 1 ? "" : "ren"} at AED ${MOMMY_ME_ADDITIONAL_CHILD_PRICE} each)` : ""}`
             : isPackage && selectedPackageMenuItems.length > 0
-            ? `${specialRequests ? `${specialRequests}\n\n` : ""}Selected package classes:\n${selectedPackageMenuItems.map((item, index) => `${index + 1}. ${item.name}`).join("\n")}`
+            ? `${combinedSpecialRequests ? `${combinedSpecialRequests}\n\n` : ""}Selected package classes:\n${selectedPackageMenuItems.map((item, index) => `${index + 1}. ${item.name}`).join("\n")}`
             : isSummerCamp
-            ? `${specialRequests ? `${specialRequests}\n\n` : ""}Selected summer camp option:\n${selectedSummerCampMenus.map((item, index) => `${index + 1}. ${item.name}${item.id === "summer-camp-per-day" ? ` (${summerCampDayCount} day${summerCampDayCount === 1 ? "" : "s"})` : ""}`).join("\n")}\nSelected camp dates: ${summerCampSelectedDates.join(", ")}`
-            : specialRequests,
+            ? `${combinedSpecialRequests ? `${combinedSpecialRequests}\n\n` : ""}Selected summer camp option:\n${selectedSummerCampMenus.map((item, index) => `${index + 1}. ${item.name}${item.id === "summer-camp-per-day" ? ` (${summerCampDayCount} day${summerCampDayCount === 1 ? "" : "s"})` : ""}`).join("\n")}\nSelected camp dates: ${summerCampSelectedDates.join(", ")}`
+            : combinedSpecialRequests,
           ageRange,
           waiverAccepted: waiverAccepted || acceptedWaiver,
           category: activeCategory,
@@ -1066,7 +1290,12 @@ export default function MiniChefPage() {
       }
       return Boolean(eventDate && eventTime);
     }
-    if (hasExtras && step === 2) return true; // Extras are optional
+    if (hasExtras && step === 2) {
+      const hasStartedSupplierRequirements = hasExternalSupplierRequirementsStarted(externalSupplierRequirements)
+        || hasExternalSupplierFilesStarted(externalSupplierFiles);
+      return !hasStartedSupplierRequirements
+        || (hasCompleteExternalSupplierRequirements(externalSupplierRequirements) && hasCompleteExternalSupplierFiles(externalSupplierFiles));
+    }
     const detailsStep = hasExtras ? 3 : 2;
     if (step === detailsStep) {
       if (!customerName || !customerEmail || !eventDate || !eventTime) return false;
@@ -1116,6 +1345,15 @@ export default function MiniChefPage() {
         isOpen={showWaiverModal}
         onClose={() => setShowWaiverModal(false)}
         onAccept={handleWaiverAccept}
+      />
+
+      <ExternalSupplierModal
+        isOpen={showSupplierModal}
+        value={externalSupplierRequirements}
+        files={externalSupplierFiles}
+        onChange={setExternalSupplierRequirements}
+        onFilesChange={setExternalSupplierFiles}
+        onClose={() => setShowSupplierModal(false)}
       />
 
       {previewExtra?.image && (
@@ -1620,6 +1858,19 @@ export default function MiniChefPage() {
                 <div>
                   <h2 className="text-2xl font-bold text-stone-900">Customize Your Party</h2>
                   <p className="text-stone-500 mt-1">Add extras to make it special (optional)</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowSupplierModal(true)}
+                    className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[#FF8C6B] underline decoration-[#FF8C6B]/40 underline-offset-4 hover:text-[#e96f4f]"
+                  >
+                    <FileText className="h-4 w-4" />
+                    External suppliers requirements
+                  </button>
+                  {(hasExternalSupplierRequirementsStarted(externalSupplierRequirements) || hasExternalSupplierFilesStarted(externalSupplierFiles)) && (!hasCompleteExternalSupplierRequirements(externalSupplierRequirements) || !hasCompleteExternalSupplierFiles(externalSupplierFiles)) && (
+                    <p className="mt-2 text-sm font-medium text-red-600">
+                      Complete all external supplier fields and files before continuing.
+                    </p>
+                  )}
                 </div>
 
                 {loadingExtras ? (

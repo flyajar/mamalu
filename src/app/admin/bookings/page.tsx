@@ -65,6 +65,37 @@ const formatLocalDateKey = (date: Date) => {
 };
 
 const MONTHLY_SLOT_CATEGORY_IDS = new Set(["monthly_mini", "monthly_big"]);
+const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+const SUPPLIER_SECTION_TITLE = "External Suppliers Requirements";
+
+function LinkedMultilineText({ text }: { text: string }) {
+  return (
+    <p className="whitespace-pre-line text-sm text-stone-600">
+      {text.split(URL_PATTERN).map((part, index) => {
+        if (part.match(URL_PATTERN)) {
+          return (
+            <a key={`${part}-${index}`} href={part} target="_blank" rel="noopener noreferrer" className="break-all text-blue-600 hover:underline">
+              {part}
+            </a>
+          );
+        }
+        return <span key={`${part}-${index}`}>{part}</span>;
+      })}
+    </p>
+  );
+}
+
+function splitSupplierRequirements(text: string | null) {
+  if (!text) return { specialRequests: "", supplierRequirements: "" };
+
+  const startIndex = text.indexOf(SUPPLIER_SECTION_TITLE);
+  if (startIndex === -1) return { specialRequests: text.trim(), supplierRequirements: "" };
+
+  return {
+    specialRequests: text.slice(0, startIndex).trim(),
+    supplierRequirements: text.slice(startIndex + SUPPLIER_SECTION_TITLE.length).trim(),
+  };
+}
 
 interface ServiceBooking {
   id: string;
@@ -2000,18 +2031,32 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
               )}
 
               {/* Special Requests */}
-              {selectedBooking.special_requests && (
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold mb-2">Special Requests</h3>
-                  <p className="text-sm text-stone-600">{selectedBooking.special_requests}</p>
-                </div>
-              )}
+              {(() => {
+                const { specialRequests, supplierRequirements } = splitSupplierRequirements(selectedBooking.special_requests);
+
+                return (
+                  <>
+                    {specialRequests && (
+                      <div className="border-t pt-4">
+                        <h3 className="font-semibold mb-2">Special Requests</h3>
+                        <LinkedMultilineText text={specialRequests} />
+                      </div>
+                    )}
+                    {supplierRequirements && (
+                      <div className="border-t pt-4">
+                        <h3 className="font-semibold mb-2">External Suppliers Requirements</h3>
+                        <LinkedMultilineText text={supplierRequirements} />
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Notes */}
               {selectedBooking.notes && (
                 <div className="border-t pt-4">
                   <h3 className="font-semibold mb-2">Notes</h3>
-                  <p className="text-sm text-stone-600">{selectedBooking.notes}</p>
+                  <LinkedMultilineText text={selectedBooking.notes} />
                 </div>
               )}
 
