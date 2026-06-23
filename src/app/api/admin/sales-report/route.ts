@@ -10,6 +10,7 @@ type ScheduledItem = {
   event_date?: string;
   event_time?: string;
   time_label?: string;
+  camp_dates?: string[];
   packageId?: string;
   packageName?: string;
   session?: number;
@@ -576,7 +577,17 @@ export async function GET(request: NextRequest) {
       const items = Array.isArray(booking.items) ? booking.items as ScheduledItem[] : [];
       const packageItems = getPackageBookingItems(booking) as ScheduledItem[];
       const allocatableItems = packageItems.length > 0 ? packageItems : items;
-      const scheduledItems = allocatableItems.filter((item) => item.event_date);
+      const scheduledItems = allocatableItems.flatMap((item) => {
+        const campDates = Array.isArray(item.camp_dates) ? item.camp_dates.filter(Boolean) : [];
+        if (campDates.length > 0) {
+          return [...new Set(campDates)].sort().map((date) => ({
+            ...item,
+            event_date: date,
+          }));
+        }
+
+        return item.event_date ? [item] : [];
+      });
       const allocationDivisor = Math.max(packageItems.length > 0 ? packageItems.length : scheduledItems.length, 1);
       const matchingItems = scheduledItems.filter(
         (item) => item.event_date && item.event_date >= requestedFromDate && item.event_date <= requestedToDate
