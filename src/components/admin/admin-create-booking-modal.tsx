@@ -17,6 +17,8 @@ interface MenuItem {
   name: string;
   price: number;
   categories: string[];
+  description?: string;
+  price_unit?: string;
 }
 
 interface PackageItem extends MenuItem {
@@ -27,6 +29,22 @@ interface PackageItem extends MenuItem {
 interface TimeSlot {
   start: string;
   label: string;
+  end?: string;
+}
+
+interface SummerCampBatch {
+  id: string;
+  name: string;
+  dates: string[];
+  time_slots?: Record<string, TimeSlot[]>;
+}
+
+interface SummerCampApiItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  price_unit: string;
 }
 
 interface SessionSchedule {
@@ -40,7 +58,7 @@ interface SessionSchedule {
 type CategoryId =
   | "classics_mini" | "monthly_mini" | "mommy_me" | "birthday"
   | "packages" | "corporate" | "classics_big" | "monthly_big"
-  | "teenagers" | "nanny";
+  | "teenagers" | "nanny" | "summer_camp";
 
 interface CategoryRule {
   id: CategoryId;
@@ -54,6 +72,7 @@ interface CategoryRule {
   packages?: boolean;
   extras?: boolean;
   flatPrice?: number;
+  summerCamp?: boolean;
 }
 
 const RULES: CategoryRule[] = [
@@ -62,6 +81,7 @@ const RULES: CategoryRule[] = [
   { id: "mommy_me", group: "Mini Chef", label: "Mommy & Me", serviceType: "birthday_deck", minGuests: 1, maxGuests: 20, selectionCount: 1 },
   { id: "birthday", group: "Mini Chef", label: "Birthdays", serviceType: "birthday_deck", minGuests: 6, maxGuests: 35, selectionCount: 1, extras: true },
   { id: "packages", group: "Mini Chef", label: "Packages", serviceType: "birthday_deck", minGuests: 6, maxGuests: 35, selectionCount: 1, packages: true },
+  { id: "summer_camp", group: "Mini Chef", label: "Mini Chef Camp", serviceType: "birthday_deck", minGuests: 1, maxGuests: 35, selectionCount: 1, summerCamp: true },
   { id: "corporate", group: "Big Chef", label: "Corporate / Private", serviceType: "corporate_deck", minGuests: 6, maxGuests: 35, selectionCount: 1, extras: true },
   { id: "classics_big", group: "Big Chef", label: "Our Classics", serviceType: "corporate_deck", minGuests: 1, maxGuests: 35, selectionCount: 1 },
   { id: "monthly_big", group: "Big Chef", label: "Monthly Specials", serviceType: "corporate_deck", minGuests: 1, maxGuests: 35, selectionCount: 1 },
@@ -70,6 +90,16 @@ const RULES: CategoryRule[] = [
 ];
 
 const MOMMY_ME_ADDITIONAL_CHILD_PRICE = 200;
+const STATIC_SUMMER_CAMP_MENUS: MenuItem[] = [
+  { id: "summer-camp-per-day", name: "Per Day", price: 250, categories: ["summer_camp"], description: "Summer camp class by day", price_unit: "per guest per day" },
+  { id: "summer-camp-per-week", name: "Per Week", price: 1000, categories: ["summer_camp"], description: "Summer camp class by week", price_unit: "per guest per week" },
+];
+
+const uniqueTimeSlots = (slots: TimeSlot[]) => {
+  const byTime = new Map<string, TimeSlot>();
+  slots.forEach((slot) => byTime.set(`${slot.start}-${slot.end || ""}`, slot));
+  return [...byTime.values()].sort((a, b) => a.start.localeCompare(b.start));
+};
 
 export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUserId }: Props) {
   const [step, setStep] = useState(1);
@@ -77,6 +107,12 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
   const [menus, setMenus] = useState<MenuItem[]>([]);
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [extras, setExtras] = useState<MenuItem[]>([]);
+  const [summerCampItems, setSummerCampItems] = useState<MenuItem[]>(STATIC_SUMMER_CAMP_MENUS);
+  const [summerCampAvailableDates, setSummerCampAvailableDates] = useState<string[]>([]);
+  const [summerCampBatches, setSummerCampBatches] = useState<SummerCampBatch[]>([]);
+  const [summerCampSelectedDates, setSummerCampSelectedDates] = useState<string[]>([]);
+  const [summerCampTimeSlotsByDate, setSummerCampTimeSlotsByDate] = useState<Record<string, TimeSlot[]>>({});
+  const [summerCampDayCount, setSummerCampDayCount] = useState(1);
   const [selectedMenus, setSelectedMenus] = useState<MenuItem[]>([]);
   const [selectedPackageClasses, setSelectedPackageClasses] = useState<MenuItem[]>([]);
   const [selectedExtras, setSelectedExtras] = useState<Record<string, number>>({});
@@ -111,7 +147,7 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
   }, [isOpen]);
 
   useEffect(() => {
-    if (!category || !eventDate || category.separateSchedules) return;
+    if (!category || !eventDate || category.separateSchedules || category.summerCamp) return;
     setLoadingSlots(true);
     setEventTime("");
     fetch(`/api/services/availability?date=${eventDate}&category=${category.id}`)
@@ -122,10 +158,11 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
 
   const availableMenus = useMemo(() => {
     if (!category) return [];
+    if (category.summerCamp) return summerCampItems;
     return category.packages
       ? packages.filter((item) => item.categories?.includes("packages"))
       : menus.filter((item) => item.categories?.includes(category.id));
-  }, [category, menus, packages]);
+  }, [category, menus, packages, summerCampItems]);
 
   const selectedPackage = category?.packages ? selectedMenus[0] as PackageItem | undefined : undefined;
   const packageClassLimit = selectedPackage?.metadata?.class_count || 1;
@@ -141,6 +178,11 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
     setEventDate("");
     setEventTime("");
     setSlots([]);
+    setSummerCampDayCount(1);
+    setSummerCampSelectedDates([]);
+    setSummerCampAvailableDates([]);
+    setSummerCampBatches([]);
+    setSummerCampTimeSlotsByDate({});
   };
 
   const toggleMenu = (menu: MenuItem) => {
@@ -159,7 +201,112 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
       return [...current, menu];
     });
     if (category?.selectionCount === 1) setSelectedPackageClasses([]);
+    if (category?.summerCamp) {
+      setSummerCampDayCount(menu.id === "summer-camp-per-week" ? 1 : summerCampDayCount);
+      setSummerCampSelectedDates([]);
+      setEventDate("");
+      setEventTime("");
+      setSlots([]);
+    }
   };
+
+  const selectedSummerCampMenu = category?.summerCamp ? selectedMenus[0] : null;
+  const selectedSummerCampMenuId = selectedSummerCampMenu?.id || "";
+  const isSummerCampPerDay = selectedSummerCampMenu?.id === "summer-camp-per-day";
+  const isSummerCampPerWeek = selectedSummerCampMenu?.id === "summer-camp-per-week";
+  const summerCampRequiredDateCount = isSummerCampPerWeek ? 5 : summerCampDayCount;
+
+  useEffect(() => {
+    if (!category?.summerCamp || !selectedSummerCampMenuId) return;
+    const params = new URLSearchParams({
+      option: isSummerCampPerWeek ? "per-week" : "per-day",
+      days: String(isSummerCampPerDay ? summerCampDayCount : 1),
+    });
+    fetch(`/api/services/summer-camp-dates?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        const dates = Array.isArray(data.dates) ? data.dates : [];
+        setSummerCampAvailableDates(dates);
+        setSummerCampBatches(Array.isArray(data.batches) ? data.batches : []);
+        setSummerCampTimeSlotsByDate(data.timeSlotsByDate && typeof data.timeSlotsByDate === "object" ? data.timeSlotsByDate : {});
+        if (Array.isArray(data.items) && data.items.length > 0) {
+          const nextItems: MenuItem[] = data.items.map((item: SummerCampApiItem) => ({
+            id: item.id,
+            name: item.name,
+            price: Number(item.price) || 0,
+            categories: ["summer_camp"],
+            description: item.description,
+            price_unit: item.price_unit,
+          }));
+          setSummerCampItems(nextItems);
+          setSelectedMenus((current) => current.map((menu) => nextItems.find((item) => item.id === menu.id) || menu));
+        }
+        setSummerCampSelectedDates((current) => {
+          const valid = current.filter((date) => dates.includes(date)).slice(0, summerCampRequiredDateCount);
+          setEventDate(valid[0] || "");
+          if (valid.length !== current.length || valid.some((date, index) => date !== current[index])) {
+            setEventTime("");
+          }
+          return valid;
+        });
+      })
+      .catch(() => {
+        setSummerCampAvailableDates([]);
+        setSummerCampBatches([]);
+        setSummerCampTimeSlotsByDate({});
+      });
+  }, [category, selectedSummerCampMenuId, isSummerCampPerDay, isSummerCampPerWeek, summerCampDayCount, summerCampRequiredDateCount]);
+
+  useEffect(() => {
+    if (!category?.summerCamp || !eventDate) return;
+    if (isSummerCampPerWeek) {
+      const batch = summerCampBatches.find((item) => item.dates.includes(eventDate));
+      setSummerCampSelectedDates(batch?.dates || []);
+      setSlots(uniqueTimeSlots(batch?.dates.flatMap((date) => summerCampTimeSlotsByDate[date] || []) || []));
+      return;
+    }
+    if (!summerCampAvailableDates.includes(eventDate)) {
+      setSummerCampSelectedDates([]);
+      setSlots([]);
+      setEventTime("");
+      return;
+    }
+    setSummerCampSelectedDates([eventDate]);
+    setSlots(summerCampTimeSlotsByDate[eventDate] || []);
+    setEventTime("");
+  }, [category, eventDate, isSummerCampPerWeek, summerCampAvailableDates, summerCampBatches, summerCampTimeSlotsByDate]);
+
+  const setScheduleDate = (date: string) => {
+    if (!category?.summerCamp) {
+      setEventDate(date);
+      return;
+    }
+
+    if (isSummerCampPerWeek) {
+      const selectedBatch = summerCampSelectedDates.length > 0 ? summerCampSelectedDates : summerCampBatches.find((batch) => batch.dates.includes(date))?.dates || [];
+      if (!selectedBatch.includes(date)) {
+        setEventDate("");
+        setEventTime("");
+        setSlots([]);
+        return;
+      }
+      setEventDate(date);
+      setEventTime("");
+      setSlots(uniqueTimeSlots(summerCampTimeSlotsByDate[date] || []));
+      return;
+    }
+
+    if (!summerCampAvailableDates.includes(date)) {
+      setEventDate("");
+      setEventTime("");
+      setSummerCampSelectedDates([]);
+      setSlots([]);
+      return;
+    }
+
+    setEventDate(date);
+  };
+
 
   const togglePackageClass = (menu: MenuItem) => {
     setSelectedPackageClasses((current) => {
@@ -182,7 +329,9 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
 
   const selectedMenuPrice = selectedMenus.reduce((total, item) => total + Number(item.price || 0), 0);
   const baseAmount = !category ? 0
-    : category.flatPrice || (category.packages ? selectedMenuPrice
+    : category.flatPrice || (category.summerCamp
+      ? selectedMenuPrice * guestCount * (isSummerCampPerDay ? summerCampDayCount : 1)
+      : category.packages ? selectedMenuPrice
       : category.id === "mommy_me"
         ? selectedMenuPrice + Math.max(0, guestCount - 1) * MOMMY_ME_ADDITIONAL_CHILD_PRICE
         : selectedMenuPrice * guestCount);
@@ -196,9 +345,15 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
     && (!category?.packages || selectedPackageClasses.length === packageClassLimit);
   const scheduleComplete = category ? (category.separateSchedules
     ? selectedMenus.every((menu) => schedules[menu.id]?.date && schedules[menu.id]?.time)
+    : category.summerCamp
+      ? summerCampSelectedDates.length === summerCampRequiredDateCount && Boolean(eventTime)
     : Boolean(eventDate && eventTime)) : false;
+  const summerCampScheduleDates = isSummerCampPerWeek ? summerCampSelectedDates : summerCampAvailableDates;
+  const summerCampBatchLabel = summerCampSelectedDates.join(", ");
 
-  const canContinue = step === 1 ? selectionComplete : step === 2 ? scheduleComplete : Boolean(customerName.trim() && customerEmail.trim());
+  const categorySelectionComplete = selectionComplete
+    && (!category?.summerCamp || !isSummerCampPerWeek || summerCampSelectedDates.length === summerCampRequiredDateCount);
+  const canContinue = step === 1 ? categorySelectionComplete : step === 2 ? scheduleComplete : Boolean(customerName.trim() && customerEmail.trim());
 
   const handleSubmit = async () => {
     if (!category || !selectionComplete || !scheduleComplete || !customerName || !customerEmail) return;
@@ -211,6 +366,16 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
             event_time: schedules[menu.id].time,
             time_label: schedules[menu.id].timeLabel,
           }))
+        : category.summerCamp
+          ? selectedMenus.map((menu, index) => ({
+              id: menu.id, name: menu.name, session: index + 1,
+              quantity: menu.id === "summer-camp-per-day" ? summerCampDayCount : 1,
+              unitPrice: menu.price,
+              event_date: eventDate || null,
+              camp_dates: summerCampSelectedDates,
+              event_time: eventTime || null,
+              time_label: eventTimeLabel || null,
+            }))
         : category.packages
           ? selectedPackageClasses.map((menu, index) => ({
               id: menu.id, name: menu.name, session: index + 1,
@@ -234,12 +399,12 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
           // Catalog packages live in `packages`, while service_bookings.package_id
           // references the legacy `service_packages` table.
           packageId: null,
-          packageName: category.separateSchedules ? `${category.label} (${category.selectionCount} Sessions)` : selectedMenus[0]?.name,
+          packageName: category.summerCamp ? "Summer Camp" : category.separateSchedules ? `${category.label} (${category.selectionCount} Sessions)` : selectedMenus[0]?.name,
           menuId: selectedMenus.map((item) => item.id).join(","),
           menuName: category.packages
             ? `${selectedPackage?.name} - ${selectedPackageClasses.map((item) => item.name).join(", ")}`
             : menuNames,
-          menuPrice: category.flatPrice || selectedMenuPrice,
+          menuPrice: category.summerCamp ? baseAmount : category.flatPrice || selectedMenuPrice,
           customerName, customerEmail, customerPhone, companyName,
           eventDate: primaryDate, eventTime: primaryTime, guestCount,
           items: scheduleItems,
@@ -290,6 +455,7 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
                 </div>
               </div>
               {category && <div><h3 className="font-bold">Select {category.packages ? "Package" : category.selectionCount > 1 ? `${category.selectionCount} Menus` : "Menu"}</h3>{loadingData ? <Loader2 className="mt-4 h-5 w-5 animate-spin" /> : <div className="mt-3 grid gap-2 sm:grid-cols-2">{availableMenus.map((menu) => { const selected = selectedMenus.some((item) => item.id === menu.id); return <button key={menu.id} onClick={() => toggleMenu(menu)} className={`flex justify-between rounded-lg border p-3 text-left ${selected ? "border-[#FF8C6B] bg-[#FF8C6B]/10" : "border-stone-200"}`}><span>{menu.name}</span><span className="font-bold">AED {menu.price}</span></button>; })}</div>}</div>}
+              {category?.summerCamp && isSummerCampPerWeek && <div><h3 className="font-bold">Select Batch</h3><div className="mt-3 grid gap-2 sm:grid-cols-2">{summerCampBatches.map((batch) => { const selected = summerCampSelectedDates.join("|") === batch.dates.join("|"); return <button key={batch.id} onClick={() => { setSummerCampSelectedDates(batch.dates); setEventDate(batch.dates[0] || ""); setEventTime(""); setSlots(uniqueTimeSlots(batch.dates.flatMap((date) => summerCampTimeSlotsByDate[date] || []))); }} className={`rounded-lg border p-3 text-left ${selected ? "border-[#FF8C6B] bg-[#FF8C6B]/10" : "border-stone-200"}`}><p className="font-bold">{batch.name}</p><p className="text-sm text-stone-500">{batch.dates.join(", ")}</p></button>; })}</div>{summerCampBatches.length === 0 && <p className="mt-2 text-sm text-stone-500">No full summer camp batches are available yet.</p>}</div>}
               {selectedPackage && <div><h3 className="font-bold">Choose {packageClassLimit} Classes ({selectedPackageClasses.length}/{packageClassLimit})</h3><div className="mt-3 grid gap-2 sm:grid-cols-2">{packageClassOptions.map((menu) => <button key={menu.id} onClick={() => togglePackageClass(menu)} className={`rounded-lg border p-3 text-left ${selectedPackageClasses.some((item) => item.id === menu.id) ? "border-[#FF8C6B] bg-[#FF8C6B]/10" : "border-stone-200"}`}>{menu.name}</button>)}</div></div>}
             </div>
           )}
@@ -297,7 +463,7 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
           {step === 2 && category && (
             <div className="space-y-5">
               <div className="flex items-center justify-between"><h3 className="font-bold">Schedule</h3>{category.id !== "nanny" && <div className="flex items-center gap-3"><Button variant="outline" size="icon" onClick={() => setGuestCount(Math.max(category.minGuests, guestCount - 1))}><Minus className="h-4 w-4" /></Button><span className="font-bold">{guestCount} guests</span><Button variant="outline" size="icon" onClick={() => setGuestCount(Math.min(category.maxGuests, guestCount + 1))}><Plus className="h-4 w-4" /></Button></div>}</div>
-              {category.separateSchedules ? selectedMenus.map((menu, index) => { const schedule = schedules[menu.id]; return <div key={menu.id} className="rounded-lg border bg-stone-50 p-4"><p className="text-sm text-stone-500">Session {index + 1}</p><p className="font-bold">{menu.name}</p><div className="mt-3 grid gap-4 sm:grid-cols-2"><input type="date" min={getDubaiDate()} value={schedule?.date || ""} onChange={(e) => fetchSessionSlots(menu.id, e.target.value)} className="rounded-lg border p-3" /><div>{schedule?.loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <div className="grid grid-cols-2 gap-2">{(schedule?.slots || []).map((slot) => <button key={slot.start} onClick={() => setSchedules((current) => ({ ...current, [menu.id]: { ...current[menu.id], time: slot.start, timeLabel: slot.label } }))} className={`rounded-lg border p-2 text-sm ${schedule?.time === slot.start ? "border-[#FF8C6B] bg-[#FF8C6B]/10" : ""}`}>{slot.label}</button>)}</div>}</div></div></div>; }) : <><div className="grid gap-4 sm:grid-cols-2"><input type="date" min={getDubaiDate()} value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-lg border p-3" /><div>{loadingSlots ? <Loader2 className="h-5 w-5 animate-spin" /> : <div className="grid grid-cols-2 gap-2">{slots.map((slot) => <button key={slot.start} onClick={() => { setEventTime(slot.start); setEventTimeLabel(slot.label); }} className={`rounded-lg border p-2 text-sm ${eventTime === slot.start ? "border-[#FF8C6B] bg-[#FF8C6B]/10" : ""}`}>{slot.label}</button>)}</div>}</div></div>{category.extras && <div><h3 className="font-bold">Extras</h3><div className="mt-3 space-y-2">{extras.map((extra) => <div key={extra.id} className="flex items-center justify-between rounded-lg border p-3"><span>{extra.name} • AED {extra.price}</span><div className="flex items-center gap-2"><button onClick={() => setSelectedExtras((current) => ({ ...current, [extra.id]: Math.max(0, (current[extra.id] || 0) - 1) }))}>-</button><span>{selectedExtras[extra.id] || 0}</span><button onClick={() => setSelectedExtras((current) => ({ ...current, [extra.id]: (current[extra.id] || 0) + 1 }))}>+</button></div></div>)}</div></div>}</>}
+              {category.separateSchedules ? selectedMenus.map((menu, index) => { const schedule = schedules[menu.id]; return <div key={menu.id} className="rounded-lg border bg-stone-50 p-4"><p className="text-sm text-stone-500">Session {index + 1}</p><p className="font-bold">{menu.name}</p><div className="mt-3 grid gap-4 sm:grid-cols-2"><input type="date" min={getDubaiDate()} value={schedule?.date || ""} onChange={(e) => fetchSessionSlots(menu.id, e.target.value)} className="rounded-lg border p-3" /><div>{schedule?.loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <div className="grid grid-cols-2 gap-2">{(schedule?.slots || []).map((slot) => <button key={slot.start} onClick={() => setSchedules((current) => ({ ...current, [menu.id]: { ...current[menu.id], time: slot.start, timeLabel: slot.label } }))} className={`rounded-lg border p-2 text-sm ${schedule?.time === slot.start ? "border-[#FF8C6B] bg-[#FF8C6B]/10" : ""}`}>{slot.label}</button>)}</div>}</div></div></div>; }) : <><div className="grid gap-4 sm:grid-cols-2">{category.summerCamp ? (isSummerCampPerWeek ? <div className="rounded-lg border bg-stone-50 p-3 text-sm text-stone-700"><p className="font-bold text-stone-900">Selected batch dates</p><p>{summerCampBatchLabel}</p></div> : <select value={eventDate} onChange={(e) => setScheduleDate(e.target.value)} className="rounded-lg border p-3"><option value="">Select camp date</option>{summerCampScheduleDates.map((date) => <option key={date} value={date}>{date}</option>)}</select>) : <input type="date" min={getDubaiDate()} value={eventDate} onChange={(e) => setScheduleDate(e.target.value)} className="rounded-lg border p-3" />}<div>{loadingSlots ? <Loader2 className="h-5 w-5 animate-spin" /> : <div className="grid grid-cols-2 gap-2">{slots.map((slot) => <button key={slot.start} onClick={() => { setEventTime(slot.start); setEventTimeLabel(slot.label); }} className={`rounded-lg border p-2 text-sm ${eventTime === slot.start ? "border-[#FF8C6B] bg-[#FF8C6B]/10" : ""}`}>{slot.label}</button>)}</div>}</div></div>{category.extras && <div><h3 className="font-bold">Extras</h3><div className="mt-3 space-y-2">{extras.map((extra) => <div key={extra.id} className="flex items-center justify-between rounded-lg border p-3"><span>{extra.name} • AED {extra.price}</span><div className="flex items-center gap-2"><button onClick={() => setSelectedExtras((current) => ({ ...current, [extra.id]: Math.max(0, (current[extra.id] || 0) - 1) }))}>-</button><span>{selectedExtras[extra.id] || 0}</span><button onClick={() => setSelectedExtras((current) => ({ ...current, [extra.id]: (current[extra.id] || 0) + 1 }))}>+</button></div></div>)}</div></div>}</>}
             </div>
           )}
 
@@ -311,3 +477,7 @@ export function AdminCreateBookingModal({ isOpen, onClose, onSuccess, currentUse
     </div>
   );
 }
+
+
+
+

@@ -38,6 +38,7 @@ const ADMIN_CATEGORY_RULES: Record<string, { minGuests: number; maxGuests: numbe
   mommy_me: { minGuests: 1, maxGuests: 20, menuCount: 1 },
   birthday: { minGuests: 6, maxGuests: 35, menuCount: 1 },
   packages: { minGuests: 6, maxGuests: 35, menuCount: 1 },
+  summer_camp: { minGuests: 1, maxGuests: 35, menuCount: 1 },
   corporate: { minGuests: 6, maxGuests: 35, menuCount: 1 },
   classics_big: { minGuests: 1, maxGuests: 35, menuCount: 1 },
   monthly_big: { minGuests: 1, maxGuests: 35, menuCount: 1 },
