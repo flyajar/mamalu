@@ -12,6 +12,7 @@ import {
   Plus,
   Save,
   Search,
+  Settings,
   Star,
   Tags,
   Trash2,
@@ -58,6 +59,11 @@ interface Product {
   sku?: string;
   weight?: number;
   featured?: boolean;
+}
+
+interface ProductCartSettings {
+  minimumOrderValue: number;
+  deliveryFee: number;
 }
 
 type ProductDraft = Partial<Product> & {
@@ -111,7 +117,11 @@ export default function AdminProductsPage() {
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState("");
   const [showFeaturedOnly, setShowFeaturedOnly] = useState(false);
-  const [activeTab, setActiveTab] = useState<"products" | "categories">("products");
+  const [activeTab, setActiveTab] = useState<"products" | "categories" | "settings">("products");
+  const [settings, setSettings] = useState<ProductCartSettings>({
+    minimumOrderValue: 100,
+    deliveryFee: 15,
+  });
   const [editingProduct, setEditingProduct] = useState<ProductDraft | null>(null);
   const [editingCategory, setEditingCategory] = useState<CategoryDraft | null>(null);
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
@@ -130,6 +140,7 @@ export default function AdminProductsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to load products");
       setProducts(data.products || []);
       setCategories(data.categories || []);
+      if (data.settings) setSettings(data.settings);
     } catch (error: unknown) {
       alert(getErrorMessage(error, "Failed to load products"));
     } finally {
@@ -240,6 +251,24 @@ export default function AdminProductsPage() {
       setIsCreatingCategory(false);
     } catch (error: unknown) {
       alert(getErrorMessage(error, "Failed to save category"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/products", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save settings");
+      setSettings(data.settings || settings);
+    } catch (error: unknown) {
+      alert(getErrorMessage(error, "Failed to save settings"));
     } finally {
       setSaving(false);
     }
@@ -380,6 +409,12 @@ export default function AdminProductsPage() {
             >
               Categories
             </button>
+            <button
+              className={`px-4 py-2 rounded-md text-sm ${activeTab === "settings" ? "bg-stone-900 text-white" : "text-stone-600"}`}
+              onClick={() => setActiveTab("settings")}
+            >
+              Settings
+            </button>
           </div>
 
           {activeTab === "products" && (
@@ -487,7 +522,7 @@ export default function AdminProductsPage() {
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : activeTab === "categories" ? (
           <div className="bg-white rounded-2xl shadow-sm border border-stone-200 overflow-hidden">
             <table className="w-full">
               <thead className="bg-stone-50 border-b border-stone-200">
@@ -538,6 +573,55 @@ export default function AdminProductsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm border border-stone-200 p-6">
+            <div className="mb-6 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-stone-900 flex items-center gap-2">
+                  <Settings className="h-5 w-5" />
+                  Cart Settings
+                </h2>
+                <p className="mt-1 text-sm text-stone-500">
+                  Control the minimum product order amount and delivery fee shown in the cart.
+                </p>
+              </div>
+              <Button onClick={saveSettings} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Settings
+              </Button>
+            </div>
+
+            <div className="grid max-w-3xl grid-cols-1 gap-5 md:grid-cols-2">
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Minimum Delivery Amount AED</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={settings.minimumOrderValue}
+                  onChange={(event) => setSettings((current) => ({
+                    ...current,
+                    minimumOrderValue: Number(event.target.value),
+                  }))}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-1">Delivery Fee AED</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={settings.deliveryFee}
+                  onChange={(event) => setSettings((current) => ({
+                    ...current,
+                    deliveryFee: Number(event.target.value),
+                  }))}
+                  className="w-full px-3 py-2 border border-stone-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-stone-500"
+                />
+              </div>
+            </div>
           </div>
         )}
       </div>

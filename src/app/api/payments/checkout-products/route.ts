@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchProducts } from "@/lib/products/catalog";
+import { fetchProductCartSettings } from "@/lib/products/settings";
 
 interface CartItem {
   id: string;
@@ -11,9 +12,7 @@ interface CartItem {
   imageUrl?: string;
 }
 
-const SHIPPING_FEE = 15;
 const FREE_SHIPPING_THRESHOLD = 200;
-const MINIMUM_ORDER_VALUE = 100;
 
 function metadataValue(value: unknown) {
   return String(value || "").slice(0, 500);
@@ -71,7 +70,10 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     if (!supabase) throw new Error("Database not configured");
 
-    const products = await fetchProducts(supabase, { ids: productIds });
+    const [products, settings] = await Promise.all([
+      fetchProducts(supabase, { ids: productIds }),
+      fetchProductCartSettings(supabase),
+    ]);
     const productsById = new Map(products.map((product) => [product.id, product]));
 
     const validatedItems = cartItems.map((item) => {
@@ -110,14 +112,14 @@ export async function POST(request: NextRequest) {
 
     // Calculate if free shipping applies.
     const subtotal = validatedItems.reduce((sum: number, item) => sum + item.price * item.quantity, 0);
-    if (subtotal < MINIMUM_ORDER_VALUE) {
+    if (subtotal < settings.minimumOrderValue) {
       return NextResponse.json(
-        { error: `Minimum order value is AED ${MINIMUM_ORDER_VALUE}.00` },
+        { error: `Minimum order value is AED ${settings.minimumOrderValue.toFixed(2)}` },
         { status: 400 }
       );
     }
 
-    const shippingCost = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+    const shippingCost = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : settings.deliveryFee;
 
     // Add shipping as a line item if applicable
     if (shippingCost > 0) {
@@ -127,7 +129,7 @@ export async function POST(request: NextRequest) {
           product_data: {
             name: "Shipping",
           },
-          unit_amount: shippingCost * 100,
+          unit_amount: Math.round(shippingCost * 100),
         },
         quantity: 1,
       });

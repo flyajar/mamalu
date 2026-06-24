@@ -36,13 +36,20 @@ interface CheckoutDetails {
   country: string;
 }
 
-const SHIPPING_FEE = 15;
+interface ProductCartSettings {
+  minimumOrderValue: number;
+  deliveryFee: number;
+}
+
 const FREE_SHIPPING_THRESHOLD = 200;
-const MINIMUM_ORDER_VALUE = 100;
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [settings, setSettings] = useState<ProductCartSettings>({
+    minimumOrderValue: 100,
+    deliveryFee: 15,
+  });
   const [checkoutDetails, setCheckoutDetails] = useState<CheckoutDetails>({
     firstName: "",
     lastName: "",
@@ -62,6 +69,16 @@ export default function CartPage() {
     if (savedCart) {
       setCartItems(JSON.parse(savedCart));
     }
+
+    fetch("/api/product-cart-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        setSettings({
+          minimumOrderValue: Number(data.minimumOrderValue) || 0,
+          deliveryFee: Number(data.deliveryFee) || 0,
+        });
+      })
+      .catch((error) => console.error("Failed to load cart settings:", error));
   }, []);
 
   // Save cart to localStorage whenever it changes (skip initial render)
@@ -93,10 +110,12 @@ export default function CartPage() {
     (sum, item) => sum + item.price * item.quantity,
     0
   );
-  const shipping = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_FEE;
+  const minimumOrderValue = settings.minimumOrderValue;
+  const deliveryFee = settings.deliveryFee;
+  const shipping = subtotal > FREE_SHIPPING_THRESHOLD ? 0 : deliveryFee;
   const total = subtotal + shipping;
-  const minimumOrderRemaining = Math.max(0, MINIMUM_ORDER_VALUE - subtotal);
-  const canCheckout = cartItems.length > 0 && subtotal >= MINIMUM_ORDER_VALUE;
+  const minimumOrderRemaining = Math.max(0, minimumOrderValue - subtotal);
+  const canCheckout = cartItems.length > 0 && subtotal >= minimumOrderValue;
 
   const handleDetailsChange = (field: keyof CheckoutDetails, value: string) => {
     setCheckoutDetails((details) => ({ ...details, [field]: value }));
@@ -104,8 +123,8 @@ export default function CartPage() {
 
   const handleCheckout = async () => {
     if (cartItems.length === 0) return;
-    if (subtotal < MINIMUM_ORDER_VALUE) {
-      alert(`Minimum order value is ${formatPrice(MINIMUM_ORDER_VALUE)}.`);
+    if (subtotal < minimumOrderValue) {
+      alert(`Minimum order value is ${formatPrice(minimumOrderValue)}.`);
       return;
     }
     const missingField = Object.entries(checkoutDetails).find(([, value]) => !value.trim());
@@ -352,7 +371,7 @@ export default function CartPage() {
                     )}
                     {minimumOrderRemaining > 0 && (
                       <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
-                        Add {formatPrice(minimumOrderRemaining)} more to reach the {formatPrice(MINIMUM_ORDER_VALUE)} minimum order value.
+                        Add {formatPrice(minimumOrderRemaining)} more to reach the {formatPrice(minimumOrderValue)} minimum order value.
                       </p>
                     )}
                     <div className="border-t pt-3 flex justify-between font-bold text-stone-900">

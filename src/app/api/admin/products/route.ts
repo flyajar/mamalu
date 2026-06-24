@@ -8,6 +8,7 @@ import {
   mapProduct,
   slugify,
 } from "@/lib/products/catalog";
+import { fetchProductCartSettings, normalizeProductCartSettings } from "@/lib/products/settings";
 
 type ProductRequestBody = {
   title?: string;
@@ -76,6 +77,7 @@ export async function GET() {
       fetchProducts(supabase),
       fetchProductCategories(supabase),
     ]);
+    const settings = await fetchProductCartSettings(supabase);
     const categoryMap = new Map(categoryRows.map((category) => [category.id, category]));
 
     return NextResponse.json({
@@ -88,11 +90,41 @@ export async function GET() {
         order: category.display_order || 0,
         isActive: category.is_active !== false,
       })),
+      settings,
     });
   } catch (error: unknown) {
     console.error("Error fetching products:", error);
     return NextResponse.json(
       { error: getErrorMessage(error, "Failed to fetch products") },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const supabase = createAdminClient();
+    if (!supabase) throw new Error("Database not configured");
+
+    const body = await request.json();
+    const settings = normalizeProductCartSettings(body);
+
+    const { error } = await supabase
+      .from("site_content")
+      .upsert({
+        id: "product_cart_settings",
+        content: settings,
+        updated_at: new Date().toISOString(),
+      });
+
+    if (error) throw error;
+
+    revalidatePath("/cart");
+    return NextResponse.json({ settings });
+  } catch (error: unknown) {
+    console.error("Error saving product settings:", error);
+    return NextResponse.json(
+      { error: getErrorMessage(error, "Failed to save product settings") },
       { status: 500 }
     );
   }
