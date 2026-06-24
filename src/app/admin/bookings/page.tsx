@@ -156,13 +156,16 @@ interface ServiceBooking {
 interface BookingScheduleItem {
   id?: string;
   name?: string;
+  quantity?: number;
   session?: number;
   packageId?: string;
   packageName?: string;
   camp_dates?: string[] | null;
+  camp_date_statuses?: Record<string, "confirmed" | "completed" | string> | null;
   event_date?: string | null;
   event_time?: string | null;
   time_label?: string | null;
+  status?: "confirmed" | "completed" | string | null;
 }
 
 interface BookingTimeSlot {
@@ -314,6 +317,7 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [scheduleItems, setScheduleItems] = useState<BookingScheduleItem[]>([]);
   const [scheduleSaving, setScheduleSaving] = useState(false);
+  const [scheduleStatusSaving, setScheduleStatusSaving] = useState<number | null>(null);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState("");
   const [rescheduleTime, setRescheduleTime] = useState("");
@@ -770,6 +774,13 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
       && booking.items.length > 0;
   };
 
+  const isSummerCampScheduleBooking = (booking: ServiceBooking) => {
+    const serviceText = `${booking.service_name || ""} ${booking.package_name || ""} ${booking.menu_name || ""}`.toLowerCase();
+    return serviceText.includes("summer camp")
+      && Array.isArray(booking.items)
+      && booking.items.some((item) => Array.isArray(item.camp_dates) && item.camp_dates.length > 0);
+  };
+
   const generateBalancePaymentLink = async (sendEmail = false) => {
     if (!selectedBooking) return;
 
@@ -839,6 +850,13 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
   const getPackageScheduleItems = (booking: ServiceBooking) => {
     if (!isPackageBooking(booking)) return [];
     return [...(booking.items || [])].sort((a, b) => (a.session || 0) - (b.session || 0));
+  };
+
+  const getSummerCampScheduleItems = (booking: ServiceBooking) => {
+    if (!isSummerCampScheduleBooking(booking)) return [];
+    return [...(booking.items || [])]
+      .filter((item) => Array.isArray(item.camp_dates) && item.camp_dates.length > 0)
+      .sort((a, b) => (a.session || 0) - (b.session || 0));
   };
 
   const getPackageSlotOptions = () => {
@@ -927,35 +945,90 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
     (original?.time_label || original?.event_time || null) !== (next.time_label || next.event_time || null)
   );
 
-  const hasEditableScheduleChanges = scheduleItems.some((item, index) => {
-    if (isScheduleItemLocked(index)) return false;
-    return hasScheduleChanged(selectedBooking?.items?.[index], item) && item.event_date && item.event_time;
-  });
+  const hasScheduleStatusChanged = (original: BookingScheduleItem | undefined, next: BookingScheduleItem) => (
+    (original?.status || "confirmed") !== (next.status || "confirmed")
+  );
+
+  const hasScheduleItemChanges = scheduleItems.some((item, index) => (
+    hasScheduleStatusChanged(selectedBooking?.items?.[index], item) ||
+    (!isScheduleItemLocked(index) && hasScheduleChanged(selectedBooking?.items?.[index], item) && item.event_date && item.event_time)
+  ));
+
+  const saveScheduleItems = async (itemsToSave: BookingScheduleItem[]) => {
+    if (!selectedBooking) return null;
+
+    const res = await fetch(`/api/admin/bookings/${selectedBooking.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items: itemsToSave }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to save schedule");
+    }
+
+    setSelectedBooking(data.booking);
+    setScheduleItems(data.booking.items ? data.booking.items.map((item: BookingScheduleItem) => ({ ...item })) : []);
+    setBookings((prev) => prev.map((booking) => booking.id === data.booking.id ? data.booking : booking));
+    await fetchBookings();
+    return data.booking;
+  };
+
+  const setScheduleItemStatus = async (index: number, status: "confirmed" | "completed") => {
+    if (!selectedBooking) return;
+
+    const nextItems = scheduleItems.map((item, idx) => idx === index ? { ...item, status } : item);
+    setScheduleItems(nextItems);
+    setScheduleError(null);
+    setScheduleStatusSaving(index);
+    try {
+      await saveScheduleItems(nextItems);
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : "Failed to save schedule");
+      setScheduleItems(selectedBooking.items ? selectedBooking.items.map((item) => ({ ...item })) : []);
+    } finally {
+      setScheduleStatusSaving(null);
+    }
+  };
+
+  const setSummerCampDateStatus = async (itemIndex: number, date: string, status: "confirmed" | "completed") => {
+    if (!selectedBooking) return;
+
+    const nextItems = scheduleItems.map((item, idx) => {
+      if (idx !== itemIndex) return item;
+      return {
+        ...item,
+        camp_date_statuses: {
+          ...(item.camp_date_statuses || {}),
+          [date]: status,
+        },
+      };
+    });
+
+    setScheduleItems(nextItems);
+    setScheduleError(null);
+    setScheduleStatusSaving(itemIndex);
+    try {
+      await saveScheduleItems(nextItems);
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : "Failed to save schedule");
+      setScheduleItems(selectedBooking.items ? selectedBooking.items.map((item) => ({ ...item })) : []);
+    } finally {
+      setScheduleStatusSaving(null);
+    }
+  };
 
   const savePackageSchedule = async () => {
     if (!selectedBooking) return;
-    if (!hasEditableScheduleChanges) return;
+    if (!hasScheduleItemChanges) return;
 
     setScheduleSaving(true);
     setScheduleError(null);
     try {
-      const res = await fetch(`/api/admin/bookings/${selectedBooking.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ items: scheduleItems }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setScheduleError(data.error || "Failed to save schedule");
-        return;
-      }
-
-      setSelectedBooking(data.booking);
-      setBookings((prev) => prev.map((booking) => booking.id === data.booking.id ? data.booking : booking));
-      await fetchBookings();
-    } catch {
-      setScheduleError("Failed to save schedule");
+      await saveScheduleItems(scheduleItems);
+    } catch (error) {
+      setScheduleError(error instanceof Error ? error.message : "Failed to save schedule");
     } finally {
       setScheduleSaving(false);
     }
@@ -1535,7 +1608,7 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
       {/* Booking Detail Modal */}
       {showModal && selectedBooking && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-xl w-full max-w-[920px] max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold text-stone-900">
@@ -1610,6 +1683,7 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
                   {(() => {
                     const courseScheduleItems = getCourseScheduleItems(selectedBooking);
                     const packageScheduleItems = getPackageScheduleItems(selectedBooking);
+                    const summerCampScheduleItems = getSummerCampScheduleItems(selectedBooking);
 
                     if (courseScheduleItems.length > 0) {
                       return (
@@ -1639,6 +1713,82 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
                       );
                     }
 
+                    if (summerCampScheduleItems.length > 0) {
+                      return (
+                        <div className="space-y-3">
+                          <p className="text-sm text-stone-500">{selectedBooking.guest_count} guest(s)</p>
+                          <div className="rounded-lg border border-stone-200 overflow-hidden">
+                            {scheduleItems.flatMap((scheduleItem, itemIndex) => {
+                              if (!Array.isArray(scheduleItem.camp_dates) || scheduleItem.camp_dates.length === 0) return [];
+                              const campDates = [...new Set((scheduleItem.camp_dates || []).filter(Boolean))].sort();
+                              return campDates.map((date, dateIndex) => {
+                                const dateStatus = scheduleItem.camp_date_statuses?.[date] || scheduleItem.status || "confirmed";
+                                const savingThisItem = scheduleStatusSaving === itemIndex;
+                                return (
+                                  <div
+                                    key={`${scheduleItem.id || scheduleItem.name || "camp"}-${date}`}
+                                    className="grid gap-3 border-b border-stone-100 p-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_120px_150px]"
+                                  >
+                                    <div className="min-w-0">
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <p className="text-sm font-medium text-stone-900">
+                                          Day {dateIndex + 1}: {scheduleItem.name || "Summer Camp"}
+                                        </p>
+                                        <span className="inline-flex items-center gap-1 rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-600">
+                                          <Lock className="h-3 w-3" />
+                                          Confirmed
+                                        </span>
+                                        {dateStatus === "completed" && (
+                                          <span className="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                                            Completed
+                                          </span>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-stone-500">Summer camp day</p>
+                                    </div>
+                                    <input
+                                      type="date"
+                                      value={date}
+                                      disabled
+                                      className="h-10 rounded-lg border border-stone-200 bg-stone-100 px-3 text-sm text-stone-500"
+                                    />
+                                    <select
+                                      value={scheduleItem.event_time || ""}
+                                      disabled
+                                      className="h-10 rounded-lg border border-stone-200 bg-stone-100 px-3 text-sm text-stone-500"
+                                    >
+                                      <option value={scheduleItem.event_time || ""}>
+                                        {formatBookingTimeRange(scheduleItem.event_time, scheduleItem.time_label, packageTimeSlots)}
+                                      </option>
+                                    </select>
+                                    <div className="flex items-center justify-end md:col-span-3">
+                                      {!isMallUser && (
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant={dateStatus === "completed" ? "outline" : "default"}
+                                          className="whitespace-nowrap"
+                                          disabled={savingThisItem || scheduleSaving}
+                                          onClick={() => setSummerCampDateStatus(itemIndex, date, dateStatus === "completed" ? "confirmed" : "completed")}
+                                        >
+                                          {savingThisItem
+                                            ? "Saving..."
+                                            : dateStatus === "completed" ? "Set to Confirmed" : "Set to Completed"}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            })}
+                          </div>
+                          {scheduleError && (
+                            <p className="text-sm text-red-600">{scheduleError}</p>
+                          )}
+                        </div>
+                      );
+                    }
+
                     if (packageScheduleItems.length > 0) {
                       return (
                         <div className="space-y-3">
@@ -1650,13 +1800,14 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
                               const slotOptions = locked ? getPackageSlotOptions() : getScheduleSlotOptions(item, idx);
                               const slotsLoading = Boolean(scheduleSlotsLoading[getScheduleSlotKey(item.event_date)]);
                               const disableTimeSelect = readOnly || !item.event_date || slotsLoading;
+                              const itemStatus = item.status || "confirmed";
 
                               return (
                                 <div
                                   key={`${item.id || item.name || "menu"}-${idx}`}
-                                  className={`grid gap-3 border-b border-stone-100 p-3 last:border-b-0 sm:grid-cols-[1fr_150px_190px] ${locked ? "bg-stone-50" : ""}`}
+                                  className={`grid gap-3 border-b border-stone-100 p-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_112px_142px] lg:grid-cols-[minmax(0,1fr)_120px_150px] ${locked ? "bg-stone-50" : ""}`}
                                 >
-                                  <div>
+                                  <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
                                       <p className="text-sm font-medium text-stone-900">
                                         {item.session ? `Menu ${item.session}: ` : ""}{item.name || "Package Menu"}
@@ -1665,6 +1816,11 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
                                         <span className="inline-flex items-center gap-1 rounded-md bg-stone-200 px-2 py-0.5 text-xs font-medium text-stone-600">
                                           <Lock className="h-3 w-3" />
                                           Confirmed
+                                        </span>
+                                      )}
+                                      {itemStatus === "completed" && (
+                                        <span className="inline-flex items-center rounded-md bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                                          Completed
                                         </span>
                                       )}
                                     </div>
@@ -1697,6 +1853,22 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
                                   {!readOnly && item.event_date && !slotsLoading && slotOptions.length === 0 && (
                                     <p className="text-xs text-amber-700 sm:col-start-3">No slots available</p>
                                   )}
+                                  <div className="flex items-center justify-end md:col-span-3">
+                                    {!isMallUser && item.event_date && item.event_time && (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant={itemStatus === "completed" ? "outline" : "default"}
+                                        className="whitespace-nowrap"
+                                        disabled={scheduleStatusSaving !== null || scheduleSaving}
+                                        onClick={() => setScheduleItemStatus(idx, itemStatus === "completed" ? "confirmed" : "completed")}
+                                      >
+                                        {scheduleStatusSaving === idx
+                                          ? "Saving..."
+                                          : itemStatus === "completed" ? "Set to Confirmed" : "Set to Completed"}
+                                      </Button>
+                                    )}
+                                  </div>
                                 </div>
                               );
                             })}
@@ -1710,7 +1882,7 @@ export function AdminBookingsPageContent({ unpaidOnly = false }: AdminBookingsPa
                               type="button"
                               size="sm"
                               onClick={savePackageSchedule}
-                              disabled={scheduleSaving || !hasEditableScheduleChanges}
+                              disabled={scheduleSaving || !hasScheduleItemChanges}
                             >
                               {scheduleSaving ? "Saving..." : "Save Schedule"}
                             </Button>

@@ -11,9 +11,11 @@ type ScheduledItem = {
   event_time?: string;
   time_label?: string;
   camp_dates?: string[];
+  camp_date_statuses?: Record<string, string> | null;
   packageId?: string;
   packageName?: string;
   session?: number;
+  status?: string | null;
 };
 
 type DailyBooking = {
@@ -213,7 +215,7 @@ export async function GET(request: NextRequest) {
       supabase
         .from("service_bookings")
         .select("*")
-        .eq("status", "completed"),
+        .in("status", ["confirmed", "completed"]),
       supabase
         .from("class_bookings")
         .select("*")
@@ -586,6 +588,7 @@ export async function GET(request: NextRequest) {
           return [...new Set(campDates)].sort().map((date) => ({
             ...item,
             event_date: date,
+            status: item.camp_date_statuses?.[date] || item.status,
           }));
         }
 
@@ -604,6 +607,7 @@ export async function GET(request: NextRequest) {
             time: item.event_time || item.time_label || null,
             items: [{ name: item.name || "Package Item", quantity: Number(item.quantity) || 1 }],
             divisor: allocationDivisor,
+            status: item.status === "completed" ? "completed" as const : "confirmed" as const,
           }))
         : booking.event_date && String(booking.event_date) >= requestedFromDate && String(booking.event_date) <= requestedToDate
           ? [{
@@ -613,12 +617,15 @@ export async function GET(request: NextRequest) {
                 ? items.map((item) => ({ name: item.name || "Booked Item", quantity: Number(item.quantity) || 1 }))
                 : [{ name: String(booking.package_name || booking.service_name || "Service Booking"), quantity: 1 }],
               divisor: 1,
+              status: booking.status === "completed" ? "completed" as const : "confirmed" as const,
             }]
           : [];
 
       const total = Number(booking.total_amount) || 0;
       const collected = amountCollected(booking);
       occurrences.forEach((occurrence) => {
+        if (occurrence.status !== "completed") return;
+
         dailyBookings.push({
           id: `${booking.id}-${occurrence.date}-${occurrence.time || ""}`,
           bookingNumber: String(booking.booking_number || ""),
@@ -629,7 +636,7 @@ export async function GET(request: NextRequest) {
           bookingType: "service",
           serviceType: String(booking.service_name || booking.service_type || "Service"),
           bookedItems: occurrence.items,
-          status: "completed",
+          status: occurrence.status,
           paymentStatus: String(booking.payment_status || "pending"),
           paidAt: booking.paid_at ? String(booking.paid_at) : null,
           guests: Number(booking.guest_count) || 1,

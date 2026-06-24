@@ -16,9 +16,12 @@ type ScheduleItem = {
   session?: number;
   packageId?: string;
   packageName?: string;
+  camp_dates?: string[] | null;
+  camp_date_statuses?: Record<string, "confirmed" | "completed" | string> | null;
   event_date?: string | null;
   event_time?: string | null;
   time_label?: string | null;
+  status?: "confirmed" | "completed" | string | null;
 };
 
 type ServiceBookingForConflict = {
@@ -239,6 +242,27 @@ function isScheduleChanged(original: ScheduleItem, next: ScheduleItem) {
   );
 }
 
+function normalizeScheduleItemStatus(status?: string | null) {
+  if (!status) return "confirmed";
+  return status === "completed" ? "completed" : "confirmed";
+}
+
+function normalizeCampDateStatuses(
+  campDates?: string[] | null,
+  statuses?: Record<string, unknown> | null
+) {
+  const normalized: Record<string, "confirmed" | "completed"> = {};
+  if (!Array.isArray(campDates) || !statuses || typeof statuses !== "object") return normalized;
+
+  const allowedDates = new Set(campDates.filter(Boolean));
+  Object.entries(statuses).forEach(([date, status]) => {
+    if (!allowedDates.has(date)) return;
+    normalized[date] = status === "completed" ? "completed" : "confirmed";
+  });
+
+  return normalized;
+}
+
 function validateScheduleItems(originalItems: ScheduleItem[] | null | undefined, nextItems: unknown) {
   if (!Array.isArray(originalItems) || originalItems.length === 0) {
     return { error: "This booking does not have package menus to schedule" };
@@ -251,6 +275,7 @@ function validateScheduleItems(originalItems: ScheduleItem[] | null | undefined,
   const seen = new Set<string>();
   const sanitized: ScheduleItem[] = [];
   const newlyScheduledItems: ScheduleItem[] = [];
+  const scheduleChangedItems: ScheduleItem[] = [];
 
   for (let index = 0; index < originalItems.length; index++) {
     const original = originalItems[index] || {};
@@ -287,16 +312,22 @@ function validateScheduleItems(originalItems: ScheduleItem[] | null | undefined,
       event_date: incoming.event_date || null,
       event_time: incoming.event_time || null,
       time_label: incoming.event_time ? incoming.time_label || incoming.event_time : null,
+      status: normalizeScheduleItemStatus(incoming.status),
+      camp_date_statuses: normalizeCampDateStatuses(original.camp_dates, incoming.camp_date_statuses),
     };
 
     sanitized.push(sanitizedItem);
+
+    if (scheduleChanged) {
+      scheduleChangedItems.push(sanitizedItem);
+    }
 
     if (!hasCompleteSchedule(original) && hasCompleteSchedule(sanitizedItem)) {
       newlyScheduledItems.push(sanitizedItem);
     }
   }
 
-  return { items: sanitized, newlyScheduledItems };
+  return { items: sanitized, newlyScheduledItems, scheduleChangedItems };
 }
 
 async function findScheduleConflicts(
@@ -542,16 +573,18 @@ export async function PATCH(
         return NextResponse.json({ error: validation.error }, { status: 400 });
       }
 
-      const conflicts = await findScheduleConflicts(supabase, id, validation.items);
-      if (conflicts.length > 0) {
-        const first = conflicts[0];
-        return NextResponse.json(
-          {
-            error: `The selected slot is already occupied${first.booking_number ? ` by ${first.booking_number}` : ""}.`,
-            conflicts,
-          },
-          { status: 409 }
-        );
+      if ((validation.scheduleChangedItems || []).length > 0) {
+        const conflicts = await findScheduleConflicts(supabase, id, validation.scheduleChangedItems || []);
+        if (conflicts.length > 0) {
+          const first = conflicts[0];
+          return NextResponse.json(
+            {
+              error: `The selected slot is already occupied${first.booking_number ? ` by ${first.booking_number}` : ""}.`,
+              conflicts,
+            },
+            { status: 409 }
+          );
+        }
       }
 
       updateData.items = validation.items;
