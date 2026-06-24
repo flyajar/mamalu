@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { dateAllowsDeposit, getDubaiDate } from "@/lib/payments/deposit-policy";
+import { dateAllowsDeposit, getDubaiDate, getMinimumBookableDate } from "@/lib/payments/deposit-policy";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -935,16 +935,19 @@ export default function MiniChefPage() {
       total: extra.price * selectedExtras[extra.id],
     }));
 
-  const today = getDubaiDate();
+  const minimumBookableDate = getMinimumBookableDate();
   const lookupTimeSlots = isSummerCamp ? summerCampTimeSlots : allTimeSlots;
   const selectedTimeSlotLabel = lookupTimeSlots.find((slot) => slot.start === eventTime)?.label || eventTime;
   const monthlySpecialDates = getMonthlySpecialDates(selectedMenu);
-  const monthlySpecialTimeSlots = isMonthly && eventDate && monthlySpecialDates.includes(eventDate) && eventDate >= today
+  const selectedDatesAreBookable = isSummerCamp
+    ? summerCampSelectedDates.length > 0 && summerCampSelectedDates.every((date) => date >= minimumBookableDate)
+    : Boolean(eventDate && eventDate >= minimumBookableDate);
+  const monthlySpecialTimeSlots = isMonthly && eventDate && monthlySpecialDates.includes(eventDate) && eventDate >= minimumBookableDate
     ? getMonthlySpecialTimeSlots(selectedMenu, eventDate)
     : [];
   const displayedTimeSlots = isMonthly ? monthlySpecialTimeSlots : isSummerCamp ? summerCampTimeSlots : availableTimeSlots;
   const timeSlotEmptyMessage = isMonthly
-    ? selectedMenu && monthlySpecialDates.length > 0 && monthlySpecialDates.every((date) => date < today)
+    ? selectedMenu && monthlySpecialDates.length > 0 && monthlySpecialDates.every((date) => date < minimumBookableDate)
       ? "These monthly special dates have passed"
       : selectedMenu
       ? "Select the available date first"
@@ -1004,6 +1007,10 @@ export default function MiniChefPage() {
     if (!selectedMenu) return;
     if (isPackage && !isPackageSelectionComplete(selectedMenu, selectedPackageMenuItems)) return;
     if (isSummerCamp && selectedSummerCampMenus.length !== SUMMER_CAMP_SELECTION_COUNT) return;
+    if (!selectedDatesAreBookable) {
+      setValidationMessage("Please select a later event date.");
+      return;
+    }
     
     // Show waiver modal if not accepted
     if (!waiverAccepted && !acceptedWaiver) {
@@ -1157,6 +1164,7 @@ export default function MiniChefPage() {
       if (isPackage && !isPackageSelectionComplete(selectedMenu, selectedPackageMenuItems)) return "Please complete your package class selection.";
       if (isSummerCamp && selectedSummerCampMenus.length !== SUMMER_CAMP_SELECTION_COUNT) return "Please select your summer camp option.";
       if (!eventDate) return "Please select an event date.";
+      if (!selectedDatesAreBookable) return "Please select a later event date.";
       if (!eventTime) return "Please select a time slot.";
     }
     const detailsStep = hasExtras ? 3 : 2;
@@ -1165,6 +1173,7 @@ export default function MiniChefPage() {
       if (!customerEmail) return "Please enter your email address.";
       if (isBirthday && !needsExternalSuppliers) return "Please select whether you will use external suppliers.";
       if (!eventDate) return "Please select an event date.";
+      if (!selectedDatesAreBookable) return "Please select a later event date.";
       if (!eventTime) return "Please select a time slot.";
     }
     return "";
@@ -1177,13 +1186,13 @@ export default function MiniChefPage() {
       if (isPackage && !isPackageSelectionComplete(selectedMenu, selectedPackageMenuItems)) return false;
       if (isSummerCamp && selectedSummerCampMenus.length !== SUMMER_CAMP_SELECTION_COUNT) return false;
       if (isSummerCamp) {
-        return summerCampSelectedDates.length === summerCampRequiredDateCount && Boolean(eventTime);
+        return summerCampSelectedDates.length === summerCampRequiredDateCount && selectedDatesAreBookable && Boolean(eventTime);
       }
-      return Boolean(eventDate && eventTime);
+      return Boolean(eventDate && selectedDatesAreBookable && eventTime);
     }
     const detailsStep = hasExtras ? 3 : 2;
     if (step === detailsStep) {
-      if (!customerName || !customerEmail || !eventDate || !eventTime) return false;
+      if (!customerName || !customerEmail || !eventDate || !selectedDatesAreBookable || !eventTime) return false;
       if (isBirthday && !needsExternalSuppliers) return false;
       if (isSummerCamp && summerCampSelectedDates.length !== summerCampRequiredDateCount) return false;
       if (activeCategory === "monthly" && selectedMenu) {
@@ -1576,7 +1585,7 @@ export default function MiniChefPage() {
                                 setEventDate(date);
                                 setEventTime("");
                               }}
-                              today={today}
+                              today={minimumBookableDate}
                             />
                           )
                         ) : isSummerCamp ? (
@@ -1630,11 +1639,11 @@ export default function MiniChefPage() {
                               onValuesChange={handleSummerCampDatesChange}
                               multiple={summerCampRequiredDateCount > 1}
                               maxSelections={summerCampRequiredDateCount}
-                              today={today}
+                              today={minimumBookableDate}
                             />
                           )
                         ) : (
-                            <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} unavailableDates={blockedRentalDates} restrictToAvailableDates={false} />
+                            <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={minimumBookableDate} unavailableDates={blockedRentalDates} restrictToAvailableDates={false} />
                         )}
                       </div>
                       <div>
@@ -1957,14 +1966,14 @@ export default function MiniChefPage() {
                                   setEventDate(date);
                                   setEventTime("");
                                 }}
-                                today={today}
+                                today={minimumBookableDate}
                               />
                             )
                           ) : (
                             <MonthlyAvailableDatePicker
                               value={eventDate}
                               onChange={setEventDate}
-                              today={today}
+                              today={minimumBookableDate}
                               unavailableDates={blockedRentalDates}
                               restrictToAvailableDates={false}
                             />

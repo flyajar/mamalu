@@ -5,7 +5,7 @@ import { ensureCustomerAccountAndSendAccess } from "@/lib/account/customer-accou
 import { sendServiceBookingConfirmationEmail } from "@/lib/email/service-booking-confirmation";
 import { createSourceInvoice, markSourceInvoicePaid, updateSourceInvoiceCheckout } from "@/lib/invoices/source-invoices";
 import { consumeVoucherUse, getRedeemableVoucherByCode } from "@/lib/vouchers/voucher-usage";
-import { dateAllowsDeposit } from "@/lib/payments/deposit-policy";
+import { dateAllowsDeposit, getMinimumBookableDate } from "@/lib/payments/deposit-policy";
 import { sendAdminNotification } from "@/lib/email/admin-notification";
 
 const BOOKED_SLOT_STATUSES = ["confirmed", "pending", "deposit_paid", "completed"];
@@ -261,6 +261,23 @@ export async function POST(request: NextRequest) {
     const isCorporatePrivateBooking =
       isBigChefBooking && category === "corporate";
     const usesDateBasedDeposit = isRentalBooking || isBirthdayBooking || isCorporatePrivateBooking;
+    const usesMinimumBookableDate = isRentalBooking || isMiniChefBooking || isBigChefBooking;
+    const minimumBookableDate = getMinimumBookableDate();
+    const itemDates = Array.isArray(items)
+      ? items.flatMap((item: { event_date?: unknown; camp_dates?: unknown }) => [
+          typeof item.event_date === "string" ? item.event_date : null,
+          ...(Array.isArray(item.camp_dates) ? item.camp_dates.filter((date): date is string => typeof date === "string") : []),
+        ])
+      : [];
+    const requestedDates = [typeof eventDate === "string" ? eventDate : null, ...itemDates].filter((date): date is string => Boolean(date));
+
+    if (usesMinimumBookableDate && requestedDates.some((date) => date < minimumBookableDate)) {
+      return NextResponse.json(
+        { error: "Please choose a later event date." },
+        { status: 400 }
+      );
+    }
+
     const depositEligible = usesDateBasedDeposit && eventDate
       ? dateAllowsDeposit(eventDate, getBusinessDateParts().date)
       : false;
@@ -359,7 +376,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Could not verify summer camp date availability" }, { status: 500 });
       }
 
-      const today = getBusinessDateParts().date;
+      const today = minimumBookableDate;
       const availableDates = new Set(
         getSummerCampSelectableDates(
           batches || [],

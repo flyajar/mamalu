@@ -14,7 +14,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { MonthlyAvailableDatePicker } from "@/components/booking/monthly-available-date-picker";
 import { BigChefPageContent, defaultBigChefContent } from "@/types/site-content";
-import { dateAllowsDeposit, getDubaiDate } from "@/lib/payments/deposit-policy";
+import { dateAllowsDeposit, getDubaiDate, getMinimumBookableDate } from "@/lib/payments/deposit-policy";
 
 interface MonthlySpecialTimeRange { start: string; end: string; }
 interface MonthlySpecialSchedule { date: string; times: MonthlySpecialTimeRange[]; }
@@ -574,6 +574,10 @@ export default function BigChefPage() {
     if (isTeenager && selectedTeenMenus.length !== 4) return;
     if (isNanny && selectedNannyMenus.length !== 4) return;
     if (usesFourMenuSelection && !courseSchedulesComplete) return;
+    if (!selectedDatesAreBookable) {
+      setValidationMessage("Please select a later event date.");
+      return;
+    }
     if (!waiverAccepted && !acceptedWaiver) { setShowWaiverModal(true); return; }
     setSubmitting(true);
     try {
@@ -599,15 +603,18 @@ export default function BigChefPage() {
   };
 
   const handleWaiverAccept = () => { setWaiverAccepted(true); setShowWaiverModal(false); handleSubmit(true); };
-  const today = getDubaiDate();
+  const minimumBookableDate = getMinimumBookableDate();
   const detailsStep = hasExtras ? 3 : 2;
   const monthlySpecialDates = getMonthlySpecialDates(selectedMenu);
-  const monthlySpecialTimeSlots = isMonthly && eventDate && monthlySpecialDates.includes(eventDate) && eventDate >= today
+  const selectedDatesAreBookable = usesFourMenuSelection
+    ? courseScheduleItems.length > 0 && courseScheduleItems.every((item) => item.event_date && item.event_date >= minimumBookableDate)
+    : Boolean(eventDate && eventDate >= minimumBookableDate);
+  const monthlySpecialTimeSlots = isMonthly && eventDate && monthlySpecialDates.includes(eventDate) && eventDate >= minimumBookableDate
     ? getMonthlySpecialTimeSlots(selectedMenu, eventDate)
     : [];
   const displayedTimeSlots = isMonthly ? monthlySpecialTimeSlots : availableTimeSlots;
   const timeSlotEmptyMessage = isMonthly
-    ? selectedMenu && monthlySpecialDates.length > 0 && monthlySpecialDates.every((date) => date < today)
+    ? selectedMenu && monthlySpecialDates.length > 0 && monthlySpecialDates.every((date) => date < minimumBookableDate)
       ? "These monthly special dates have passed"
       : selectedMenu
       ? "Select the available date first"
@@ -622,11 +629,13 @@ export default function BigChefPage() {
       if (isTeenager) return selectedTeenMenus.length < 4 ? `Please select 4 menus (${selectedTeenMenus.length}/4 selected).` : "";
       if (!selectedMenu) return "Please select a menu to continue.";
       if (!eventDate) return "Please select an event date.";
+      if (!selectedDatesAreBookable) return "Please select a later event date.";
       if (!eventTime) return "Please select a time slot.";
     }
     if (step === detailsStep) {
       if (!customerName) return "Please enter your name.";
       if (!customerEmail) return "Please enter your email address.";
+      if (!selectedDatesAreBookable) return "Please select a later event date.";
       if (!eventDate) return "Please select an event date.";
       if (!eventTime) return "Please select a time slot.";
     }
@@ -637,12 +646,12 @@ export default function BigChefPage() {
     if (step === 1) {
       if (isNanny) return selectedNannyMenus.length === 4;
       if (isTeenager) return selectedTeenMenus.length === 4;
-      return selectedMenu !== null && Boolean(eventDate && eventTime);
+      return selectedMenu !== null && Boolean(eventDate && selectedDatesAreBookable && eventTime);
     }
     if (hasExtras && step === 2) return true;
     if (step === detailsStep) {
-      if (usesFourMenuSelection) return Boolean(customerName && customerEmail && courseSchedulesComplete);
-      if (!customerName || !customerEmail || !eventDate || !eventTime) return false;
+      if (usesFourMenuSelection) return Boolean(customerName && customerEmail && courseSchedulesComplete && selectedDatesAreBookable);
+      if (!customerName || !customerEmail || !eventDate || !selectedDatesAreBookable || !eventTime) return false;
       if (activeCategory === "monthly" && selectedMenu) {
         const cap = menuCapacities[selectedMenu.id];
         if (cap !== undefined && cap !== null && cap.available <= 0) return false;
@@ -796,11 +805,11 @@ export default function BigChefPage() {
                                 setEventDate(date);
                                 setEventTime("");
                               }}
-                              today={today}
+                              today={minimumBookableDate}
                             />
                           )
                         ) : (
-                          <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={today} unavailableDates={blockedRentalDates} restrictToAvailableDates={false} />
+                          <MonthlyAvailableDatePicker value={eventDate} onChange={setEventDate} today={minimumBookableDate} unavailableDates={blockedRentalDates} restrictToAvailableDates={false} />
                         )}
                       </div>
                       <div>
@@ -951,7 +960,7 @@ export default function BigChefPage() {
                                   <MonthlyAvailableDatePicker
                                     value={schedule.date}
                                     onChange={(date) => updateCourseScheduleDate(menu.id, date)}
-                                    today={today}
+                                    today={minimumBookableDate}
                                     unavailableDates={blockedRentalDates}
                                     restrictToAvailableDates={false}
                                   />
@@ -1018,14 +1027,14 @@ export default function BigChefPage() {
                                   setEventDate(date);
                                   setEventTime("");
                                 }}
-                                today={today}
+                                today={minimumBookableDate}
                               />
                           )
                         ) : (
                             <MonthlyAvailableDatePicker
                               value={eventDate}
                               onChange={setEventDate}
-                              today={today}
+                              today={minimumBookableDate}
                               unavailableDates={blockedRentalDates}
                               restrictToAvailableDates={false}
                             />

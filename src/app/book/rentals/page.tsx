@@ -7,6 +7,7 @@ import { ArrowLeft, ChevronDown, Clock, CheckCircle2 } from "lucide-react";
 import ImageSlider from "@/components/ImageSlider";
 import { MonthlyAvailableDatePicker } from "@/components/booking/monthly-available-date-picker";
 import { RentalsPageContent, defaultRentalsContent } from "@/types/site-content";
+import { dateAllowsDeposit, getDubaiDate, getMinimumBookableDate } from "@/lib/payments/deposit-policy";
 
 const PRIMARY_BUTTON_CLASS = "bg-[rgb(255_140_107)] hover:bg-[rgb(255_126_91)] text-white border border-[rgb(255_140_107)] disabled:!bg-[rgb(255_170_145)] disabled:!border-[rgb(255_170_145)] disabled:!text-white disabled:!opacity-100 disabled:cursor-not-allowed";
 const FORM_LABEL_CLASS = "block text-base font-bold text-stone-700 mb-2";
@@ -44,16 +45,13 @@ export default function RentalsPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isPurposeOpen, setIsPurposeOpen] = useState(false);
   const [blockedRentalDates, setBlockedRentalDates] = useState<string[]>([]);
-  const today = new Date().toISOString().split("T")[0];
+  const today = getDubaiDate();
+  const minimumBookableDate = getMinimumBookableDate();
   const selectedPurposeLabel = PURPOSE_OPTIONS.find((option) => option.value === formData.purpose)?.label || "Select purpose";
   const selectedRentalOption = content.rentalOptions.find((o) => o.id === selectedOption);
   const isHalfDayRental = selectedRentalOption?.id === "half-day";
   const selectedDateAllowsDeposit = formData.date
-    ? Math.round(
-        (new Date(`${formData.date}T00:00:00`).getTime() -
-          new Date(`${today}T00:00:00`).getTime()) /
-          86_400_000
-      ) > 2
+    ? dateAllowsDeposit(formData.date, today)
     : false;
 
   useEffect(() => {
@@ -102,6 +100,10 @@ export default function RentalsPage() {
     if (!selectedOption) return;
     if (!formData.date) {
       alert("Please select a preferred date.");
+      return;
+    }
+    if (formData.date < minimumBookableDate) {
+      alert("Please select a later preferred date.");
       return;
     }
     if (isHalfDayRental && !formData.timeSlot) {
@@ -352,7 +354,7 @@ export default function RentalsPage() {
                     <MonthlyAvailableDatePicker
                       value={formData.date}
                       onChange={(date) => setFormData({ ...formData, date })}
-                      today={today}
+                      today={minimumBookableDate}
                       unavailableDates={blockedRentalDates}
                       restrictToAvailableDates={false}
                     />
