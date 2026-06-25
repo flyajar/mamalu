@@ -45,6 +45,8 @@ export default function RentalsPage() {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isPurposeOpen, setIsPurposeOpen] = useState(false);
   const [blockedRentalDates, setBlockedRentalDates] = useState<string[]>([]);
+  const [blockedHalfDaySlots, setBlockedHalfDaySlots] = useState<string[]>([]);
+  const [selectedDateHasHiddenTimeRules, setSelectedDateHasHiddenTimeRules] = useState(false);
   const today = getDubaiDate();
   const minimumBookableDate = getMinimumBookableDate();
   const selectedPurposeLabel = PURPOSE_OPTIONS.find((option) => option.value === formData.purpose)?.label || "Select purpose";
@@ -59,6 +61,16 @@ export default function RentalsPage() {
     fetchRentalAvailability();
   }, []);
 
+  useEffect(() => {
+    fetchRentalAvailability(formData.date);
+  }, [formData.date]);
+
+  useEffect(() => {
+    if (formData.timeSlot && blockedHalfDaySlots.includes(formData.timeSlot)) {
+      setFormData((current) => ({ ...current, timeSlot: "" }));
+    }
+  }, [blockedHalfDaySlots, formData.timeSlot]);
+
   const fetchContent = async () => {
     try {
       const res = await fetch("/api/site-content?page=rentals");
@@ -69,12 +81,15 @@ export default function RentalsPage() {
     }
   };
 
-  const fetchRentalAvailability = async () => {
+  const fetchRentalAvailability = async (date?: string) => {
     try {
-      const res = await fetch("/api/rentals/availability", { cache: "no-store" });
+      const query = date ? `?date=${encodeURIComponent(date)}` : "";
+      const res = await fetch(`/api/rentals/availability${query}`, { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch rental availability");
       const data = await res.json();
       setBlockedRentalDates(Array.isArray(data.blockedDates) ? data.blockedDates : []);
+      setBlockedHalfDaySlots(Array.isArray(data.blockedHalfDaySlots) ? data.blockedHalfDaySlots : []);
+      setSelectedDateHasHiddenTimeRules(Boolean(data.hasHiddenTimeRules));
     } catch (error) {
       console.error("Error fetching rental availability:", error);
     }
@@ -108,6 +123,14 @@ export default function RentalsPage() {
     }
     if (isHalfDayRental && !formData.timeSlot) {
       alert("Please select a time slot for the half day rental.");
+      return;
+    }
+    if (isHalfDayRental && blockedHalfDaySlots.includes(formData.timeSlot)) {
+      alert("The selected rental time slot is no longer available. Please choose another time.");
+      return;
+    }
+    if (!isHalfDayRental && selectedDateHasHiddenTimeRules) {
+      alert("The selected date has booked time ranges and is not available for full day rental. Please choose another date.");
       return;
     }
 
@@ -423,10 +446,16 @@ export default function RentalsPage() {
                         <button
                           key={slot}
                           type="button"
-                          onClick={() => setFormData({ ...formData, timeSlot: slot })}
+                          onClick={() => {
+                            if (blockedHalfDaySlots.includes(slot)) return;
+                            setFormData({ ...formData, timeSlot: slot });
+                          }}
+                          disabled={blockedHalfDaySlots.includes(slot)}
                           className={`rounded-xl border px-4 py-3 text-center text-base font-bold transition-colors ${
                             formData.timeSlot === slot
                               ? "border-[#FF8C6B] bg-[#FF8C6B] text-white"
+                              : blockedHalfDaySlots.includes(slot)
+                              ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-300"
                               : "border-gray-200 bg-white text-stone-700 hover:border-[#FF8C6B] hover:bg-[#FF8C6B]/10"
                           }`}
                         >

@@ -14,6 +14,7 @@ const BUSINESS_TIME_ZONE = "Asia/Dubai";
 const MONTHLY_SLOT_CATEGORY_IDS = new Set(["monthly_mini", "monthly_big"]);
 const SUMMER_CAMP_SLOT_CATEGORY_ID = "summer_camp";
 const FULL_DAY_RENTAL_PACKAGE = "full day rental";
+const HALF_DAY_RENTAL_DURATION_MINUTES = 240;
 
 function normalizeTimeForQuery(time: string) {
   return time.slice(0, 5);
@@ -47,6 +48,12 @@ function parseTime(time: string) {
   return hours * 60 + minutes;
 }
 
+function minutesToTime(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60) % 24;
+  const minutes = totalMinutes % 60;
+  return `${hours.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
+}
+
 function getBusinessDateParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: BUSINESS_TIME_ZONE,
@@ -73,6 +80,23 @@ function hasMinimumBookingNotice(eventDate: string, eventTime: string) {
   if (eventDate > now.date) return true;
 
   return parseTime(eventTime) - now.minutes >= MIN_BOOKING_NOTICE_MINUTES;
+}
+
+function isTimeRangeHidden(
+  start: string,
+  end: string,
+  hiddenSlots: Array<{ start_time?: string | null; end_time?: string | null }>
+) {
+  const startMinutes = parseTime(normalizeTimeForQuery(start));
+  const endMinutes = parseTime(normalizeTimeForQuery(end));
+
+  return hiddenSlots.some((hiddenSlot) => {
+    if (!hiddenSlot.start_time || !hiddenSlot.end_time) return false;
+
+    const hiddenStart = parseTime(normalizeTimeForQuery(hiddenSlot.start_time));
+    const hiddenEnd = parseTime(normalizeTimeForQuery(hiddenSlot.end_time));
+    return startMinutes >= hiddenStart && endMinutes <= hiddenEnd;
+  });
 }
 
 function getSummerCampSelectableDates(
@@ -460,6 +484,35 @@ export async function POST(request: NextRequest) {
           { error: "The selected date is already booked for a kitchen rental. Please choose another date." },
           { status: 409 }
         );
+      }
+
+      const { data: hiddenRentalSlots, error: hiddenRentalSlotsError } = await supabase
+        .from("booking_hidden_time_slots")
+        .select("start_time, end_time")
+        .eq("hidden_date", eventDate);
+
+      if (hiddenRentalSlotsError) {
+        console.error("Hidden rental time slot check error:", hiddenRentalSlotsError);
+        return NextResponse.json({ error: "Could not verify rental time availability" }, { status: 500 });
+      }
+
+      if (!eventTime && (hiddenRentalSlots || []).length > 0) {
+        return NextResponse.json(
+          { error: "The selected date has booked time ranges and is not available for full day rental. Please choose another date." },
+          { status: 409 }
+        );
+      }
+
+      if (eventTime) {
+        const rentalStart = normalizeTimeForQuery(eventTime);
+        const rentalEnd = minutesToTime(parseTime(rentalStart) + HALF_DAY_RENTAL_DURATION_MINUTES);
+
+        if (isTimeRangeHidden(rentalStart, rentalEnd, hiddenRentalSlots || [])) {
+          return NextResponse.json(
+            { error: "The selected rental time slot is no longer available. Please choose another time." },
+            { status: 409 }
+          );
+        }
       }
     }
 

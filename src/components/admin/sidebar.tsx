@@ -55,6 +55,7 @@ const navigation = [
   { name: "Products", href: "/admin/products", icon: Package },
   { name: "Menu Items", href: "/admin/menu-items", icon: UtensilsCrossed },
   { name: "Time Slots", href: "/admin/time-slots", icon: Clock },
+  { name: "Booked Time&Date", href: "/admin/booked-time-date", icon: CalendarDays },
   { name: "Summer Camp", href: "/admin/summer-camp", icon: CalendarDays },
   { name: "Party Extras", href: "/admin/party-extras", icon: PartyPopper },
   { name: "Packages", href: "/admin/packages", icon: Package },

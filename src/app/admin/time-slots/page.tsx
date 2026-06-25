@@ -73,9 +73,6 @@ export default function AdminTimeSlotsPage() {
   const [dateRules, setDateRules] = useState<DateRules>({});
   const [hiddenTimeSlots, setHiddenTimeSlots] = useState<HiddenTimeSlot[]>([]);
   const [dateInput, setDateInput] = useState("");
-  const [hiddenDate, setHiddenDate] = useState("");
-  const [hiddenStart, setHiddenStart] = useState("16:00");
-  const [hiddenEnd, setHiddenEnd] = useState("18:00");
   const [activeCategory, setActiveCategory] = useState<BookingSlotCategoryId>(BOOKING_SLOT_CATEGORIES[0].id);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -142,23 +139,6 @@ export default function AdminTimeSlotsPage() {
       ...current,
       [activeCategory]: (current[activeCategory] || []).filter((currentDate) => currentDate !== date),
     }));
-  }
-
-  function addHiddenTimeSlot() {
-    if (!hiddenDate || calculateDuration(hiddenStart, hiddenEnd) <= 0) return;
-
-    setHiddenTimeSlots((current) => [
-      ...current,
-      {
-        date: hiddenDate,
-        start: hiddenStart,
-        end: hiddenEnd,
-      },
-    ].sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start)));
-  }
-
-  function removeHiddenTimeSlot(index: number) {
-    setHiddenTimeSlots((current) => current.filter((_, currentIndex) => currentIndex !== index));
   }
 
   function updateSlot(index: number, updates: Partial<TimeSlot>) {
@@ -286,78 +266,6 @@ export default function AdminTimeSlotsPage() {
           {message}
         </div>
       )}
-
-      <div className="rounded-lg border border-stone-200 bg-white p-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div>
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-5 w-5 text-[#FF7A5C]" />
-              <h2 className="font-semibold text-stone-900">Hide Time Slots</h2>
-            </div>
-            <p className="mt-1 text-sm text-stone-500">
-              Hide public Mini Chef and Big Chef slots that fall fully inside a date and time range.
-            </p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-[minmax(160px,1fr)_130px_130px_auto]">
-            <input
-              type="date"
-              value={hiddenDate}
-              onChange={(event) => setHiddenDate(event.target.value)}
-              className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm"
-            />
-            <input
-              type="time"
-              value={hiddenStart}
-              onChange={(event) => setHiddenStart(event.target.value)}
-              className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm"
-            />
-            <input
-              type="time"
-              value={hiddenEnd}
-              onChange={(event) => setHiddenEnd(event.target.value)}
-              className="rounded-md border border-stone-300 bg-white px-3 py-2 text-sm"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              onClick={addHiddenTimeSlot}
-              disabled={!hiddenDate || calculateDuration(hiddenStart, hiddenEnd) <= 0}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Hide Rule
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap gap-2">
-          {hiddenTimeSlots.length > 0 ? (
-            hiddenTimeSlots.map((rule, index) => (
-              <span
-                key={rule.id || `${rule.date}-${rule.start}-${rule.end}-${index}`}
-                className="inline-flex items-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-sm text-stone-800"
-              >
-                {new Date(`${rule.date}T00:00:00`).toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-                <span className="text-stone-400">/</span>
-                {formatTimeLabel(rule.start)} - {formatTimeLabel(rule.end)}
-                <button
-                  type="button"
-                  onClick={() => removeHiddenTimeSlot(index)}
-                  className="rounded-full p-0.5 text-stone-400 hover:bg-red-50 hover:text-red-600"
-                  aria-label={`Remove hidden time slot ${rule.date}`}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </span>
-            ))
-          ) : (
-            <p className="text-sm text-stone-500">No hidden time slot rules configured.</p>
-          )}
-        </div>
-      </div>
 
       <div className="grid gap-6 xl:grid-cols-[300px_1fr]">
         <div className="rounded-lg border border-stone-200 bg-white p-4 h-fit">
