@@ -135,14 +135,16 @@ const extraCategoryLabels: Record<string, string> = {
 
 const extraCategoryOrder = ["custom", "cake", "decor", "snacks", "drinks"];
 
-function WaiverModal({ isOpen, onClose, onAccept }: { isOpen: boolean; onClose: () => void; onAccept: () => void }) {
+function WaiverModal({ isOpen, onClose, onAccept, paysDeposit }: { isOpen: boolean; onClose: () => void; onAccept: () => void; paysDeposit: boolean }) {
+  return <BookingTermsModal isOpen={isOpen} onClose={onClose} onAccept={onAccept} paysDeposit={paysDeposit} />;
+
   const [hasRead, setHasRead] = useState(false);
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <div className="bg-[#FF8C6B] text-white p-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold">WAIVER FORM</h2>
+          <h2 className="text-xl font-bold">Waiver Form &amp; Payment Policy</h2>
           <button onClick={onClose} className="p-1 hover:bg-[#ff7a54] rounded"><X className="h-5 w-5" /></button>
         </div>
         <div className="p-6 overflow-y-auto flex-1">
@@ -163,6 +165,76 @@ function WaiverModal({ isOpen, onClose, onAccept }: { isOpen: boolean; onClose: 
           <div className="flex gap-3">
             <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
             <Button onClick={onAccept} disabled={!hasRead} className={`flex-1 ${PRIMARY_BUTTON_CLASS}`}>I Accept & Continue</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BookingTermsModal({
+  isOpen,
+  onClose,
+  onAccept,
+  paysDeposit,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onAccept: () => void;
+  paysDeposit: boolean;
+}) {
+  const [hasRead, setHasRead] = useState(false);
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="bg-[#FF8C6B] text-white p-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold">Waiver Form &amp; Payment Policy</h2>
+          <button onClick={onClose} className="p-1 hover:bg-[#ff7a54] rounded"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="p-6 overflow-y-auto flex-1">
+          <h3 className="text-lg font-bold text-center mb-4">Kids Cooking Class Waiver &amp; Acknowledgement - Mamalu Kitchen Studio</h3>
+          <div className="space-y-4 text-sm text-stone-700">
+            <p>By completing this booking, I confirm that I am the parent or legal guardian of the participating child and give permission for them to attend and participate in the cooking class at Mamalu Kitchen Studio. I understand that cooking activities involve the use of kitchen tools, utensils, heat sources, and food ingredients, and while Mamalu Kitchen Studio maintains a safe, supervised environment, minor injuries such as cuts, burns, slips, or allergic reactions may occur.</p>
+            <p className="font-semibold text-stone-900">I confirm that I have informed Mamalu Kitchen Studio of any allergies, medical conditions, dietary restrictions, or special needs prior to the class. I understand that classes take place in a shared kitchen environment where cross-contact with allergens may occur despite careful handling procedures.</p>
+            <p>I agree that Mamalu Kitchen Studio, its owners, instructors, and staff shall not be held liable for any injury, loss, or damage resulting from participation in the class, except in cases of gross negligence. I authorize Mamalu Kitchen Studio to seek emergency medical assistance for my child if necessary and if I cannot be reached immediately.</p>
+            <p>I understand that photos or videos may be taken during the class for documentation and promotional purposes unless I notify Mamalu Kitchen Studio in writing prior to the session. I also acknowledge that children are expected to follow safety instructions during the class to ensure a safe and enjoyable experience for everyone.</p>
+            <p>By checking this box, I confirm that I have read, understood, and agree to this waiver and consent to my child&apos;s participation in Mamalu Kitchen Studio activities.</p>
+          </div>
+
+          <div className="my-6 border-t border-stone-300" />
+
+          <div className="space-y-4 text-center text-sm text-stone-900">
+            <h3 className="text-sm font-bold uppercase text-stone-900">Payment Policy</h3>
+            <div className="space-y-3">
+              <p className="font-medium">Booking and Payment Policy:</p>
+              {paysDeposit ? (
+                <p>
+                  A 50% deposit is required to secure your booking, with the remaining 50% due 48 hours before the class. Final attendee numbers must be confirmed 48 hours prior; any reduction after this point will still be charged. <span className="font-bold underline">We are a cashless business and all payments must be made through our website or by credit card machine on site.</span>
+                </p>
+              ) : (
+                <p>
+                  Full payment is required to secure your booking. Final attendee numbers must be confirmed 48 hours prior; any reduction after this point will still be charged. <span className="font-bold underline">We are a cashless business and all payments must be made through our website or by credit card machine on site.</span>
+                </p>
+              )}
+              <p>Goodie bag orders must be confirmed at least 5 days before the event.</p>
+              <p>Cancellations made more than 48 hours before the scheduled class may be canceled free of charge.</p>
+              <p>Cancellations made within 48 hours of the scheduled class are subject to the following:</p>
+              <p>Private/Group Bookings: The full booking fee will be charged.</p>
+              <p>Individual Bookings (including Mini Chef Classes, Adult Chef Classes, Holiday Camps, Monthly Specials, and Newsletter Events): In the event of illness, medical reasons, severe weather, or other exceptional circumstances approved by Mamalu Kitchen, a credit note may be issued at our discretion. Credit notes are valid for two (2) months from the date of issue and are non-refundable and non-transferable.</p>
+              <p>No-shows are not eligible for a refund, credit note, or rescheduling.</p>
+            </div>
+          </div>
+        </div>
+        <div className="p-4 border-t bg-stone-50">
+          <label className="flex items-start gap-3 cursor-pointer mb-4">
+            <input type="checkbox" checked={hasRead} onChange={(e) => setHasRead(e.target.checked)} className="mt-1 h-5 w-5" />
+            <span className="text-sm text-stone-700">I have read and understood the waiver form and payment policy above and agree to all terms and conditions.</span>
+          </label>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button onClick={onAccept} disabled={!hasRead} className={`flex-1 ${PRIMARY_BUTTON_CLASS}`}>I Accept &amp; Continue</Button>
           </div>
         </div>
       </div>
@@ -680,7 +752,7 @@ export default function BigChefPage() {
 
   return (
     <div className="min-h-screen bg-stone-50">
-      <WaiverModal isOpen={showWaiverModal} onClose={() => setShowWaiverModal(false)} onAccept={handleWaiverAccept} />
+      <WaiverModal isOpen={showWaiverModal} onClose={() => setShowWaiverModal(false)} onAccept={handleWaiverAccept} paysDeposit={paysDeposit} />
       <div className="bg-white border-t relative overflow-hidden">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between gap-6">
