@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth } from "@/lib/auth/api-auth";
 
+const HIDDEN_ADMIN_BOOKING_NUMBERS = ["SB-20260617-779821"];
+
+const isPlainUnpaidBooking = (booking: {
+  paid_at?: string | null;
+  is_deposit_payment?: boolean | null;
+  deposit_paid?: boolean | null;
+  balance_paid?: boolean | null;
+  payment_status?: string | null;
+  status?: string | null;
+  created_by?: string | null;
+}) => {
+  return (
+    !booking.created_by &&
+    !booking.paid_at &&
+    !booking.deposit_paid &&
+    !booking.balance_paid &&
+    (booking.payment_status === "unpaid" || booking.status === "unpaid")
+  );
+};
+
 /**
  * GET: Fetch all bookings with check-in status for admin dashboard
  */
@@ -27,6 +47,7 @@ export async function GET(request: NextRequest) {
     let classQuery = supabase
       .from("class_bookings")
       .select("*", { count: "exact" })
+      .not("booking_number", "in", `(${HIDDEN_ADMIN_BOOKING_NUMBERS.join(",")})`)
       .order("created_at", { ascending: false });
 
     if (classId) {
@@ -46,6 +67,7 @@ export async function GET(request: NextRequest) {
     let serviceQuery = supabase
       .from("service_bookings")
       .select("*")
+      .not("booking_number", "in", `(${HIDDEN_ADMIN_BOOKING_NUMBERS.join(",")})`)
       .order("created_at", { ascending: false });
 
     if (status) {
@@ -72,7 +94,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error?.message }, { status: 500 });
     }
 
-    const normalizedServiceBookings = (serviceBookings || []).map(booking => ({
+    const normalizedClassBookings = (classBookings || []).map(booking => ({
+      ...booking,
+      number_of_guests: booking.number_of_guests || 1,
+      guests_checked_in: booking.attendance_count ?? booking.guests_checked_in ?? 0,
+      booking_source: booking.booking_source || "class",
+    }));
+
+    const normalizedServiceBookings = (serviceBookings || [])
+      .filter((booking) => !isPlainUnpaidBooking(booking))
+      .map(booking => ({
       id: booking.id,
       booking_number: booking.booking_number,
       attendee_name: booking.customer_name,
@@ -89,18 +120,19 @@ export async function GET(request: NextRequest) {
       checked_in_at: booking.checked_in_at,
       created_at: booking.created_at,
       number_of_guests: booking.guest_count || 1,
-      guests_checked_in: booking.attendance_count || 0,
+      guests_checked_in: booking.attendance_count || (booking.checked_in_at ? booking.guest_count || 1 : 0),
       attendance_count: booking.attendance_count,
       booking_source: "service",
     }));
 
-    const bookings = [...(classBookings || []), ...normalizedServiceBookings]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(offset, offset + limit);
+    const allBookings = [...normalizedClassBookings, ...normalizedServiceBookings]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    const bookings = allBookings.slice(offset, offset + limit);
 
     return NextResponse.json({
       bookings,
-      total: (classBookings?.length || 0) + normalizedServiceBookings.length,
+      total: allBookings.length,
       limit,
       offset,
     });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Users, CheckCircle, Clock, XCircle, RefreshCw, Search, Calendar, TrendingUp } from "lucide-react";
+import { Users, CheckCircle, Clock, XCircle, RefreshCw, Search, TrendingUp } from "lucide-react";
 
 interface Booking {
   id: string;
