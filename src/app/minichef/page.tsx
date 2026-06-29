@@ -494,16 +494,6 @@ export default function MiniChefPage() {
   const isMommyAndMe = activeCategory === "mommy_me";
   const isPackage = activeCategory === "packages";
   const isSummerCamp = activeCategory === "summer_camp";
-
-  // Notify the global Header to show/hide the party background image
-  useEffect(() => {
-    window.dispatchEvent(
-      new CustomEvent("miniChefCategoryChange", { detail: { partyBg: isBirthday || isPackage } }),
-    );
-    return () => {
-      window.dispatchEvent(new CustomEvent("miniChefCategoryChange", { detail: { partyBg: false } }));
-    };
-  }, [isBirthday, isPackage]);
   const selectedSummerCampMenu = selectedSummerCampMenus[0] || null;
   const isSummerCampPerDay = selectedSummerCampMenu?.id === "summer-camp-per-day";
   const isSummerCampPerWeek = selectedSummerCampMenu?.id === "summer-camp-per-week";
