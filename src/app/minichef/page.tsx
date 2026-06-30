@@ -36,6 +36,7 @@ import { MiniChefPageContent, defaultMiniChefContent } from "@/types/site-conten
 interface MenuItem {
   id: string;
   name: string;
+  description?: string | null;
   price: number;
   original_price?: number;
   discount_percentage?: number;
@@ -162,6 +163,7 @@ interface DbPartyExtra {
 interface DbMenuItem {
   id: string;
   name: string;
+  description: string | null;
   price: number;
   image_url: string | null;
   dishes: string[] | null;
@@ -176,6 +178,7 @@ interface DbMenuItem {
 interface DbPackageMenuItem {
   id: string;
   name: string;
+  description: string | null;
   price: number;
   image_url: string | null;
   dishes: string[] | null;
@@ -184,6 +187,7 @@ interface DbPackageMenuItem {
 interface DbPackage {
   id: string;
   name: string;
+  description: string | null;
   price: number;
   image_url: string | null;
   categories: string[] | null;
@@ -588,6 +592,7 @@ export default function MiniChefPage() {
               grouped[cat].push({
                 id: item.id,
                 name: item.name,
+                description: item.description || null,
                 price: item.price,
                 image: item.image_url || "/images/placeholder.jpg",
                 dishes: item.dishes || [],
@@ -607,6 +612,7 @@ export default function MiniChefPage() {
         grouped.packages = activePkgs.map((pkg) => ({
           id: pkg.id,
           name: pkg.name,
+          description: pkg.description || null,
           price: pkg.price,
           image: pkg.image_url || "/images/placeholder.jpg",
           dishes: (pkg.menu_items || []).map((mi) => mi.name),
@@ -620,6 +626,7 @@ export default function MiniChefPage() {
           pkgItemsMap[pkg.id] = (pkg.menu_items || []).map((mi) => ({
             id: mi.id,
             name: mi.name,
+            description: mi.description || null,
             price: mi.price,
             image: mi.image_url || "/images/placeholder.jpg",
             dishes: mi.dishes || [],
@@ -1378,6 +1385,9 @@ export default function MiniChefPage() {
                       </div>
                       <div className="p-3">
                         <h3 className="font-bold text-stone-900">{item.name}</h3>
+                        {item.description && (
+                          <p className="mt-1 line-clamp-2 text-sm text-stone-600">{item.description}</p>
+                        )}
                       </div>
                     </div>
                   );
@@ -1531,6 +1541,9 @@ export default function MiniChefPage() {
                               <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-[#FF8C6B]" />
                               <span>Available on {formatMonthlySpecialSchedules(menu)}</span>
                             </div>
+                          )}
+                          {menu.description && (
+                            <p className="mb-3 line-clamp-3 text-base text-stone-600">{menu.description}</p>
                           )}
                           {/* Dishes list - hide for packages */}
                           {activeCategory !== "packages" && (

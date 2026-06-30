@@ -18,7 +18,7 @@ import { dateAllowsDeposit, getDubaiDate, getMinimumBookableDate } from "@/lib/p
 
 interface MonthlySpecialTimeRange { start: string; end: string; }
 interface MonthlySpecialSchedule { date: string; times: MonthlySpecialTimeRange[]; }
-interface MenuItem { id: string; name: string; price: number; image: string; dishes: string[]; category: string; scheduled_date?: string | null; allowed_persons?: number | null; metadata?: { monthly_special_end_time?: string; monthly_special_schedules?: MonthlySpecialSchedule[] } | null; }
+interface MenuItem { id: string; name: string; description?: string | null; price: number; image: string; dishes: string[]; category: string; scheduled_date?: string | null; allowed_persons?: number | null; metadata?: { monthly_special_end_time?: string; monthly_special_schedules?: MonthlySpecialSchedule[] } | null; }
 interface ExtraItem { id: string; name: string; description: string; price: number; icon: LucideIcon; category: string; image?: string; }
 interface PartyExtraMenuItem {
   id: string;
@@ -363,6 +363,7 @@ export default function BigChefPage() {
               grouped[cat].push({
                 id: item.id,
                 name: item.name,
+                description: item.description || null,
                 price: item.price,
                 image: item.image_url || "/images/placeholder.jpg",
                 dishes: item.dishes || [],
@@ -837,6 +838,7 @@ export default function BigChefPage() {
                                 <span>Available on {formatMonthlySpecialSchedules(menu)}</span>
                               </div>
                             )}
+                            {menu.description && <p className="mb-3 line-clamp-3 text-base text-stone-600">{menu.description}</p>}
                             <div className="space-y-1 flex-1">{menu.dishes.map((d, i) => <div key={i} className="flex items-center gap-2 text-base text-stone-600"><Check className="h-3 w-3 text-[#ff7f5c]" /><span>{d}</span></div>)}</div>
                           </div>
                           {!isNanny && <div className="bg-stone-50 border-t px-4 py-3"><div className="flex items-center justify-between"><span className="text-base text-stone-500">per person</span><span className="text-xl font-bold text-stone-900">AED {menu.price}</span></div></div>}
