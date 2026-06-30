@@ -1489,7 +1489,8 @@ export default function MiniChefPage() {
                   <p className="text-stone-500 mt-1">{currentConfig.description}</p>
                   {!isMommyAndMe && (
                     <p className="text-base text-stone-400 mt-2">
-                      Min: {currentConfig.minGuests} {isBirthday ? "kid(s)" : "guest(s)"} • Max: {currentConfig.maxGuests} {isBirthday ? "kids" : "guests"} • Price per person
+                      Min: {currentConfig.minGuests} {isBirthday ? "kid(s)" : "guest(s)"} • Max: {currentConfig.maxGuests} {isBirthday ? "kids" : "guests"}
+                      {!isPackage && " • Price per person"}
                     </p>
                   )}
                 </div>
