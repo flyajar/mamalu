@@ -53,6 +53,21 @@ type DailyProductOrder = {
   fulfillmentStatus: string;
 };
 
+type FinanceCreditNote = {
+  id: string;
+  creditNoteNumber: string;
+  sourceType: string;
+  sourceReference: string;
+  originalInvoiceNumber: string;
+  customerName: string;
+  customerEmail: string;
+  createdDate: string;
+  createdAt: string;
+  subtotalAmount: number;
+  vatAmount: number;
+  totalCreditAmount: number;
+};
+
 type MonthlyTargetBooking = {
   id: string;
   bookingNumber: string;
@@ -230,6 +245,24 @@ export async function GET(request: NextRequest) {
         .eq("payment_status", "paid")
         .gte("paid_at", fromISO)
         .lte("paid_at", toISO),
+    ]);
+
+    const [{ data: financeServiceBookings }, { data: financeClassBookings }, { data: creditNotes }] = await Promise.all([
+      supabase
+        .from("service_bookings")
+        .select("*")
+        .or(`paid_at.gte.${fromISO},deposit_paid_at.gte.${fromISO},balance_paid_at.gte.${fromISO}`),
+      supabase
+        .from("class_bookings")
+        .select("*")
+        .gte("paid_at", fromISO)
+        .lte("paid_at", toISO),
+      supabase
+        .from("credit_notes")
+        .select("*")
+        .gte("created_at", fromISO)
+        .lte("created_at", toISO)
+        .order("created_at", { ascending: true }),
     ]);
 
     const isPackageBookingItem = (
@@ -710,6 +743,101 @@ export async function GET(request: NextRequest) {
     dailyBookings.sort((a, b) => `${a.date}${a.time || ""}`.localeCompare(`${b.date}${b.time || ""}`));
     dailyProductOrders.sort((a, b) => a.paidAt.localeCompare(b.paidAt));
 
+    const financeBookings: DailyBooking[] = [
+      ...(financeServiceBookings || []).flatMap((booking: Record<string, unknown>) => {
+        const paymentDate = booking.paid_at
+          ? dubaiDateString(new Date(String(booking.paid_at)))
+          : booking.balance_paid_at
+            ? dubaiDateString(new Date(String(booking.balance_paid_at)))
+            : booking.deposit_paid_at
+              ? dubaiDateString(new Date(String(booking.deposit_paid_at)))
+              : booking.deposit_paid || booking.balance_paid
+                ? dubaiDateString(new Date(String(booking.updated_at || booking.created_at)))
+                : null;
+        if (!paymentDate || paymentDate < requestedFromDate || paymentDate > requestedToDate) return [];
+
+        const total = Number(booking.total_amount) || 0;
+        const collected = amountCollected(booking);
+        if (collected <= 0) return [];
+
+        const items = Array.isArray(booking.items) ? booking.items as ScheduledItem[] : [];
+        return [{
+          id: String(booking.id),
+          bookingNumber: String(booking.booking_number || ""),
+          invoiceNumber: String(booking.invoice_number || ""),
+          date: paymentDate,
+          time: booking.event_time ? String(booking.event_time) : null,
+          customerName: String(booking.customer_name || "Unknown"),
+          customerEmail: String(booking.customer_email || ""),
+          bookingType: "service" as const,
+          serviceType: String(booking.service_name || booking.service_type || "Service"),
+          bookedItems: items.length > 0
+            ? items.map((item) => ({ name: item.name || "Booked Item", quantity: Number(item.quantity) || 1 }))
+            : [{ name: String(booking.package_name || booking.service_name || "Service Booking"), quantity: 1 }],
+          status: booking.status === "completed" ? "completed" as const : "confirmed" as const,
+          paymentStatus: String(booking.payment_status || (booking.deposit_paid ? "deposit_paid" : "paid")),
+          paidAt: booking.paid_at ? String(booking.paid_at) : null,
+          guests: Number(booking.guest_count) || 1,
+          allocatedAmount: total,
+          amountCollected: collected,
+          outstandingBalance: Math.max(total - collected, 0),
+        }];
+      }),
+      ...(financeClassBookings || []).flatMap((booking: Record<string, unknown>) => {
+        const paymentDate = booking.paid_at ? dubaiDateString(new Date(String(booking.paid_at))) : null;
+        if (!paymentDate || paymentDate < requestedFromDate || paymentDate > requestedToDate) return [];
+
+        const total = Number(booking.total_amount) || 0;
+        const collected = booking.paid_at ? total : amountCollected(booking);
+        if (collected <= 0) return [];
+
+        return [{
+          id: String(booking.id),
+          bookingNumber: String(booking.booking_number || ""),
+          invoiceNumber: String(booking.invoice_number || ""),
+          date: paymentDate,
+          time: booking.start_date
+            ? new Date(String(booking.start_date)).toLocaleTimeString("en-GB", {
+                timeZone: "Asia/Dubai",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              })
+            : null,
+          customerName: String(booking.attendee_name || "Unknown"),
+          customerEmail: String(booking.attendee_email || ""),
+          bookingType: "class" as const,
+          serviceType: String(booking.class_title || booking.class_type || "Class"),
+          bookedItems: [{
+            name: String(booking.class_title || "Class Booking"),
+            quantity: Number(booking.sessions_booked) || 1,
+          }],
+          status: booking.status === "completed" ? "completed" as const : "confirmed" as const,
+          paymentStatus: String(booking.payment_status || "paid"),
+          paidAt: booking.paid_at ? String(booking.paid_at) : null,
+          guests: Number(booking.number_of_guests) || 1,
+          allocatedAmount: total,
+          amountCollected: collected,
+          outstandingBalance: Math.max(total - collected, 0),
+        }];
+      }),
+    ].sort((a, b) => `${a.date}${a.time || ""}`.localeCompare(`${b.date}${b.time || ""}`));
+
+    const financeCreditNotes: FinanceCreditNote[] = (creditNotes || []).map((note: Record<string, unknown>) => ({
+      id: String(note.id),
+      creditNoteNumber: String(note.credit_note_number || ""),
+      sourceType: String(note.source_type || ""),
+      sourceReference: String(note.source_reference || ""),
+      originalInvoiceNumber: String(note.original_invoice_number || ""),
+      customerName: String(note.customer_name || "Unknown"),
+      customerEmail: String(note.customer_email || ""),
+      createdDate: dubaiDateString(new Date(String(note.created_at))),
+      createdAt: String(note.created_at),
+      subtotalAmount: Number(note.subtotal_amount) || 0,
+      vatAmount: Number(note.vat_amount) || 0,
+      totalCreditAmount: Number(note.total_credit_amount) || 0,
+    }));
+
     const dailyTotals = enumerateDates(requestedFromDate, requestedToDate).map((date) => {
       const dateBookings = dailyBookings.filter((booking) => booking.date === date);
       const dateOrders = dailyProductOrders.filter((order) => order.date === date);
@@ -732,6 +860,39 @@ export async function GET(request: NextRequest) {
     });
 
     const dailyReportSummary = dailyTotals.reduce((summary, day) => ({
+      actualSales: summary.actualSales + day.combinedActualSales,
+      projectedBookings: summary.projectedBookings + day.projectedBookingValue,
+      productSales: summary.productSales + day.productRevenue,
+      totalGuests: summary.totalGuests + day.guests,
+      bookingCount: summary.bookingCount + day.bookings,
+      productOrderCount: summary.productOrderCount + day.orders,
+    }), {
+      actualSales: 0,
+      projectedBookings: 0,
+      productSales: 0,
+      totalGuests: 0,
+      bookingCount: 0,
+      productOrderCount: 0,
+    });
+
+    const financeDailyTotals = enumerateDates(requestedFromDate, requestedToDate).map((date) => {
+      const dateBookings = financeBookings.filter((booking) => booking.date === date);
+      const dateOrders = dailyProductOrders.filter((order) => order.date === date);
+      const bookingRevenue = dateBookings.reduce((sum, booking) => sum + booking.amountCollected, 0);
+      const productRevenue = dateOrders.reduce((sum, order) => sum + order.totalPaid, 0);
+      return {
+        date,
+        actualBookingRevenue: bookingRevenue,
+        projectedBookingValue: bookingRevenue,
+        productRevenue,
+        guests: dateBookings.reduce((sum, booking) => sum + booking.guests, 0),
+        bookings: dateBookings.length,
+        orders: dateOrders.length,
+        combinedActualSales: bookingRevenue + productRevenue,
+      };
+    });
+
+    const financeDailySummary = financeDailyTotals.reduce((summary, day) => ({
       actualSales: summary.actualSales + day.combinedActualSales,
       projectedBookings: summary.projectedBookings + day.projectedBookingValue,
       productSales: summary.productSales + day.productRevenue,
@@ -948,6 +1109,14 @@ export async function GET(request: NextRequest) {
         bookings: dailyBookings,
         productOrders: dailyProductOrders,
         dailyTotals,
+      },
+      financeDailyReport: {
+        period: { from: requestedFromDate, to: requestedToDate, timeZone: "Asia/Dubai" },
+        summary: financeDailySummary,
+        bookings: financeBookings,
+        productOrders: dailyProductOrders,
+        dailyTotals: financeDailyTotals,
+        creditNotes: financeCreditNotes,
       },
       monthlyTargetReport: {
         period: { from: requestedFromDate, to: requestedToDate, timeZone: "Asia/Dubai" },

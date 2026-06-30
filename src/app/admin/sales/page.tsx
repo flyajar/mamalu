@@ -103,6 +103,14 @@ interface SalesData {
     productOrders: DailyReportProductOrder[];
     dailyTotals: DailyReportTotal[];
   };
+  financeDailyReport: {
+    period: { from: string; to: string; timeZone: string };
+    summary: SalesData["dailyReport"]["summary"];
+    bookings: DailyReportBooking[];
+    productOrders: DailyReportProductOrder[];
+    dailyTotals: DailyReportTotal[];
+    creditNotes: FinanceCreditNote[];
+  };
   monthlyTargetReport: {
     period: { from: string; to: string; timeZone: string };
     bookings: MonthlyTargetBooking[];
@@ -156,6 +164,21 @@ interface DailyReportTotal {
   bookings: number;
   orders: number;
   combinedActualSales: number;
+}
+
+interface FinanceCreditNote {
+  id: string;
+  creditNoteNumber: string;
+  sourceType: string;
+  sourceReference: string;
+  originalInvoiceNumber: string;
+  customerName: string;
+  customerEmail: string;
+  createdDate: string;
+  createdAt: string;
+  subtotalAmount: number;
+  vatAmount: number;
+  totalCreditAmount: number;
 }
 
 interface MonthlyTargetBooking {
@@ -253,7 +276,7 @@ export default function AdminSalesPage() {
   const [salesData, setSalesData] = useState<SalesData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState("week");
-  const [activeTab, setActiveTab] = useState<"overview" | "management" | "monthly-sales" | "monthly-target" | "analytics" | "depachika">("management");
+  const [activeTab, setActiveTab] = useState<"overview" | "management" | "finance-daily" | "monthly-sales" | "finance-monthly" | "monthly-target" | "analytics" | "depachika">("management");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentFilter, setPaymentFilter] = useState<"all" | "completed" | "deposit_paid" | "pending">("all");
@@ -266,6 +289,10 @@ export default function AdminSalesPage() {
   const [monthlySalesData, setMonthlySalesData] = useState<SalesData["dailyReport"] | null>(null);
   const [monthlySalesLoading, setMonthlySalesLoading] = useState(false);
   const [monthlySalesError, setMonthlySalesError] = useState("");
+  const [financeMonthlyMonth, setFinanceMonthlyMonth] = useState(currentDubaiMonth);
+  const [financeMonthlyData, setFinanceMonthlyData] = useState<SalesData["financeDailyReport"] | null>(null);
+  const [financeMonthlyLoading, setFinanceMonthlyLoading] = useState(false);
+  const [financeMonthlyError, setFinanceMonthlyError] = useState("");
 
   useEffect(() => {
     fetchSalesData();
@@ -322,6 +349,32 @@ export default function AdminSalesPage() {
 
     fetchMonthlySalesData();
   }, [activeTab, monthlySalesMonth]);
+
+  useEffect(() => {
+    if (activeTab !== "finance-monthly") return;
+
+    const fetchFinanceMonthlyData = async () => {
+      const [year, month] = financeMonthlyMonth.split("-").map(Number);
+      const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+      const start = `${financeMonthlyMonth}-01`;
+      const end = `${financeMonthlyMonth}-${String(lastDay).padStart(2, "0")}`;
+
+      try {
+        setFinanceMonthlyLoading(true);
+        setFinanceMonthlyError("");
+        const response = await fetch(`/api/admin/sales-report?start_date=${start}&end_date=${end}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Failed to load finance monthly report");
+        setFinanceMonthlyData(data.financeDailyReport);
+      } catch (fetchError) {
+        setFinanceMonthlyError(fetchError instanceof Error ? fetchError.message : "Failed to load finance monthly report");
+      } finally {
+        setFinanceMonthlyLoading(false);
+      }
+    };
+
+    fetchFinanceMonthlyData();
+  }, [activeTab, financeMonthlyMonth]);
 
   const fetchSalesData = async () => {
     try {
@@ -482,6 +535,114 @@ export default function AdminSalesPage() {
     XLSX.writeFile(wb, `Management-Daily-Report-${report.period.from}-to-${report.period.to}.xlsx`);
   };
 
+  const appendTaxCreditNoteSheet = (wb: XLSX.WorkBook, creditNotes: FinanceCreditNote[] = []) => {
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ["Created Date", "Created Time (Dubai)", "Tax Credit Note #", "Source Type", "Source Reference", "Original Invoice #", "Customer", "Email", "Subtotal", "VAT", "Total Credit"],
+      ...creditNotes.map((note) => [
+        note.createdDate,
+        new Date(note.createdAt).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }),
+        note.creditNoteNumber,
+        note.sourceType,
+        note.sourceReference,
+        note.originalInvoiceNumber,
+        note.customerName,
+        note.customerEmail,
+        note.subtotalAmount,
+        note.vatAmount,
+        note.totalCreditAmount,
+      ]),
+    ]), "Tax Credit Note");
+  };
+
+  const exportFinanceReport = (
+    report: SalesData["financeDailyReport"],
+    fileName: string,
+    title: string,
+  ) => {
+    const wb = XLSX.utils.book_new();
+    const bookingSales = report.bookings.reduce((sum, booking) => sum + booking.amountCollected, 0);
+    const productSales = report.productOrders.reduce((sum, order) => sum + order.totalPaid, 0);
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      [title],
+      [`Dubai payment dates: ${report.period.from} to ${report.period.to}`],
+      [],
+      ["Metric", "Value"],
+      ["Booking Payments / Deposits", bookingSales],
+      ["Product Sales", productSales],
+      ["Total Collected", bookingSales + productSales],
+      ["Paid / Deposit Bookings", report.bookings.length],
+      ["Product Orders", report.productOrders.length],
+      ["Guests", report.bookings.reduce((sum, booking) => sum + booking.guests, 0)],
+      ["Tax Credit Notes", report.creditNotes.length],
+      ["Tax Credit Total", report.creditNotes.reduce((sum, note) => sum + note.totalCreditAmount, 0)],
+    ]), "Summary");
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ["Payment Date", "Payment Time (Dubai)", "Booking Number", "Invoice #", "Customer", "Email", "Type", "Service/Class", "Booked Items", "Status", "Payment Status", "Guests", "Booking Value", "Amount Collected", "Outstanding"],
+      ...report.bookings.map((booking) => [
+        booking.date,
+        booking.paidAt ? new Date(booking.paidAt).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }) : "",
+        booking.bookingNumber,
+        booking.invoiceNumber,
+        booking.customerName,
+        booking.customerEmail,
+        booking.bookingType,
+        booking.serviceType,
+        booking.bookedItems.map((item) => `${item.name} x${item.quantity}`).join(", "),
+        booking.status,
+        booking.paymentStatus,
+        booking.guests,
+        booking.allocatedAmount,
+        booking.amountCollected,
+        booking.outstandingBalance,
+      ]),
+    ]), "Bookings");
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ["Paid Date", "Paid Time (Dubai)", "Order Number", "Invoice #", "Customer", "Email", "Products", "Subtotal", "Shipping", "Total Paid", "Fulfillment Status"],
+      ...report.productOrders.map((order) => [
+        order.date,
+        new Date(order.paidAt).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" }),
+        order.orderNumber,
+        order.invoiceNumber,
+        order.customerName,
+        order.customerEmail,
+        order.products.map((item) => `${item.name} x${item.quantity}`).join(", "),
+        order.subtotal,
+        order.shipping,
+        order.totalPaid,
+        order.fulfillmentStatus,
+      ]),
+    ]), "Product Orders");
+
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
+      ["Date", "Booking Payments / Deposits", "Product Revenue", "Combined Collected", "Guests", "Bookings", "Orders"],
+      ...report.dailyTotals.map((day) => [
+        day.date,
+        day.actualBookingRevenue,
+        day.productRevenue,
+        day.combinedActualSales,
+        day.guests,
+        day.bookings,
+        day.orders,
+      ]),
+    ]), "Daily Totals");
+
+    appendTaxCreditNoteSheet(wb, report.creditNotes);
+    XLSX.writeFile(wb, fileName);
+  };
+
+  const exportFinanceDailyReport = () => {
+    if (!salesData?.financeDailyReport) return;
+    const report = salesData.financeDailyReport;
+    exportFinanceReport(
+      report,
+      `Finance-Daily-Report-${report.period.from}-to-${report.period.to}.xlsx`,
+      "MAMALU KITCHEN - FINANCE DAILY REPORT",
+    );
+  };
+
   const exportDepachikaReport = () => {
     if (!salesData?.bookings) return;
 
@@ -602,6 +763,15 @@ export default function AdminSalesPage() {
     XLSX.writeFile(wb, `Monthly-Sales-Report-${monthlySalesMonth}.xlsx`);
   };
 
+  const exportFinanceMonthlyReport = () => {
+    if (!financeMonthlyData) return;
+    exportFinanceReport(
+      financeMonthlyData,
+      `Finance-Monthly-Report-${financeMonthlyMonth}.xlsx`,
+      "MAMALU KITCHEN - FINANCE MONTHLY REPORT",
+    );
+  };
+
   const exportToCSV = () => {
     if (!salesData) return;
 
@@ -661,6 +831,17 @@ export default function AdminSalesPage() {
           Management Daily Report
         </button>
         <button
+          onClick={() => setActiveTab("finance-daily")}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "finance-daily"
+              ? "bg-white text-stone-900 shadow-sm"
+              : "text-stone-600 hover:text-stone-900"
+          }`}
+        >
+          <DollarSign className="h-4 w-4 inline mr-2" />
+          Finance Daily Report
+        </button>
+        <button
           onClick={() => setActiveTab("monthly-sales")}
           className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
             activeTab === "monthly-sales"
@@ -670,6 +851,17 @@ export default function AdminSalesPage() {
         >
           <Calendar className="h-4 w-4 inline mr-2" />
           Monthly Sales Report
+        </button>
+        <button
+          onClick={() => setActiveTab("finance-monthly")}
+          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            activeTab === "finance-monthly"
+              ? "bg-white text-stone-900 shadow-sm"
+              : "text-stone-600 hover:text-stone-900"
+          }`}
+        >
+          <FileSpreadsheet className="h-4 w-4 inline mr-2" />
+          Finance Monthly Report
         </button>
         <button
           onClick={() => setActiveTab("monthly-target")}
@@ -784,6 +976,127 @@ export default function AdminSalesPage() {
         </div>
       )}
 
+      {/* Finance Daily Report Tab */}
+      {activeTab === "finance-daily" && (
+        <div className="space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-stone-900">Finance Daily Report</h2>
+              <p className="text-sm text-stone-500">Dubai payment dates. Includes bookings with paid/deposit collection and paid product orders.</p>
+            </div>
+            <Button onClick={exportFinanceDailyReport} className="bg-green-600 hover:bg-green-700" disabled={!salesData?.financeDailyReport}>
+              <Download className="h-4 w-4 mr-2" />
+              Export Excel
+            </Button>
+          </div>
+          {renderDateFilters()}
+
+          {error ? (
+            <Card><CardContent className="py-10 text-center text-red-600">{error}</CardContent></Card>
+          ) : salesData?.financeDailyReport ? (
+            <>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+                {[
+                  ["Total Collected", formatCurrency(salesData.financeDailyReport.summary.actualSales)],
+                  ["Booking Payments", formatCurrency(salesData.financeDailyReport.summary.projectedBookings)],
+                  ["Product Sales", formatCurrency(salesData.financeDailyReport.summary.productSales)],
+                  ["Total Guests", salesData.financeDailyReport.summary.totalGuests],
+                  ["Bookings", salesData.financeDailyReport.summary.bookingCount],
+                  ["Tax Credit Notes", salesData.financeDailyReport.creditNotes.length],
+                ].map(([label, value]) => (
+                  <Card key={label}><CardContent className="p-4"><p className="text-xs text-stone-500">{label}</p><p className="mt-1 text-xl font-bold text-stone-900">{value}</p></CardContent></Card>
+                ))}
+              </div>
+
+              {salesData.financeDailyReport.dailyTotals.map((day) => {
+                const dayBookings = salesData.financeDailyReport.bookings.filter((booking) => booking.date === day.date);
+                const dayOrders = salesData.financeDailyReport.productOrders.filter((order) => order.date === day.date);
+                const dayCreditNotes = salesData.financeDailyReport.creditNotes.filter((note) => note.createdDate === day.date);
+                return (
+                  <Card key={day.date}>
+                    <CardHeader>
+                      <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                        <span>{new Date(`${day.date}T00:00:00`).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</span>
+                        <span className="text-sm font-normal text-stone-500">Collected {formatCurrency(day.combinedActualSales)}</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div>
+                        <h3 className="mb-3 font-semibold">Bookings</h3>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-[1200px] w-full text-sm">
+                            <thead><tr className="bg-stone-100 text-left">
+                              {["Payment Date", "Booking #", "Invoice #", "Customer", "Type", "Booked Items", "Status", "Payment", "Guests", "Value", "Collected", "Outstanding"].map((heading) => <th key={heading} className="px-3 py-2">{heading}</th>)}
+                            </tr></thead>
+                            <tbody>
+                              {dayBookings.map((booking) => (
+                                <tr key={booking.id} className="border-b border-stone-100">
+                                  <td className="px-3 py-3">{formatPaymentDate(booking.paidAt) || booking.date}</td><td className="px-3 py-3 font-medium">{booking.bookingNumber}</td><td className="px-3 py-3">{booking.invoiceNumber || "-"}</td>
+                                  <td className="px-3 py-3"><div>{booking.customerName}</div><div className="text-xs text-stone-400">{booking.customerEmail}</div></td>
+                                  <td className="px-3 py-3">{booking.serviceType}</td>
+                                  <td className="px-3 py-3">{booking.bookedItems.map((item) => `${item.name} x${item.quantity}`).join(", ")}</td>
+                                  <td className="px-3 py-3"><Badge className={booking.status === "completed" ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"}>{booking.status}</Badge></td>
+                                  <td className="px-3 py-3">{booking.paymentStatus}</td><td className="px-3 py-3 text-right">{booking.guests}</td>
+                                  <td className="px-3 py-3 text-right">{formatCurrency(booking.allocatedAmount)}</td><td className="px-3 py-3 text-right">{formatCurrency(booking.amountCollected)}</td><td className="px-3 py-3 text-right">{formatCurrency(booking.outstandingBalance)}</td>
+                                </tr>
+                              ))}
+                              {dayBookings.length === 0 && <tr><td colSpan={12} className="px-3 py-8 text-center text-stone-500">No booking payments or deposits for this day.</td></tr>}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="mb-3 font-semibold">Product Orders</h3>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-[900px] w-full text-sm">
+                            <thead><tr className="bg-stone-100 text-left">
+                              {["Paid Time", "Order #", "Invoice #", "Customer", "Products", "Subtotal", "Shipping", "Total Paid", "Fulfillment"].map((heading) => <th key={heading} className="px-3 py-2">{heading}</th>)}
+                            </tr></thead>
+                            <tbody>
+                              {dayOrders.map((order) => (
+                                <tr key={order.id} className="border-b border-stone-100">
+                                  <td className="px-3 py-3">{new Date(order.paidAt).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" })}</td>
+                                  <td className="px-3 py-3 font-medium">{order.orderNumber}</td><td className="px-3 py-3">{order.invoiceNumber || "-"}</td><td className="px-3 py-3">{order.customerName}</td>
+                                  <td className="px-3 py-3">{order.products.map((item) => `${item.name} x${item.quantity}`).join(", ")}</td>
+                                  <td className="px-3 py-3 text-right">{formatCurrency(order.subtotal)}</td><td className="px-3 py-3 text-right">{formatCurrency(order.shipping)}</td><td className="px-3 py-3 text-right font-medium">{formatCurrency(order.totalPaid)}</td><td className="px-3 py-3">{order.fulfillmentStatus}</td>
+                                </tr>
+                              ))}
+                              {dayOrders.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-stone-500">No paid product orders for this day.</td></tr>}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div>
+                        <h3 className="mb-3 font-semibold">Tax Credit Note</h3>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-[900px] w-full text-sm">
+                            <thead><tr className="bg-stone-100 text-left">
+                              {["Credit Note #", "Source", "Reference", "Invoice #", "Customer", "Subtotal", "VAT", "Total Credit"].map((heading) => <th key={heading} className="px-3 py-2">{heading}</th>)}
+                            </tr></thead>
+                            <tbody>
+                              {dayCreditNotes.map((note) => (
+                                <tr key={note.id} className="border-b border-stone-100">
+                                  <td className="px-3 py-3 font-medium">{note.creditNoteNumber}</td><td className="px-3 py-3">{note.sourceType}</td><td className="px-3 py-3">{note.sourceReference}</td><td className="px-3 py-3">{note.originalInvoiceNumber || "-"}</td>
+                                  <td className="px-3 py-3"><div>{note.customerName}</div><div className="text-xs text-stone-400">{note.customerEmail}</div></td>
+                                  <td className="px-3 py-3 text-right">{formatCurrency(note.subtotalAmount)}</td><td className="px-3 py-3 text-right">{formatCurrency(note.vatAmount)}</td><td className="px-3 py-3 text-right font-medium">{formatCurrency(note.totalCreditAmount)}</td>
+                                </tr>
+                              ))}
+                              {dayCreditNotes.length === 0 && <tr><td colSpan={8} className="px-3 py-8 text-center text-stone-500">No tax credit notes for this day.</td></tr>}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </>
+          ) : (
+            <Card><CardContent className="py-10 text-center text-stone-500">No finance report data available.</CardContent></Card>
+          )}
+        </div>
+      )}
+
       {/* Monthly Sales Report Tab */}
       {activeTab === "monthly-sales" && (
         <div className="space-y-6">
@@ -887,6 +1200,134 @@ export default function AdminSalesPage() {
             );
           })() : (
             <Card><CardContent className="py-10 text-center text-stone-500">Select a month to load the report.</CardContent></Card>
+          )}
+        </div>
+      )}
+
+      {/* Finance Monthly Report Tab */}
+      {activeTab === "finance-monthly" && (
+        <div className="space-y-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-stone-900">Finance Monthly Report</h2>
+              <p className="text-sm text-stone-500">Bookings and product orders assigned by Dubai payment date for the selected month.</p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <label className="flex items-center gap-2 text-sm font-medium text-stone-600">
+                Month
+                <input
+                  type="month"
+                  value={financeMonthlyMonth}
+                  onChange={(event) => setFinanceMonthlyMonth(event.target.value)}
+                  className="rounded-lg border border-stone-200 bg-white px-3 py-2 text-stone-900"
+                />
+              </label>
+              <Button onClick={exportFinanceMonthlyReport} className="bg-green-600 hover:bg-green-700" disabled={!financeMonthlyData || financeMonthlyLoading}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
+            </div>
+          </div>
+
+          {financeMonthlyLoading ? (
+            <Card><CardContent className="flex items-center justify-center gap-2 py-10 text-stone-500"><RefreshCw className="h-5 w-5 animate-spin" />Loading finance monthly report...</CardContent></Card>
+          ) : financeMonthlyError ? (
+            <Card><CardContent className="py-10 text-center text-red-600">{financeMonthlyError}</CardContent></Card>
+          ) : financeMonthlyData ? (() => {
+            const bookingSales = financeMonthlyData.bookings.reduce((sum, booking) => sum + booking.amountCollected, 0);
+            const productSales = financeMonthlyData.productOrders.reduce((sum, order) => sum + order.totalPaid, 0);
+            const creditTotal = financeMonthlyData.creditNotes.reduce((sum, note) => sum + note.totalCreditAmount, 0);
+
+            return (
+              <>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
+                  {[
+                    ["Total Collected", formatCurrency(bookingSales + productSales)],
+                    ["Booking Payments", formatCurrency(bookingSales)],
+                    ["Product Sales", formatCurrency(productSales)],
+                    ["Paid / Deposit Bookings", financeMonthlyData.bookings.length],
+                    ["Product Orders", financeMonthlyData.productOrders.length],
+                    ["Tax Credit Notes", `${financeMonthlyData.creditNotes.length} / ${formatCurrency(creditTotal)}`],
+                  ].map(([label, value]) => (
+                    <Card key={label}><CardContent className="p-4"><p className="text-xs text-stone-500">{label}</p><p className="mt-1 text-xl font-bold text-stone-900">{value}</p></CardContent></Card>
+                  ))}
+                </div>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{new Date(`${financeMonthlyMonth}-01T00:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <h3 className="mb-3 font-semibold">Paid / Deposit Bookings</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-[1150px] w-full text-sm">
+                          <thead><tr className="bg-stone-100 text-left">
+                            {["Payment Date", "Booking #", "Invoice #", "Customer", "Type", "Booked Items", "Payment", "Guests", "Value", "Collected", "Outstanding"].map((heading) => <th key={heading} className="px-3 py-2">{heading}</th>)}
+                          </tr></thead>
+                          <tbody>
+                            {financeMonthlyData.bookings.map((booking) => (
+                              <tr key={booking.id} className="border-b border-stone-100">
+                                <td className="px-3 py-3">{booking.date}</td><td className="px-3 py-3 font-medium">{booking.bookingNumber}</td><td className="px-3 py-3">{booking.invoiceNumber || "-"}</td>
+                                <td className="px-3 py-3"><div>{booking.customerName}</div><div className="text-xs text-stone-400">{booking.customerEmail}</div></td>
+                                <td className="px-3 py-3">{booking.serviceType}</td><td className="px-3 py-3">{booking.bookedItems.map((item) => `${item.name} x${item.quantity}`).join(", ")}</td>
+                                <td className="px-3 py-3">{booking.paymentStatus}</td><td className="px-3 py-3 text-right">{booking.guests}</td>
+                                <td className="px-3 py-3 text-right">{formatCurrency(booking.allocatedAmount)}</td><td className="px-3 py-3 text-right">{formatCurrency(booking.amountCollected)}</td><td className="px-3 py-3 text-right">{formatCurrency(booking.outstandingBalance)}</td>
+                              </tr>
+                            ))}
+                            {financeMonthlyData.bookings.length === 0 && <tr><td colSpan={11} className="px-3 py-8 text-center text-stone-500">No booking payments or deposits for this month.</td></tr>}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="mb-3 font-semibold">Product Orders</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-[950px] w-full text-sm">
+                          <thead><tr className="bg-stone-100 text-left">
+                            {["Paid Date", "Paid Time", "Order #", "Invoice #", "Customer", "Products", "Subtotal", "Shipping", "Total Paid", "Fulfillment"].map((heading) => <th key={heading} className="px-3 py-2">{heading}</th>)}
+                          </tr></thead>
+                          <tbody>
+                            {financeMonthlyData.productOrders.map((order) => (
+                              <tr key={order.id} className="border-b border-stone-100">
+                                <td className="px-3 py-3">{order.date}</td><td className="px-3 py-3">{new Date(order.paidAt).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai", hour: "2-digit", minute: "2-digit" })}</td>
+                                <td className="px-3 py-3 font-medium">{order.orderNumber}</td><td className="px-3 py-3">{order.invoiceNumber || "-"}</td><td className="px-3 py-3">{order.customerName}</td>
+                                <td className="px-3 py-3">{order.products.map((item) => `${item.name} x${item.quantity}`).join(", ")}</td>
+                                <td className="px-3 py-3 text-right">{formatCurrency(order.subtotal)}</td><td className="px-3 py-3 text-right">{formatCurrency(order.shipping)}</td>
+                                <td className="px-3 py-3 text-right font-medium">{formatCurrency(order.totalPaid)}</td><td className="px-3 py-3">{order.fulfillmentStatus}</td>
+                              </tr>
+                            ))}
+                            {financeMonthlyData.productOrders.length === 0 && <tr><td colSpan={10} className="px-3 py-8 text-center text-stone-500">No paid product orders for this month.</td></tr>}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="mb-3 font-semibold">Tax Credit Note</h3>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-[900px] w-full text-sm">
+                          <thead><tr className="bg-stone-100 text-left">
+                            {["Created Date", "Credit Note #", "Source", "Reference", "Invoice #", "Customer", "Subtotal", "VAT", "Total Credit"].map((heading) => <th key={heading} className="px-3 py-2">{heading}</th>)}
+                          </tr></thead>
+                          <tbody>
+                            {financeMonthlyData.creditNotes.map((note) => (
+                              <tr key={note.id} className="border-b border-stone-100">
+                                <td className="px-3 py-3">{note.createdDate}</td><td className="px-3 py-3 font-medium">{note.creditNoteNumber}</td><td className="px-3 py-3">{note.sourceType}</td><td className="px-3 py-3">{note.sourceReference}</td><td className="px-3 py-3">{note.originalInvoiceNumber || "-"}</td>
+                                <td className="px-3 py-3"><div>{note.customerName}</div><div className="text-xs text-stone-400">{note.customerEmail}</div></td>
+                                <td className="px-3 py-3 text-right">{formatCurrency(note.subtotalAmount)}</td><td className="px-3 py-3 text-right">{formatCurrency(note.vatAmount)}</td><td className="px-3 py-3 text-right font-medium">{formatCurrency(note.totalCreditAmount)}</td>
+                              </tr>
+                            ))}
+                            {financeMonthlyData.creditNotes.length === 0 && <tr><td colSpan={9} className="px-3 py-8 text-center text-stone-500">No tax credit notes for this month.</td></tr>}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            );
+          })() : (
+            <Card><CardContent className="py-10 text-center text-stone-500">Select a month to load the finance report.</CardContent></Card>
           )}
         </div>
       )}
