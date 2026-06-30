@@ -571,7 +571,7 @@ export default async function AdminDashboard({
       shadow: "hover:shadow-amber-500/20",
     },
     {
-      label: "Active Leads",
+      label: "CRM",
       value: stats.totalLeads,
       trend: trends?.leads,
       icon: Target,
