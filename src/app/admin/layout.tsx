@@ -77,11 +77,19 @@ export default async function AdminLayout({
   }
 
   if (userRole === "accountant") {
-    const accountantBlockedPaths = ["/admin/users", "/admin/role-management", "/admin/marketing"];
-    const isAccountantBlockedPath = accountantBlockedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
+    const accountantAllowedPaths = [
+      "/admin/bookings",
+      "/admin/attendees",
+      "/admin/scanner",
+      "/admin/invoices",
+      "/admin/orders",
+      "/admin/sales",
+      "/admin/analytics",
+    ];
+    const isAccountantAllowedPath = accountantAllowedPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
-    if (isAccountantBlockedPath) {
-      redirect("/admin");
+    if (pathname === "/admin" || !isAccountantAllowedPath) {
+      redirect("/admin/bookings");
     }
   }
 

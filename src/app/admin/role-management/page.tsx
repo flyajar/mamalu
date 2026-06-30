@@ -65,10 +65,11 @@ export default function RoleManagementPage() {
   }, []);
 
   const filteredUsers = useMemo(() => {
+    const roleManagedUsers = users.filter((user) => (user.role || "customer") !== "customer");
     const term = search.trim().toLowerCase();
-    if (!term) return users;
+    if (!term) return roleManagedUsers;
 
-    return users.filter((user) =>
+    return roleManagedUsers.filter((user) =>
       [user.full_name, user.email, user.role]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term))
@@ -76,6 +77,8 @@ export default function RoleManagementPage() {
   }, [search, users]);
 
   const saveRole = async (user: AdminUser) => {
+    if ((user.role || "customer") === "customer") return;
+
     const role = selectedRoles[user.id];
     if (!role || role === user.role) return;
 
@@ -184,6 +187,7 @@ export default function RoleManagementPage() {
                   filteredUsers.map((user) => {
                     const selectedRole = selectedRoles[user.id] || user.role || "customer";
                     const isChanged = selectedRole !== (user.role || "customer");
+                    const isCustomer = (user.role || "customer") === "customer";
 
                     return (
                       <tr key={user.id} className="hover:bg-stone-50">
@@ -202,9 +206,10 @@ export default function RoleManagementPage() {
                             onChange={(event) =>
                               setSelectedRoles((prev) => ({ ...prev, [user.id]: event.target.value }))
                             }
+                            disabled={isCustomer}
                             className="w-full min-w-44 rounded-lg border border-stone-300 px-3 py-2 text-sm"
                           >
-                            <option value="customer">Customer</option>
+                            {isCustomer && <option value="customer">Customer</option>}
                             {managedRoles.map((role) => (
                               <option key={role.value} value={role.value}>
                                 {role.label}
@@ -216,7 +221,7 @@ export default function RoleManagementPage() {
                           <Button
                             size="sm"
                             onClick={() => saveRole(user)}
-                            disabled={!isChanged || savingUserId === user.id}
+                            disabled={isCustomer || !isChanged || savingUserId === user.id}
                           >
                             <Save className="mr-2 h-4 w-4" />
                             {savingUserId === user.id ? "Saving..." : "Save"}

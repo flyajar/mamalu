@@ -76,11 +76,16 @@ const navigation = [
 
 const roleNavigation: Record<string, string[]> = {
   mall: ["/admin/bookings", "/admin/orders", "/admin/sales"],
+  accountant: [
+    "/admin/bookings",
+    "/admin/attendees",
+    "/admin/scanner",
+    "/admin/invoices",
+    "/admin/orders",
+    "/admin/sales",
+    "/admin/analytics",
+  ],
   chef: ["/admin/bookings", "/admin/products", "/admin/orders"],
-};
-
-const roleHiddenNavigation: Record<string, string[]> = {
-  accountant: ["/admin/users", "/admin/role-management", "/admin/marketing"],
 };
 
 export function AdminSidebar({ userRole, onNavigate }: AdminSidebarProps) {
@@ -90,11 +95,6 @@ export function AdminSidebar({ userRole, onNavigate }: AdminSidebarProps) {
   const filteredNavigation = navigation.filter(item => {
     const allowedForRole = roleNavigation[userRole];
     if (allowedForRole && !allowedForRole.includes(item.href)) {
-      return false;
-    }
-
-    const hiddenForRole = roleHiddenNavigation[userRole];
-    if (hiddenForRole?.includes(item.href)) {
       return false;
     }
 
